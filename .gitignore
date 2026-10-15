@@ -1,0 +1,20 @@
+# Referência do QLC+ (clonada à parte, só leitura)
+/reference/
+
+# Rust
+/target/
+
+# Tauri (schemas gerados a cada build)
+app/src-tauri/gen/schemas
+
+# Node / Nuxt (ui/dist é um link criado pelo `nuxt generate`)
+node_modules/
+ui/.nuxt/
+ui/.output/
+ui/.data/
+ui/dist
+
+# Diversos
+*.log
+.env
+.DS_Store

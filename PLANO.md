@@ -1,0 +1,350 @@
+# Plano — r-light-control
+
+Controlador DMX próprio, com o QLC+ (Apache-2.0) como referência de arquitetura e protocolos. Tem só os recursos que o usuário usa, mais as melhorias que ele quer:
+- UI touch inspirada na Soundcraft Ui24R;
+- operação pelo celular;
+- visualização 2D/3D;
+- editor de fixture simples;
+- recursos de Virtual Console sob demanda.
+
+As regras e decisões estão em [DECISOES.md](DECISOES.md).
+
+**Status:** ⬜ pendente · 🟡 em andamento · ✅ concluída
+
+## Fluxo de cada fase
+
+1. Estudar os arquivos de referência do QLC+ listados na fase.
+2. Escrever o mini-plano em `docs/fases/fase-XX.md` → **o usuário aprova**.
+3. Implementar com testes automatizados.
+4. Entregar o checklist de validação → **o usuário valida** (com hardware real quando aplicável).
+5. Ajustar → validar de novo.
+6. Marcar a fase aqui e registrar as decisões novas no `DECISOES.md`. Commit se o usuário pedir.
+
+## Arquitetura alvo
+
+```
+r-light-control/
+├─ CLAUDE.md · PLANO.md · DECISOES.md · NOTICE · README.md
+├─ docs/  padroes-codigo.md · design-system.md · protocolo.md · fases/ · telas/
+├─ crates/
+│  ├─ rlc-core     modelo de dados + formatos JSON (serde + ts-rs → tipos TS), sem I/O
+│  ├─ rlc-engine   tick 50 Hz, camadas, merge HTP/LTP, GM, fades, funções
+│  ├─ rlc-dmx      Enttec Pro, Open DMX, Dummy; descoberta e hot-plug
+│  ├─ rlc-qxf      importador .qxf → formato próprio
+│  ├─ rlc-midi     entrada/feedback MIDI, learn
+│  ├─ rlc-server   axum: UI embutida + /ws + upload/download
+│  └─ rlc-headless servidor sem janela (testes, futuro Raspberry Pi)
+├─ app/src-tauri/  casca: instância única, sobe o servidor, abre a janela
+├─ ui/             Nuxt 4 SPA · Pinia · Tailwind v4 · Reka UI · TresJS
+└─ reference/qlcplus/  (fora do git)
+```
+
+Os crates são criados na fase em que passam a ser necessários (G7).
+
+---
+
+## Etapa A — Fundação, padrões e interface (antes de qualquer recurso)
+
+### F0 — Fundação e padrões · ✅
+
+- **Ambiente:** rustup (MSVC), VS 2022 Build Tools (C++) e pnpm.
+- **Repositório:**
+  - git, `.gitignore`.
+  - `CLAUDE.md`, `PLANO.md`, `DECISOES.md`, `NOTICE`.
+  - Referência do QLC+ em `reference/qlcplus`.
+- **Padrões:** `docs/padroes-codigo.md`.
+- **Esqueleto ponta a ponta:**
+  - Workspace Cargo + Tauri + Nuxt.
+  - O axum serve a UI e expõe `/ws`, com handshake `hello` e contador de ticks a 50 Hz.
+  - QR code com a URL da rede local.
+  - Logs em arquivo e arquivo de configurações.
+  - `pnpm check`.
+
+Concluída e validada pelo usuário em 2026-10-15.
+
+Validação:
+- [x] A janela mostra o contador subindo (~50/s). _Teste automático: 50,2 ticks/s._
+- [x] O celular abre a mesma página pelo QR e vê o mesmo contador.
+- [x] `docs/padroes-codigo.md` aprovado.
+- [x] `pnpm check` passa.
+
+### F1 — Design system (Ui24R) · 🟡
+
+Mini-plano: [docs/fases/fase-01.md](docs/fases/fase-01.md) (aguardando aprovação).
+
+- **Entrada do usuário:** prints e referências da Ui24R (em `docs/design/`).
+- **Tokens:** tema escuro, cores por atributo (intensidade, cor, posição, beam), tipografia, espaçamento e alvos de toque ≥44 px.
+- **Componentes:**
+  - `RlFader`: multitoque, modo fino, toque duplo para resetar, medidor.
+  - `RlButton`: toggle/flash, solta em `pointercancel`.
+  - `RlKnob`, `RlXYPad`, `RlColorPicker`, `RlChannelStrip`, `RlMeter`.
+  - Navegação, Sheet/Dialog, teclado numérico, listas e formulários.
+- **Páginas e layouts:** página `/dev/showcase` e layouts para celular, tablet e desktop.
+- **Spikes:** 64 faders animados; 50 cones de feixe em TresJS no celular do usuário.
+- **Documentação:** `docs/design-system.md`.
+
+Validação:
+- [ ] Visual aprovado no desktop, tablet e celular.
+- [ ] 4 ou mais faders movidos ao mesmo tempo com vários dedos.
+- [ ] 60 fps no celular.
+- [ ] Sem zoom, rolagem ou seleção de texto acidentais.
+
+### F2 — Protótipo navegável de todas as telas · ⬜
+
+- **Navegação:** Console (VC) · Programador · Funções · Patch · Visualização · Dispositivos · Configurações.
+- **Telas** (com dados fictícios):
+  - Projeto.
+  - Biblioteca e importação de .qxf.
+  - Patch.
+  - Editor de fixture.
+  - Programador.
+  - Funções: Cena, Chaser, Sequência, EFX, RGB Matrix.
+  - Virtual Console (edição e operação).
+  - MIDI learn.
+  - Dispositivos e monitor DMX.
+  - Configurações: acesso remoto, PIN, QR.
+  - Layout da Visualização 2D/3D.
+- **Contrato de dados v0:** structs em `rlc-core` → tipos TS via ts-rs. A UI usa um `EngineClient` (`MockClient` agora, `WsClient` depois).
+- **Saída:** prints em `docs/telas/` e rascunho de `docs/protocolo.md`.
+
+Validação:
+- [ ] Todos os fluxos percorridos no desktop, tablet e celular.
+- [ ] Telas aprovadas e congeladas como referência.
+
+## Etapa B — Núcleo
+
+### F3 — Motor base + saída USB DMX · ⬜
+
+- **Motor:** tick, N universos, camada de mesa, Grand Master, blackout e pânico.
+- **`rlc-dmx`:**
+  - Enttec Pro (label 6).
+  - Open DMX via D2XX, com fallback por serialport `set_break`.
+  - Dummy.
+- **Dispositivos:** descoberta por VID/PID, hot-plug, estatísticas (fps, jitter, erros).
+- **UI:** telas Dispositivos, Mesa e Monitor DMX ligadas ao motor. Primeiro instalador.
+- **Ref:**
+  - `plugins/dmxusb/src/{dmxusbwidget,enttecdmxusbpro,enttecdmxusbopen,ftd2xx-interface,qtserial-interface}.cpp`
+  - `engine/src/{outputpatch,inputoutputmap,grandmaster,mastertimer-win32}.cpp`
+
+Validação:
+- [ ] A Pro e a Open DMX controlam fixtures reais.
+- [ ] 10 min de varredura sem flicker.
+- [ ] A saída volta em até 3 s depois de replugar.
+- [ ] Blackout instantâneo.
+- [ ] O Dummy funciona sem hardware.
+- [ ] O instalador funciona num PC limpo.
+
+### F4 — Fixtures: formato e importador .qxf · ⬜
+
+- **Formato:** schema JSON de fixture (`schemaVersion`) com taxonomia própria de atributos.
+- **Importador:** `rlc-qxf`, com relatório de conversão.
+- **Biblioteca:** do usuário, com busca e upload também pelo celular.
+- **Decisão desta fase:** embutir ou não a biblioteca do QLC+ já convertida.
+- **Ref:**
+  - `engine/src/{qlcfixturedef,qlcfixturemode,qlcchannel,qlccapability,qlcphysical,qlcfixturehead}.cpp`
+  - `resources/schemas/fixture.xsd`
+
+Validação:
+- [ ] Os .qxf das fixtures reais importam sem erro.
+- [ ] Relatório correto.
+- [ ] Conferência manual contra o QLC+.
+
+### F5 — Patch, projeto e programador · ⬜
+
+- **Projeto:** fixtures embutidas; patch com conflitos e endereçamento automático.
+- **Arquivos:** salvar/abrir com escrita atômica, autosave e recuperação após crash.
+- **Programador:** seleção, intensidade, cor, pan/tilt, capabilities, highlight.
+- **Edição:** API por operações tipadas com revisão.
+- **Ref:**
+  - `engine/src/{doc,fixture,channelmodifier}.cpp`
+  - `qmlui/{fixturemanager,contextmanager}.cpp`
+  - `qmlui/tardis/tardis.cpp`
+
+Validação:
+- [ ] 20 fixtures em 2 universos.
+- [ ] Conflito sinalizado.
+- [ ] Salvar → reabrir dá um projeto idêntico.
+- [ ] Recuperação após matar o processo.
+- [ ] Celular e desktop sincronizados.
+
+## Etapa C — Funções
+
+### F6 — Merge, fades e Cena · ⬜
+
+- **Merge:** HTP na intensidade e LTP por ordem de início no resto.
+- **Faders:** prioridades, fades e crossfades em f32, canais fine de 16 bits.
+- **Grand Master:** Limit/Reduce × Intensity/All.
+- **Cena:** gravada do programador e editável enquanto roda. Stop All.
+- **Testes:** portados de `engine/test/{universe,genericfader,fadechannel,scene,grandmaster}`.
+- **Ref:** `engine/src/{universe,genericfader,fadechannel,function,scene}.cpp`
+
+Validação:
+- [ ] Duas cenas sobrepostas: maior dimmer vence; para a cor, vence a última iniciada.
+- [ ] GM a 50% reduz só a intensidade.
+- [ ] Tick abaixo de 2 ms com 4 universos.
+
+### F7 — Chaser, Sequência, Coleção e BPM · ⬜
+
+- **Chaser:** modos de velocidade Default/Common/PerStep, crossfade, next/prev/goto, run order Loop/SingleShot/PingPong/Random.
+- **Sequência** e **Coleção.**
+- **Tempo:** BPM global com tap tempo.
+- **Ref:** `engine/src/{chaser,chaserrunner,chaserstep,sequence,collection}.cpp`
+
+Validação:
+- [ ] Chaser de 8 passos com crossfade de 2 s, suave.
+- [ ] Tap a 120 BPM mantém o tempo.
+- [ ] PingPong e Random corretos.
+
+### F8 — Grupos de fixtures e EFX · ⬜
+
+- **Grupos:** grupos 2D de cabeças.
+- **EFX:** os 10 algoritmos, modo absoluto e relativo, spread/offset, preview do caminho.
+- **Ref:** `engine/src/{efx,efxfixture,fixturegroup,grouphead}.cpp`
+
+Validação:
+- [ ] Círculo em 4 moving heads com offset de 90°.
+- [ ] EFX relativo sobre uma posição do programador.
+
+### F9 — RGB Matrix · ⬜
+
+- **Algoritmos nativos:** Plain, Text e Image em Rust.
+- **Scripts do QLC+:** rodando em rquickjs, numa thread separada com limite de tempo e cache dos passos.
+- **Ref:**
+  - `engine/src/{rgbmatrix,rgbalgorithm,rgbscript,rgbscriptscache}.cpp`
+  - `resources/rgbscripts/`
+
+Validação:
+- [ ] Os scripts carregam.
+- [ ] Preview 8×8 bate com o devtool do QLC+.
+- [ ] Um script em loop infinito é abortado sem derrubar o motor.
+
+## Etapa D — Operação ao vivo
+
+### F10 — Virtual Console I · ⬜
+
+- **Base:** registro de widgets com propriedades geradas por schema.
+- **Edição:** grade com snap e edição por toque, modos Edição e Operação, páginas e frames.
+- **Widgets:** Button (Toggle/Flash/Blackout/StopAll), Slider (Level/Playback/Submaster), Label.
+- **Entradas externas:** modelo `InputRef`.
+- **Ref:**
+  - `qmlui/virtualconsole/{vcwidget,vcbutton,vcslider,vcframe,vcpage,vclabel}.cpp`
+  - `engine/src/qlcinputsource.cpp`
+
+Validação:
+- [ ] Console de 2 páginas montado no desktop e operado no celular.
+- [ ] Flash solta ao levantar o dedo e ao cair a conexão.
+- [ ] Submaster escala uma cena.
+
+### F11 — Virtual Console II, multi-cliente e segurança · ⬜
+
+- **Widgets:** XYPad, SoloFrame, SpeedDial, CueList, Clock, Animation.
+- **Acesso:** papéis admin/operador/visualizador, PIN → token, checagem de Origin.
+- **Ref:**
+  - `qmlui/virtualconsole/{vcxypad,vcsoloframe,vcspeeddial,vccuelist,vcclock,vcanimation}.cpp`
+  - `webaccess/src/webaccessauth.cpp`
+
+Validação:
+- [ ] 3 aparelhos por 5 min com estado consistente.
+- [ ] PIN errado recusado.
+- [ ] Operador não edita.
+- [ ] Reconexão recebe o estado completo.
+
+### F12 — MIDI · ⬜
+
+- **Base:** midir com hot-plug e learn.
+- **Mensagens:** CC, Note, Program Change, Pitch Bend.
+- **Feedback:** LEDs e faders motorizados.
+- **Opcional:** importar perfis .qxi.
+- **Ref:**
+  - `plugins/midi/src/common/{midiprotocol,midiinputdevice,midioutputdevice}.cpp`
+  - `engine/src/{qlcinputprofile,inputpatch}.cpp`
+
+Validação:
+- [ ] Learn em menos de 10 s.
+- [ ] LED acompanha um toggle acionado pelo celular.
+- [ ] Mapeamentos sobrevivem a replugar.
+
+## Etapa E — Ferramentas e visualização
+
+### F13 — Editor de fixtures · ⬜
+
+- Informações gerais, canais (grupo/preset e capabilities com validação de faixas), modos, cabeças e dados físicos.
+- **Ref:** `qmlui/fixtureeditor/{channeledit,modeedit,physicaledit}.cpp`
+
+Validação:
+- [ ] Criar do zero um par RGBW de 7 canais, patchar e controlar.
+
+### F14 — Visualização 2D · ⬜
+
+- **Vistas:** topo, frente e lateral, com posições salvas no projeto.
+- **Dados:** o servidor calcula o estado visual de cada cabeça e envia em binário a 30 Hz. O mesmo adaptador serve ao 3D.
+- **Ref:**
+  - `qmlui/{mainview2d,previewcontext}.cpp`
+  - `ui/src/monitor/monitorfixtureitem.cpp`
+
+Validação:
+- [ ] Um chaser aparece corretamente.
+- [ ] 100 fixtures a 30 fps no celular.
+
+### F15 — Visualização 3D · ⬜
+
+- **Render:** TresJS com loop imperativo.
+- **Modelos:** glTF convertidos dos .dae do QLC+ (nós base/arm/head).
+- **Feixes:** cones aditivos instanciados, e gobos.
+- **Qualidade:** níveis configuráveis.
+- **Câmera e palco:** presets de câmera e posicionamento das fixtures.
+- **Ref:**
+  - `qmlui/mainview3d.cpp`
+  - `qmlui/qml/fixturesfunctions/3DView/`
+  - `resources/meshes/fixtures/`
+
+Validação:
+- [ ] 48 fixtures a 60 fps no desktop e ≥30 fps no celular (qualidade baixa).
+- [ ] Pan/tilt conferem com a fixture real.
+
+## Etapa F — Entrega
+
+### F16 — Release v1.0 · ⬜
+
+- **Instalador:** bootstrapper do WebView2 e regra de firewall.
+- **Diagnóstico:** log de crash e visualizador de logs.
+- **Teste de resistência:** 2 h com 100 fixtures em 4 universos.
+- **Documentação:** licenças e manual em pt-BR.
+
+Validação:
+- [ ] Instalação limpa.
+- [ ] Show de 2 h sem falhas.
+- [ ] Desinstalação limpa.
+
+## Backlog v2
+
+- Android como host USB.
+- Art-Net/sACN e OSC.
+- Show/timeline com áudio.
+- Paletas e undo/redo.
+- RDM e o segundo universo da Enttec Pro Mk2.
+
+## Pedidos de recursos do Virtual Console (G4)
+
+_Nenhum ainda._
+
+---
+
+## Riscos
+
+| Risco | Mitigação |
+|---|---|
+| Jitter no Open DMX | Thread TIME_CRITICAL, `timeBeginPeriod`, latency timer de 1–2 ms, medição de jitter na F3, fallback para VCP |
+| Semântica diferente do QLC+ | Portar `engine/test` como especificação, relógio determinístico |
+| Sincronização entre vários clientes | Servidor como autoridade, revisões, trava do controle sob o dedo, snapshot ao reconectar |
+| Segurança na rede local | Checagem de Origin, PIN → token, papéis, bind configurável |
+| Celular em HTTP não é "contexto seguro" | Workaround estilo NoSleep. O MIDI fica no servidor |
+| Desempenho no celular | Frames binários, decimação, níveis de qualidade, spike 3D na F1 |
+| Curva de Rust | Crates pequenos, código direto (G7), testes legíveis, uma demo por fase |
+| Crescimento de escopo do VC | Widgets por schema. Cada pedido vira mini-plano e decisão |
+
+## Verificação
+
+- **Automática:** `pnpm check` (rustfmt, clippy `-D warnings`, `cargo test`, typecheck e lint da UI).
+- **Manual:** checklist da fase, rodando `pnpm dev` no desktop e no celular pelo QR. Hardware real a partir da F3.
+- **Encerramento:** checklist completo e aprovação explícita do usuário.

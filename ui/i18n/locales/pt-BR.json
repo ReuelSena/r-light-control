@@ -1,0 +1,11 @@
+{
+  "status": {
+    "connected": "Conectado",
+    "disconnected": "Desconectado — tentando reconectar…"
+  },
+  "home": {
+    "ticks": "Ticks do motor",
+    "rate": "{rate} por segundo",
+    "phone": "Abra no celular (mesma rede Wi-Fi)"
+  }
+}

@@ -1,0 +1,13 @@
+r-light-control
+Copyright 2026 os autores do r-light-control
+
+Este projeto usa o QLC+ (https://github.com/mcallegari/qlcplus) como
+referência de arquitetura e protocolos. O QLC+ é distribuído sob a
+Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0),
+Copyright (c) Massimo Callegari e colaboradores.
+
+Partes derivadas do QLC+ incorporadas a este projeto (algoritmos portados,
+definições de fixtures, meshes, rgbscripts) são listadas abaixo conforme
+forem adicionadas:
+
+(nenhuma até o momento)

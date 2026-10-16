@@ -1,6 +1,28 @@
 # F2 — Protótipo navegável de todas as telas
 
-**Status:** aprovado em 2026-10-16 (E11–E13). Rodada 1 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 2 em andamento.
+**Status:** aprovado em 2026-10-16 (E11–E13). Rodada 1 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 2 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 3 em andamento.
+
+**Ajustes pedidos na validação da rodada 2 (2026-10-16)**
+- **Editor de cena:**
+  - o toque escolhe uma fixture; Ctrl + clique (ou toque longo, no celular) soma outras do mesmo tipo, e o que se mexe vale para todas as escolhidas;
+  - aba Canais primeiro, e as de atributo só aparecem quando a fixture tem o tipo de canal;
+  - "Adicionar fixtures" (primeiro botão da fileira) abre uma lista com nome, universo e canais, com os atalhos "Desmarcar todos", "Selecionar do mesmo tipo" e "Selecionar grupo";
+  - divisor entre a fixture escolhida e os grupos de canais; ligar um grupo traz as fixtures dele para a cena, e o fader só mexe nas fixtures da cena;
+  - sem textos de ajuda na tela: explicações no ícone "i" (E6).
+
+**Rodada 2 entregue**
+- **Studio:** lista de todas as criações agrupada por tipo (com ícone), pastas, busca e rodar/parar em cada uma; criar (escolhendo o tipo), renomear, duplicar e excluir.
+- **Editores:**
+  - **Cena:** fixtures da cena, escolha das que recebem os valores e as ferramentas Intensidade, Cor (roda, branco/âmbar/UV, roda de cores e macros), Posição (pad XY), Efeitos (shutter/strobe, gobo, prisma, zoom, foco, íris) e Canais (um fader por canal); grupos de canais com fader.
+  - **Chaser:** passos com fade in, hold e fade out, ordem, sentido, tempos em batidas e de onde vem cada tempo (padrão, comum ou por passo); passo atual aceso enquanto roda.
+  - **Sequência:** o mesmo editor, preso a uma cena; cada passo tem os próprios valores, editados em faders.
+  - **Coleção:** lista de criações disparadas juntas.
+  - **EFX:** os 10 desenhos do QLC+, parâmetros em knobs, prévia animada com as fixtures, propagação, ordem, sentido, tempos e fixtures com ordem, inversão e deslocamento.
+  - **RGB Matrix:** grupo de fixtures, algoritmos de amostra (os scripts do QLC+ entram na F9), cores, tempos e prévia animada da grade.
+- **Mesa simples:** um fader por canal, os 512 do universo numa faixa só (Ctrl + roda do mouse rola), com a fixture e o atributo de cada canal e o medidor de saída; grupos de canais; "Zerar".
+- **Monitoramento:** CPU, memória, tick do motor, tempo ligado, clientes conectados, saídas DMX por universo e a grade dos 512 valores de saída ao vivo.
+- **Contrato:** criações do Studio, estado de execução (rodando, mesa, estatísticas) e as operações novas em [`docs/protocolo.md`](../protocolo.md). O `MockClient` simula a saída a partir das criações rodando.
+- **Design system:** `RlSegmented`, `RlTimeField`, `RlChannelStrip` sem botões e com etiqueta própria, e a tabela de ícones dos tipos de criação.
 
 **Rodada 1 entregue**
 - Shell com menus, menu Projeto, status USB e ⚙. No celular, barra inferior com "Mais".
@@ -23,7 +45,7 @@
 
 **Ajustes durante a rodada**
 - As telas usam container queries, para se adaptar a painéis estreitos (regra registrada no design system).
-- O BPM da barra fica oculto abaixo de 1536 px, para os botões do modo modular e do ⚙ caberem. Ele vai morar no Console.
+- Abaixo de 1536 px, a barra esconde o BPM, o nome R·LIGHT e o texto USB (o LED fica), para tudo caber em 1280 px. O BPM vai morar no Console.
 
 **Ajustes pedidos na validação (2026-10-16)**
 - **Grupos de canais**, além dos grupos de fixtures (E12).
@@ -32,6 +54,11 @@
   - Editor: toque nos canais de cada fixture, ou use os atalhos por atributo, que pegam todas as fixtures de uma vez.
 - **Abas agrupadas** num trilho afundado, como um controle segmentado, no lugar dos botões soltos. Valem para todas as telas, incluindo os universos do Patch.
 - **Patch:** arrastar a fixture na grade para mudar o endereço.
+- **Studio:** lista agrupada por tipo (o filtro de tipo saiu), com pastas por tipo; arrastar move a criação entre pastas do mesmo tipo.
+- **Studio:** coluna da lista com 360 px; botão "Parar todas" ao lado da busca; ao criar uma coleção com criações rodando, pergunta se ela nasce vazia ou com elas.
+- **Editor de cena:** fade in e fade out no fim, numa seção "Tempos" (o console ajusta os fades ao vivo, VC-3).
+- **Barra superior:** botão de pânico (um toque para as criações; dois toques também zeram a Mesa simples).
+- **Mesa simples:** em tela larga, canais em cima e grupos de canais embaixo (como no QLC+); no celular, grupos numa aba.
 - **In/Out sem abas:** seções Saídas e Entradas. A seção Entradas só lista os controladores MIDI conectados. O mapeamento de MIDI e de teclado sai do In/Out e vai para cada elemento do console (rodada 3).
 
 ## Objetivo
@@ -127,7 +154,7 @@ O menu **Projeto** (novo, abrir, salvar, recentes) fica no canto esquerdo da bar
    - **Coleção.**
    - **EFX:** algoritmo, parâmetros, fixtures com ordem e offset, preview animado do caminho.
    - **RGB Matrix:** grupo, algoritmo, cores, preview animado da grade.
-8. **Mesa simples:** faders por canal DMX com página por universo, e faders por grupos de canais.
+8. **Mesa simples:** faders por canal DMX (os 512 do universo numa faixa, Ctrl + roda rola) e faders por grupos de canais.
 9. **Monitoramento:** valores ao vivo dos universos, CPU, memória, fps e jitter das saídas, clientes conectados.
 
 ### Rodada 3: Console e 3D View
@@ -142,6 +169,7 @@ O menu **Projeto** (novo, abrir, salvar, recentes) fica no canto esquerdo da bar
      - ação: função, blackout geral, blackout de fixtures ou grupos, ou stop all;
      - entrada externa: controle MIDI (com "aprender") ou tecla do teclado.
    - **VC-2:** layouts por formato de tela. Cada aparelho abre o layout do seu formato. Os detalhes (o que é compartilhado entre formatos) serão decididos no início da rodada.
+   - **VC-3:** controle no console para ajustar os fades ao vivo.
 12. **3D View:** layout do preview (com a cena de feixes da F1 como amostra), vistas, palco e posicionamento das fixtures.
 
 ## Contrato de dados v0 e dados fictícios
@@ -182,7 +210,7 @@ Motor, USB, arquivos de verdade (abrir e salvar são simulados) e MIDI de verdad
 ## Validação
 
 - [x] Rodada 1 aprovada (shell modular, janela externa, Fixtures, Patch, In/Out, Configurações).
-- [ ] Rodada 2 aprovada (Studio, editores, Mesa simples, Monitoramento).
+- [x] Rodada 2 aprovada (Studio, editores, Mesa simples, Monitoramento).
 - [ ] Rodada 3 aprovada (Console em operação e edição, VC-1, VC-2, 3D View).
 - [ ] Todos os fluxos percorridos no desktop, no tablet e no celular.
 - [ ] Contrato v0 e rascunho do `docs/protocolo.md` revisados.

@@ -3,8 +3,11 @@ import type { Capability } from '~/types/generated/Capability'
 import type { Channel } from '~/types/generated/Channel'
 import type { Fixture } from '~/types/generated/Fixture'
 import type { FixtureDef } from '~/types/generated/FixtureDef'
+import type { Function } from '~/types/generated/Function'
+import type { GroupLevel } from '~/types/generated/GroupLevel'
 import type { Physical } from '~/types/generated/Physical'
 import type { Project } from '~/types/generated/Project'
+import type { SceneValue } from '~/types/generated/SceneValue'
 import type { Snapshot } from '~/types/generated/Snapshot'
 
 // Dados fictícios do protótipo (F2). Saem quando o motor real chegar (F3).
@@ -99,11 +102,51 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
 // Os canais `channels` (posição no modo) de cada fixture de `ids`, para os grupos de canais
 const pick = (ids: string[], channels: number[]) => ids.flatMap((fixture) => channels.map((channel) => ({ fixture, channel })))
 const pars = range(6).map((i) => `par${i + 1}`)
+const mhs = ['mh1', 'mh2', 'mh3', 'mh4']
+
+// Valores de cena: { canal: valor } aplicado a cada fixture de `ids`
+const vals = (ids: string[], values: Record<number, number>): SceneValue[] =>
+  ids.flatMap((fixture) => Object.entries(values).map(([channel, value]) => ({ fixture, channel: Number(channel), value })))
+const timing = (fadeInMs: number, holdMs: number, fadeOutMs = 0) => ({ fadeInMs, holdMs, fadeOutMs })
+const scene = (id: string, name: string, values: SceneValue[], channelGroups: GroupLevel[] = [], folder: string | null = null): Function =>
+  ({ id, name, folder, type: 'scene', values, channelGroups, fadeInMs: 1000, fadeOutMs: 1000 })
+
+const functions: Function[] = [
+  scene('s1', 'Frente âmbar', vals(pars, { 0: 255, 1: 255, 2: 140 }), [{ group: 'cg1', value: 255 }], 'd1'),
+  scene('s2', 'Frente azul', vals(pars, { 0: 255, 3: 255 }), [{ group: 'cg1', value: 255 }], 'd1'),
+  scene('s3', 'Frente vermelha', vals(pars, { 0: 255, 1: 255 }), [{ group: 'cg1', value: 255 }], 'd1'),
+  scene('s4', 'MHs no centro', vals(mhs, { 0: 128, 2: 128, 5: 255, 6: 10, 12: 100 })),
+  scene('s5', 'Haze leve', vals(['hazer'], { 0: 80, 1: 120 })),
+  {
+    id: 'c1', name: 'Troca de cores', folder: null, type: 'chaser', scene: null, runOrder: 'loop', direction: 'forward', beats: false,
+    fadeInMode: 'perStep', holdMode: 'perStep', fadeOutMode: 'default', common: timing(500, 2000),
+    steps: ['s1', 's2', 's3'].map((fn) => ({ function: fn, timing: timing(1000, 2000), note: '', values: [] })),
+  },
+  {
+    id: 'q1', name: 'Subida da frente', folder: null, type: 'sequence', scene: 's1', runOrder: 'pingPong', direction: 'forward', beats: false,
+    fadeInMode: 'common', holdMode: 'common', fadeOutMode: 'common', common: timing(800, 400),
+    steps: [0.25, 0.5, 1].map((k) => ({ function: 's1', timing: timing(800, 400), note: `${k * 100}%`, values: vals(pars, { 0: Math.round(255 * k), 1: 255, 2: 140 }) })),
+  },
+  { id: 'k1', name: 'Abertura', folder: null, type: 'collection', functions: ['c1', 's4', 'e1', 's5'] },
+  {
+    id: 'e1', name: 'Círculo nos MHs', folder: null, type: 'efx', algorithm: 'circle', width: 64, height: 64, xOffset: 128, yOffset: 128, rotation: 0,
+    xFrequency: 2, yFrequency: 3, xPhase: 90, yPhase: 0, relative: false, propagation: 'asymmetric',
+    fixtures: mhs.map((fixture) => ({ fixture, reverse: false, startOffset: 0 })), runOrder: 'loop', direction: 'forward', timing: timing(0, 4000),
+  },
+  {
+    id: 'r1', name: 'Degradê nas barras', folder: null, type: 'rgbMatrix', group: 'g2', algorithm: 'gradient', colors: ['#ff0000', '#0000ff'],
+    runOrder: 'loop', direction: 'forward', timing: timing(0, 200),
+  },
+  {
+    id: 'r2', name: 'Perseguição nos PARs', folder: null, type: 'rgbMatrix', group: 'g1', algorithm: 'chase', colors: ['#ffbf00', '#000000'],
+    runOrder: 'loop', direction: 'forward', timing: timing(0, 250),
+  },
+]
 
 export function emptyProject(): Project {
   return {
     name: 'Novo projeto', universes: [{ id: 'u1', name: 'Universo 1', output: null }],
-    fixtureDefs: [], fixtures: [], fixtureGroups: [], channelGroups: [],
+    fixtureDefs: [], fixtures: [], fixtureGroups: [], channelGroups: [], functions: [], folders: [],
   }
 }
 
@@ -128,6 +171,8 @@ export function fakeSnapshot(): Snapshot {
         { id: 'cg4', name: 'Pan/Tilt MHs', channels: pick(['mh1', 'mh2', 'mh3', 'mh4'], [0, 2]) },
         { id: 'cg5', name: 'Strobe e haze', channels: pick(['strobe', 'hazer'], [0]) },
       ],
+      functions: clone(functions),
+      folders: [{ id: 'd1', name: 'Frente', kind: 'scene' }],
     },
     projectPath: 'C:\\Shows\\Show de exemplo.rlc',
     dirty: false,
@@ -151,5 +196,9 @@ export function fakeSnapshot(): Snapshot {
         { id: 'c2', name: 'Celular', address: '192.168.0.23', thisDevice: false },
       ],
     },
+    // Duas criações já rodando, para o Monitoramento mostrar sinal
+    running: ['s1', 'r1'],
+    desk: { levels: [], groups: [] },
+    stats: { cpuPercent: 8, memoryMb: 142, tickMs: 0.4, uptimeS: 0 },
   }
 }

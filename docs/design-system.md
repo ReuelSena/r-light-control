@@ -46,6 +46,7 @@ Para montar telas:
 |---|---|
 | `panel` | Bloco de conteúdo dentro de uma tela |
 | `heading` | Título de seção (maiúsculas, discreto) |
+| `divider` | Divisória entre seções de um mesmo painel (ex.: grupos de canais e tempos no editor de cena) |
 | `field-label` | `<label>` com o texto em cima e o campo embaixo |
 | `rl-table` | Tabelas (canais, faixas, mapeamentos) |
 | `rl-led` | LED de status; a cor vem de `--led` (padrão verde) |
@@ -54,23 +55,39 @@ Para montar telas:
 
 | Componente | Quando usar | Comportamento |
 |---|---|---|
-| `RlButton` | Qualquer ação | `mode`: `action`, `toggle` ou `flash`. `highlight`: `face` (o botão inteiro acende, padrão) ou `led` (só o filete acende e o botão fica afundado). `color`: cor do destaque e do filete. `size`: `sm`, `md` ou `lg`. Emite `press`. |
+| `RlButton` | Qualquer ação | `mode`: `action`, `toggle` ou `flash`. `highlight`: `face` (o botão inteiro acende, padrão) ou `led` (só o filete acende e o botão fica afundado). `color`: cor do destaque e do filete. `size`: `sm`, `md` ou `lg`. Emite `press` com o evento (para ler `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`. |
 | `RlLcd` | Mostrar valores e estados | Texto ciano por padrão; `color` muda a cor (ex.: blackout em vermelho). |
 | `RlFader` | Nível contínuo (intensidade, submaster, GM) | Arrasto relativo, botão FINO (×0,1), toque duplo volta ao `default`, roda do mouse, setas e PageUp/PageDown. `meter` opcional; `cap="red"` para o master. |
 | `RlKnob` | Parâmetros secundários (zoom, foco, velocidade) | Arrasto vertical relativo (150 px = curso todo), roda do mouse, toque duplo volta ao padrão. |
 | `RlXYPad` | Pan/tilt | Arrasto relativo em X e Y, FINO, toque duplo centraliza. |
 | `RlColorPicker` | Cor de fixtures RGB | Roda de matiz/saturação (toque absoluto, brilho máximo), amostras de gelatina, campos R, G e B. |
 | `RlMeter` | Nível de saída | Segmentos de LED; `level` de 0 a 1. |
-| `RlChannelStrip` | Canal ou fixture na mesa | Display (tocar emite `edit`), FLASH, SEL, fader com FINO, etiqueta colorida (laranja quando selecionada). |
+| `RlChannelStrip` | Canal ou fixture na mesa | Display (tocar emite `edit`), FLASH, SEL, fader com FINO, etiqueta colorida (laranja quando selecionada). Com `plain`, sem os botões (Mesa simples, faders de cena). O slot `label` troca o texto da etiqueta (ex.: ícone + nome). |
 | `RlNumpad` | Digitar um valor exato | Respeita % ou DMX; emite o valor normalizado (0–1). |
-| `RlDialog` | Confirmações, edição pontual | Com `sheet`, vira painel: sobe de baixo no celular e entra pela direita em telas maiores. |
+| `RlDialog` | Confirmações, edição pontual | Com `sheet`, vira painel: sobe de baixo no celular e entra pela direita em telas maiores. `info` põe o "i" ao lado do título. |
 | `RlTabs` | Alternar visões dentro de um painel | Abas agrupadas num trilho afundado (controle segmentado); a ativa é a tecla acesa em laranja. Ocupam a largura toda em espaços estreitos (o texto quebra em duas linhas se precisar) e, a partir de `@3xl`, só o necessário, com abas de largura igual. Conteúdo em slots com o nome do `value`, ou no slot padrão quando todas as abas mostram a mesma tela com dados diferentes (ex.: universos no Patch). O slot `actions` põe botões ao lado do trilho (ex.: **+** novo universo). Use sempre que botões trocam a visão do painel, em vez de botões soltos. |
+| `RlSegmented` | Escolher uma entre poucas opções (ordem, sentido, propagação) | Mesmo trilho das abas, sem conteúdo embaixo. Sempre há uma opção escolhida. |
+| `RlTimeField` | Tempos (fade, hold, duração) | Mostra segundos (ou batidas, com `beats`) e guarda milissegundos. |
 | `RlList` | Listas selecionáveis (bibliotecas, funções) | Linhas de 48 px; `v-model` é o id selecionado. O slot `item` personaliza a linha. |
 | `RlSwatches` | Escolher uma cor de uma paleta curta (etiqueta de fixture) | `v-model` com a cor; `colors` com as opções. |
 | `RlSwitch` | Opções liga/desliga em configurações | Alavanca com texto ao lado. |
+| `RlInfo` | Explicar uma seção, página ou diálogo | Ícone "i" ao lado do título; tocar abre um balão com o texto. É o único lugar para explicações (E6). |
 | `RlAppShell` | Moldura de toda tela | Slots: `toolbar`, `nav`, `toolbar-end`, padrão (principal), `master`, `side`, `bottom`. |
 
 Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e teclado prontos). Fader, knob, pad XY e seletor de cor são nossos, porque nenhuma biblioteca tem comportamento de mesa.
+
+## Ícones dos tipos de criação
+
+`functionIcons` ([`utils/functions.ts`](../ui/app/utils/functions.ts)) é o ícone de cada tipo do Studio (E12), usado em todo lugar onde uma criação aparece: lista, passos de chaser, coleções e, na rodada 3, os botões do console.
+
+| Tipo | Ícone (lucide) | Ideia |
+|---|---|---|
+| Cena | `Camera` | Uma "foto" dos valores |
+| Chaser | `Repeat` | Passos em ciclo |
+| Sequência | `Film` | Quadros de uma mesma cena |
+| Coleção | `Layers` | Várias juntas |
+| EFX | `Orbit` | Movimento desenhado |
+| RGB Matrix | `LayoutGrid` | Grade de pixels |
 
 ## Ícones de atributo
 
@@ -94,13 +111,16 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
   - cada clique da roda anda 1%; com FINO, 0,1%;
   - é proporcional ao deslocamento, então o trackpad não dispara;
   - sobre esses controles a roda não rola a página.
+  - com **Ctrl**, a roda rola a faixa de strips na horizontal (Mesa simples) em vez de mexer no fader.
 - **Destaque `face` ou `led`:** `face` para estados que precisam chamar atenção de longe (blackout, flash, aba ativa). `led` para estados discretos, que parecem uma chave travada (seleção, opções ligadas).
 - **Botões disparam ao soltar o dedo (`pointerup`)**, não no `click`. O navegador não gera `click` para um toque feito enquanto outro dedo está na tela. Pelo teclado, Enter/Espaço continuam funcionando.
 - **Flash** acende ao tocar e apaga ao soltar, ao cancelar o toque ou ao perder a captura. Ele usa `touch-action: none`, para um dedo que escorrega não virar rolagem.
+- **Multisseleção:** o toque escolhe um item; Ctrl + clique (desktop) ou toque longo (celular) soma ou tira outros. Ex.: fixtures do mesmo tipo no editor de cena.
 - **Arrastar para posicionar** (Patch; depois, a edição do console):
   - com o mouse, qualquer item é arrastado direto;
   - no toque, o primeiro toque seleciona e o arrasto vale só para o item selecionado (ele recebe `touch-action: none`), para o gesto sobre o resto continuar rolando;
   - o ponto agarrado fica sob o dedo, e o destino aparece antes de soltar: verde se livre, vermelho se houver conflito.
+  - em listas que rolam (ex.: a do Studio), no toque o arrasto só começa depois de segurar 400 ms; antes disso, o gesto rola a lista. Com o mouse, começa ao mover 6 px.
 - **Rolagem:** as barras (navegação, bancos, strips) rolam pelo gesto. Faders, knobs, pads e flashes não deixam o gesto virar rolagem.
 - **Proibidos na página:** zoom por pinça ou toque duplo, rolagem elástica, seleção de texto (exceto em campos) e menu de contexto do toque longo.
 
@@ -116,9 +136,12 @@ A seção master fica só no Console (E12). As strips rolam na horizontal.
 
 **Dentro das telas, use container queries** (`@3xl:grid-cols-2`, e não `md:`). A mesma tela pode ocupar a janela inteira, um painel estreito do modo modular ou uma janela externa. Por isso ela se adapta à largura do espaço que ocupa, e não à da janela. Equivalências usadas: `sm` → `@xl`, `md` → `@3xl`, `lg` → `@5xl`, `xl` → `@7xl`. O shell e os diálogos continuam com breakpoints de janela.
 
+**Classes do Tailwind sobre componentes `Rl*`:** o estilo do próprio componente vence as utilidades que mexem nas mesmas propriedades (`hidden`, `justify-start`, `normal-case`…). Nesses casos use o `!` no fim (`@3xl:hidden!`).
+
 ## Valores e textos
 
 - **Valores:** use [`useValueFormat`](../ui/app/composables/useValueFormat.ts). O `format(v)` mostra % ou DMX conforme a preferência (E10). Internamente, todo valor de controle vai de 0 a 1.
+- **Sem descrições na tela (E6):** nada de frases explicando como usar algo. Quando precisar, use `RlInfo` ao lado do título da seção ou página (ou `info` no `RlDialog`). Avisos, resultados e telas vazias continuam como texto.
 - **Textos:** todo texto visível passa pelo i18n ([`ui/i18n/locales/pt-BR.json`](../ui/i18n/locales/pt-BR.json)), com chaves `rl.*` para os componentes.
   - Símbolos universais (R, G, B, X, Y, %, DMX, BPM) não são traduzidos.
   - Nomes digitados pelo usuário (fixtures, cenas) são dados, não textos de interface.

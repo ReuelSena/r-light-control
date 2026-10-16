@@ -51,8 +51,28 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `importQxf` | `fileName, content` | Converte `.qxf` e põe na biblioteca. Resposta: `ImportReport` |
 | `addUniverse` / `updateUniverse` / `removeUniverse` | — / `universe` / `id` | Universos e a interface de saída de cada um |
 | `setRemoteAccess` | `enabled, pin?` | Acesso pela rede local e PIN |
+| `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio; remove (e tira dos passos de chaser e das coleções) |
+| `saveFolder` / `removeFolder` | `folder` / `id` | Pasta do Studio (de um tipo só); remover solta as criações dela. Mover uma criação de pasta é um `saveFunction` com outro `folder` |
+| `setFunctionRunning` | `id, running` | Roda ou para uma criação |
+| `stopAllFunctions` | — | Para todas as criações rodando ("Parar todas" do Studio e Stop All do console) |
+| `panic` | — | Pânico: para todas as criações e zera a Mesa simples inteira (dois toques no botão da barra) |
+| `setDeskLevel` | `universe, channel, value` | Fader de um canal da Mesa simples (canal de 1 a 512, valor de 0 a 255) |
+| `setDeskGroupLevel` | `group, value` | Fader de um grupo de canais na Mesa simples: grava o nível do grupo e o valor em cada canal dele (os faders de canal acompanham) |
+| `resetDesk` | `universe?` | Zera a Mesa simples: os canais do universo ou, sem ele, os grupos de canais (soltando os canais deles) |
 
-A lista cresce rodada a rodada (Studio, Mesa simples e Console nas rodadas 2 e 3).
+A lista cresce na rodada 3 (Console).
+
+**Criações do Studio (`Function`):** `id`, `name`, `folder` (pasta ou `null`) e `type` (`scene`, `chaser`, `sequence`, `collection`, `efx`, `rgbMatrix`) no mesmo nível dos campos do tipo. A sequência usa os campos do chaser, mais a cena (`scene`) e os valores em cada passo.
+
+## Estado de execução
+
+Além do projeto, o `Snapshot` traz o que está acontecendo agora:
+
+- `running`: criações rodando;
+- `desk`: níveis da Mesa simples (não são salvos no projeto);
+- `stats`: CPU, memória, duração do tick do motor e tempo ligado, para o Monitoramento.
+
+Os **valores de saída** dos universos (512 canais cada) ficam fora do JSON: no `useEngine()` são o `output`, e do servidor (F3) virão em frames binários. Na F2, o `MockClient` os simula a 25 Hz a partir das criações rodando e da mesa.
 
 ## Janelas do mesmo aparelho
 

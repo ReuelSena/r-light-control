@@ -91,7 +91,7 @@ Validação:
 
 ### F2 — Protótipo navegável de todas as telas · 🟡
 
-Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-16; rodada 1 aprovada, rodada 2 em andamento).
+Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-16; rodadas 1 e 2 aprovadas, rodada 3 em andamento).
 
 - **Menus (E12):** Console · Fixtures · Studio · Patch · 3D View · Mesa simples · Monitoramento · In/Out, com Configurações no ⚙.
 - **Interface modular (E13):** painéis encaixáveis e redimensionáveis, janelas externas para outros monitores; começa no modo simples.
@@ -104,7 +104,7 @@ Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-
 
 Validação:
 - [x] Rodada 1 aprovada.
-- [ ] Rodada 2 aprovada.
+- [x] Rodada 2 aprovada.
 - [ ] Rodada 3 aprovada.
 - [ ] Todos os fluxos percorridos no desktop, tablet e celular.
 - [ ] Telas aprovadas e congeladas como referência.
@@ -334,6 +334,7 @@ Validação:
 
   Protótipo na F2; implementação na F10/F11. O blackout por fixtures ou grupos não existe no QLC+.
 - **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Protótipo na F2 (rodada 3); implementação na F10.
+- **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. Protótipo na F2 (rodada 3); implementação na F10/F11, sobre os fades da F6.
 
 ---
 

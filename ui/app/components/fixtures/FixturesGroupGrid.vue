@@ -101,7 +101,10 @@ function remove() {
       </RlButton>
     </div>
 
-    <h3 class="heading">{{ t('groups.palette') }}</h3>
+    <h3 class="heading flex items-center gap-2">
+      {{ t('groups.palette') }}
+      <RlInfo :text="t('groups.paletteInfo')" />
+    </h3>
     <div class="flex flex-wrap gap-1.5">
       <RlButton
         v-for="h in heads"

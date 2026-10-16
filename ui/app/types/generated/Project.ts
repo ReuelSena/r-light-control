@@ -3,10 +3,12 @@ import type { ChannelGroup } from "./ChannelGroup";
 import type { Fixture } from "./Fixture";
 import type { FixtureDef } from "./FixtureDef";
 import type { FixtureGroup } from "./FixtureGroup";
+import type { Folder } from "./Folder";
+import type { Function } from "./Function";
 import type { Universe } from "./Universe";
 
 export type Project = { name: string, universes: Array<Universe>, 
 /**
  * Cópia das definições usadas, para o projeto nunca depender da biblioteca (A4).
  */
-fixtureDefs: Array<FixtureDef>, fixtures: Array<Fixture>, fixtureGroups: Array<FixtureGroup>, channelGroups: Array<ChannelGroup>, };
+fixtureDefs: Array<FixtureDef>, fixtures: Array<Fixture>, fixtureGroups: Array<FixtureGroup>, channelGroups: Array<ChannelGroup>, functions: Array<Function>, folders: Array<Folder>, };

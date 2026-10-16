@@ -11,11 +11,11 @@ const later = (screen: string, round: number) => () => h(PlaceholderScreen, { sc
 export const screens = {
   console: { icon: SlidersVertical, component: later('console', 3) },
   fixtures: { icon: Lamp, component: defineAsyncComponent(() => import('~/screens/FixturesScreen.vue')) },
-  studio: { icon: Clapperboard, component: later('studio', 2) },
+  studio: { icon: Clapperboard, component: defineAsyncComponent(() => import('~/screens/StudioScreen.vue')) },
   patch: { icon: Cable, component: defineAsyncComponent(() => import('~/screens/PatchScreen.vue')) },
   view3d: { icon: Box, component: later('view3d', 3) },
-  desk: { icon: SlidersHorizontal, component: later('desk', 2) },
-  monitor: { icon: Activity, component: later('monitor', 2) },
+  desk: { icon: SlidersHorizontal, component: defineAsyncComponent(() => import('~/screens/DeskScreen.vue')) },
+  monitor: { icon: Activity, component: defineAsyncComponent(() => import('~/screens/MonitorScreen.vue')) },
   io: { icon: Usb, component: defineAsyncComponent(() => import('~/screens/InOutScreen.vue')) },
   settings: { icon: Settings, component: defineAsyncComponent(() => import('~/screens/SettingsScreen.vue')) },
 } satisfies Record<string, { icon: Component; component: Component }>

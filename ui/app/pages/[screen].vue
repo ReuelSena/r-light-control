@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Ellipsis, LayoutPanelLeft, Settings } from 'lucide-vue-next'
+import { Ellipsis, LayoutPanelLeft, OctagonX, Settings } from 'lucide-vue-next'
 
 // Moldura do app: menus (E12) e, conforme a preferência deste aparelho, uma tela por vez
 // ou o modo modular com painéis encaixáveis (E13).
 const route = useRoute()
 const { t } = useI18n()
 const prefs = usePrefs()
-const { state } = useEngine()
+const { state, send } = useEngine()
 const wide = useMediaQuery('(min-width: 1024px)')
 
 if (!isScreen(route.params.screen)) navigateTo('/console', { replace: true })
@@ -15,6 +15,17 @@ useHead({ title: () => `${t(`screens.${screen.value}`)} · R Light Control` })
 
 const modular = computed(() => prefs.value.modular && wide.value)
 const moreOpen = ref(false)
+
+// Pânico: um toque para as criações; o segundo toque logo em seguida também zera a mesa simples.
+// O LED fica aceso enquanto houver algo para parar.
+const busy = computed(() => state.value.running.length + state.value.desk.levels.length + state.value.desk.groups.length > 0)
+let lastStop = 0
+function stop() {
+  const double = Date.now() - lastStop < 400
+  lastStop = Date.now()
+  send({ op: double ? 'panic' : 'stopAllFunctions' })
+}
+
 // Verde quando todo universo com saída tem a interface conectada
 const usbOk = computed(() =>
   state.value.project.universes.every((u) => !u.output || state.value.interfaces.find((i) => i.id === u.output)?.connected),
@@ -29,7 +40,8 @@ function go(id: ScreenId) {
 <template>
   <RlAppShell>
     <template #toolbar>
-      <span class="brand">R·LIGHT</span>
+      <!-- Nome e texto do USB só em telas largas, para a barra caber em 1280 px -->
+      <span class="brand max-2xl:hidden!">R·LIGHT</span>
       <AppProjectMenu />
     </template>
 
@@ -41,10 +53,21 @@ function go(id: ScreenId) {
     </template>
 
     <template #toolbar-end>
+      <RlButton
+        size="sm"
+        highlight="led"
+        color="var(--color-danger)"
+        :model-value="busy"
+        :title="t('shell.stop')"
+        :aria-label="t('shell.stop')"
+        @press="stop"
+      >
+        <OctagonX :size="18" />
+      </RlButton>
       <RlLcd class="max-2xl:hidden">120 BPM</RlLcd>
       <span class="flex items-center gap-1.5 text-xs font-bold" :title="usbOk ? t('shell.usbOk') : t('shell.usbFail')">
         <span class="rl-led" :style="{ '--led': usbOk ? 'var(--color-on)' : 'var(--color-danger)' }" />
-        USB
+        <span class="max-2xl:hidden">USB</span>
       </span>
       <RlButton
         v-if="wide"

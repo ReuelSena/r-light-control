@@ -22,6 +22,7 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
 - `ui/`: Nuxt 4 em modo SPA (código em `ui/app/`, textos em `ui/i18n/locales/`).
   - `screens/`: telas do app; o registro fica em `utils/screens.ts`. A mesma tela vira página (`pages/[screen].vue`), painel do modo modular (`components/app/AppDock.vue`) ou janela externa (`pages/janela/[screen].vue`).
   - `composables/useEngine.ts`: a única porta das telas para o motor. `engine/mock.ts` é o motor de mentira da F2. Protocolo em [docs/protocolo.md](docs/protocolo.md).
+  - `utils/functions.ts`: ícones dos tipos de criação e as contas do EFX, do RGB Matrix e dos passos do chaser, usadas pelas prévias do Studio e pela saída simulada.
   - Componentes do design system em `ui/app/components/rl/`; regras de uso em [docs/design-system.md](docs/design-system.md).
   - Páginas de desenvolvimento em `/dev/*`: catálogo (`showcase`), `faders`, `beams` e `conexao`.
 - `docs/`: padrões, design system, protocolo, mini-planos de fase (`docs/fases/`).

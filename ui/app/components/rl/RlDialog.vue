@@ -3,7 +3,8 @@ import { DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogRoot, Di
 import { X } from 'lucide-vue-next'
 
 // Diálogo modal. Com `sheet` vira painel: sobe de baixo no celular e entra pela direita em telas maiores.
-defineProps<{ title: string; sheet?: boolean }>()
+// `info` põe o "i" com a explicação ao lado do título.
+defineProps<{ title: string; sheet?: boolean; info?: string }>()
 const open = defineModel<boolean>('open', { default: false })
 const { t } = useI18n()
 </script>
@@ -14,7 +15,10 @@ const { t } = useI18n()
       <DialogOverlay class="fixed inset-0 z-40 bg-black/60" />
       <DialogContent class="rl-dialog" :class="{ sheet }" :aria-describedby="undefined">
         <header class="brushed flex items-center justify-between gap-2 py-1.5 pr-1.5 pl-3">
-          <DialogTitle class="text-sm font-semibold tracking-wide uppercase">{{ title }}</DialogTitle>
+          <span class="flex items-center gap-2">
+            <DialogTitle class="text-sm font-semibold tracking-wide uppercase">{{ title }}</DialogTitle>
+            <RlInfo v-if="info" :text="info" />
+          </span>
           <DialogClose as-child>
             <RlButton size="sm" :aria-label="t('rl.close')"><X :size="18" /></RlButton>
           </DialogClose>

@@ -1,4 +1,4 @@
-import type { Ref } from 'vue'
+import type { Ref, ShallowRef } from 'vue'
 import type { Op } from '~/types/generated/Op'
 import type { Snapshot } from '~/types/generated/Snapshot'
 import { createMockClient } from '~/engine/mock'
@@ -7,6 +7,8 @@ import { createMockClient } from '~/engine/mock'
 // cliente WebSocket, sem mudar as telas.
 export interface EngineClient {
   state: Ref<Snapshot>
+  /** Valores de saída de cada universo (512 canais), por id. Do servidor, vêm em frames binários (A3). */
+  output: ShallowRef<Record<string, Uint8Array>>
   send(op: Op): Promise<unknown>
 }
 

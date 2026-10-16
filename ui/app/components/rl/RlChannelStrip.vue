@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Channel strip no estilo Ui24R: display, botões FLASH e SEL, fader (com FINO) e etiqueta.
-// Tocar no display pede a edição do valor exato (evento `edit`).
-defineProps<{ label: string; color?: string; meter?: number; cap?: 'silver' | 'red' }>()
+// Tocar no display pede a edição do valor exato (evento `edit`). Com `plain`, sem os botões; o slot
+// `label` troca o texto da etiqueta (ex.: ícone + nome).
+defineProps<{ label: string; color?: string; meter?: number; cap?: 'silver' | 'red'; plain?: boolean }>()
 const value = defineModel<number>({ required: true })
 const selected = defineModel<boolean>('selected', { default: false })
 const flash = defineModel<boolean>('flash', { default: false })
@@ -13,12 +14,14 @@ const { format } = useValueFormat()
 <template>
   <div class="rl-strip" :class="{ selected }">
     <RlLcd class="lcd" @click="$emit('edit')">{{ format(value) }}</RlLcd>
-    <div class="buttons">
+    <div v-if="!plain" class="buttons">
       <RlButton v-model="flash" mode="flash" size="sm" color="var(--color-flash)">{{ t('rl.flash') }}</RlButton>
       <RlButton v-model="selected" mode="toggle" size="sm" color="var(--color-select)">{{ t('rl.select') }}</RlButton>
     </div>
     <RlFader v-model="value" class="fader" :meter="meter" :cap="cap" />
-    <div class="label" :style="{ '--tag': color ?? 'var(--color-line)' }">{{ label }}</div>
+    <div class="label" :style="{ '--tag': color ?? 'var(--color-line)' }" :title="label">
+      <slot name="label">{{ label }}</slot>
+    </div>
   </div>
 </template>
 

@@ -24,6 +24,11 @@ pub struct Snapshot {
     pub interfaces: Vec<DmxInterface>,
     pub midi_devices: Vec<MidiDevice>,
     pub remote: RemoteAccess,
+    /// Funções rodando agora.
+    pub running: Vec<Id>,
+    /// Mesa simples (não é salva no projeto).
+    pub desk: Desk,
+    pub stats: Stats,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -36,6 +41,8 @@ pub struct Project {
     pub fixtures: Vec<Fixture>,
     pub fixture_groups: Vec<FixtureGroup>,
     pub channel_groups: Vec<ChannelGroup>,
+    pub functions: Vec<Function>,
+    pub folders: Vec<Folder>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -208,6 +215,248 @@ pub struct FixtureChannel {
     pub channel: u16,
 }
 
+// ---------- Studio (no QLC+, "funções") ----------
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Function {
+    pub id: Id,
+    pub name: String,
+    /// Pasta do Studio (do mesmo tipo); `None` fica solta no tipo.
+    pub folder: Option<Id>,
+    #[serde(flatten)]
+    pub kind: FunctionKind,
+}
+
+/// Pasta do Studio: agrupa criações de um tipo só.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Folder {
+    pub id: Id,
+    pub name: String,
+    pub kind: FunctionType,
+}
+
+/// Os tipos de criação, iguais ao campo `type` de [`Function`].
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum FunctionType {
+    Scene,
+    Chaser,
+    Sequence,
+    Collection,
+    Efx,
+    RgbMatrix,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum FunctionKind {
+    Scene(Scene),
+    Chaser(Chaser),
+    /// Chaser preso a uma cena: cada passo guarda os próprios valores dos canais dela.
+    Sequence(Chaser),
+    /// Funções disparadas juntas.
+    Collection(Collection),
+    Efx(Efx),
+    RgbMatrix(RgbMatrix),
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Scene {
+    pub values: Vec<SceneValue>,
+    /// Grupos de canais usados no editor e o nível de cada um (os canais também ficam em `values`).
+    pub channel_groups: Vec<GroupLevel>,
+    pub fade_in_ms: u32,
+    pub fade_out_ms: u32,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SceneValue {
+    pub fixture: Id,
+    /// Posição do canal no modo da fixture, a partir de 0.
+    pub channel: u16,
+    pub value: u8,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupLevel {
+    pub group: Id,
+    pub value: u8,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Chaser {
+    /// Só em sequências: a cena que define os canais.
+    pub scene: Option<Id>,
+    pub steps: Vec<ChaserStep>,
+    pub run_order: RunOrder,
+    pub direction: Direction,
+    /// Tempos em batidas do BPM global (milésimos de batida); senão, em milissegundos.
+    pub beats: bool,
+    pub fade_in_mode: SpeedMode,
+    pub hold_mode: SpeedMode,
+    pub fade_out_mode: SpeedMode,
+    /// Tempos dos modos "comum".
+    pub common: Timing,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChaserStep {
+    /// Função do passo; em sequências, a própria cena.
+    pub function: Id,
+    pub timing: Timing,
+    pub note: String,
+    /// Só em sequências: valores dos canais da cena neste passo.
+    pub values: Vec<SceneValue>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Timing {
+    pub fade_in_ms: u32,
+    /// Tempo parado depois do fade in; no EFX e no RGB Matrix, a duração de um ciclo ou passo.
+    pub hold_ms: u32,
+    pub fade_out_ms: u32,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum RunOrder {
+    Loop,
+    SingleShot,
+    PingPong,
+    Random,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Direction {
+    Forward,
+    Backward,
+}
+
+/// De onde vem cada tempo dos passos: da própria função do passo, do tempo comum ou do passo.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum SpeedMode {
+    Default,
+    Common,
+    PerStep,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Collection {
+    pub functions: Vec<Id>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Efx {
+    pub algorithm: EfxAlgorithm,
+    /// Tamanho e centro do desenho, de 0 a 255 (a escala do pan e do tilt).
+    pub width: u8,
+    pub height: u8,
+    pub x_offset: u8,
+    pub y_offset: u8,
+    /// Graus.
+    pub rotation: u16,
+    /// Só no Lissajous (fases em graus).
+    pub x_frequency: u8,
+    pub y_frequency: u8,
+    pub x_phase: u16,
+    pub y_phase: u16,
+    /// Soma o desenho à posição que as fixtures já têm (de uma cena, por exemplo).
+    pub relative: bool,
+    pub propagation: Propagation,
+    pub fixtures: Vec<EfxFixture>,
+    pub run_order: RunOrder,
+    pub direction: Direction,
+    pub timing: Timing,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum EfxAlgorithm {
+    Circle,
+    Eight,
+    Line,
+    Line2,
+    Diamond,
+    Square,
+    SquareChoppy,
+    SquareTrue,
+    Leaf,
+    Lissajous,
+}
+
+/// Como as fixtures dividem o desenho: juntas, uma depois da outra ou defasadas.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Propagation {
+    Parallel,
+    Serial,
+    Asymmetric,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EfxFixture {
+    pub fixture: Id,
+    pub reverse: bool,
+    /// Graus.
+    pub start_offset: u16,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RgbMatrix {
+    /// Grupo de fixtures (grade 2D) onde o efeito é desenhado.
+    pub group: Option<Id>,
+    /// Algoritmo nativo ou script do QLC+ (F9).
+    pub algorithm: String,
+    /// Cores (#rrggbb): a inicial e a final.
+    pub colors: Vec<String>,
+    pub run_order: RunOrder,
+    pub direction: Direction,
+    pub timing: Timing,
+}
+
+// ---------- Execução ----------
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Desk {
+    pub levels: Vec<DeskLevel>,
+    pub groups: Vec<GroupLevel>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeskLevel {
+    pub universe: Id,
+    /// Canal DMX, de 1 a 512.
+    pub channel: u16,
+    pub value: u8,
+}
+
+/// Dados do app e da máquina para o Monitoramento.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Stats {
+    pub cpu_percent: f32,
+    pub memory_mb: f32,
+    /// Duração do último tick do motor (o limite é 20 ms, A1).
+    pub tick_ms: f32,
+    pub uptime_s: u32,
+}
+
 // ---------- In/Out ----------
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -314,6 +563,41 @@ pub enum Op {
     RemoveChannelGroup {
         id: Id,
     },
+    SaveFunction {
+        function: Function,
+    },
+    /// Remove a função e as referências a ela (passos de chaser, coleções).
+    RemoveFunction {
+        id: Id,
+    },
+    SaveFolder {
+        folder: Folder,
+    },
+    /// Remove a pasta; as criações dela ficam soltas no tipo.
+    RemoveFolder {
+        id: Id,
+    },
+    SetFunctionRunning {
+        id: Id,
+        running: bool,
+    },
+    /// Para todas as criações rodando (Studio e Stop All do console).
+    StopAllFunctions,
+    /// Pânico: para todas as criações e zera a mesa simples inteira.
+    Panic,
+    SetDeskLevel {
+        universe: Id,
+        channel: u16,
+        value: u8,
+    },
+    SetDeskGroupLevel {
+        group: Id,
+        value: u8,
+    },
+    /// Zera a mesa simples: os canais de um universo ou, sem `universe`, os grupos de canais.
+    ResetDesk {
+        universe: Option<Id>,
+    },
     /// Adiciona ou substitui uma definição na biblioteca.
     SaveFixtureDef {
         def: FixtureDef,
@@ -364,5 +648,23 @@ mod tests {
             serde_json::to_value(op).unwrap(),
             json!({ "op": "autoAddress", "ids": ["f1"], "universe": "u1", "start": 1 })
         );
+    }
+
+    #[test]
+    fn function_has_type_beside_common_fields() {
+        let function = Function {
+            id: "c1".into(),
+            name: "Tudo".into(),
+            folder: None,
+            kind: FunctionKind::Collection(Collection {
+                functions: vec!["s1".into()],
+            }),
+        };
+        let value = serde_json::to_value(&function).unwrap();
+        assert_eq!(
+            value,
+            json!({ "id": "c1", "name": "Tudo", "folder": null, "type": "collection", "functions": ["s1"] })
+        );
+        assert_eq!(serde_json::from_value::<Function>(value).unwrap(), function);
     }
 }

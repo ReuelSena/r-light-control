@@ -5,7 +5,8 @@
     "select": "Sel",
     "ok": "OK",
     "close": "Fechar",
-    "panel": "Painel"
+    "panel": "Painel",
+    "info": "Mais informações"
   },
   "screens": {
     "console": "Console",
@@ -22,7 +23,8 @@
     "more": "Mais",
     "modular": "Interface modular (janelas encaixáveis)",
     "usbOk": "Interfaces USB conectadas",
-    "usbFail": "Alguma interface USB está desconectada"
+    "usbFail": "Alguma interface USB está desconectada",
+    "stop": "Parar criações (dois toques: zera também a mesa simples)"
   },
   "placeholder": {
     "round": "Esta tela chega na rodada {round} do protótipo."
@@ -131,11 +133,12 @@
     "fillInOrder": "Preencher em ordem",
     "eraser": "Apagar",
     "clear": "Limpar",
-    "palette": "Cabeças (toque para escolher)",
+    "palette": "Cabeças",
     "selectHint": "Crie ou selecione um grupo.",
     "channelCount": "Nenhum canal | 1 canal | {n} canais",
     "byAttribute": "Por atributo, em todas as fixtures",
-    "channelsByFixture": "Canais por fixture"
+    "channelsByFixture": "Canais por fixture",
+    "paletteInfo": "Toque numa cabeça e depois nas células da grade. Com Apagar ligado, tocar numa célula a esvazia."
   },
   "patch": {
     "summary": "{used} de 512 canais usados · {fixtures} fixtures",
@@ -170,18 +173,18 @@
   "settings": {
     "display": "Exibição",
     "dmxValues": "Mostrar valores em DMX (0–255)",
-    "modular": "Interface modular (janelas encaixáveis)",
-    "modularWide": "A interface modular fica disponível em telas a partir de 1024 px.",
-    "perDevice": "Estas opções valem só para este aparelho.",
+    "modular": "Interface modular",
     "remote": "Acesso remoto",
     "allowLan": "Permitir aparelhos da rede local",
     "pin": "PIN de acesso",
     "noPin": "sem PIN",
-    "scan": "Abra no celular ou tablet (mesma rede):",
+    "scan": "Abrir em outro aparelho",
     "clients": "Aparelhos conectados",
     "thisDevice": "este aparelho",
     "about": "Sobre",
-    "qlcNotice": "Usa o QLC+ (Apache 2.0) como referência de arquitetura e protocolos. Detalhes no arquivo NOTICE."
+    "qlcNotice": "Usa o QLC+ (Apache 2.0) como referência de arquitetura e protocolos. Detalhes no arquivo NOTICE.",
+    "displayInfo": "Valem só para este aparelho.\nA interface modular (painéis encaixáveis e janelas externas) aparece em telas a partir de 1024 px.",
+    "scanInfo": "Celular ou tablet na mesma rede: leia o QR ou digite o endereço no navegador."
   },
   "kind": {
     "colorChanger": "Troca de cor (PAR)",
@@ -298,5 +301,168 @@
     "touches": "Toques: {n}",
     "animate": "Animar",
     "fixtures": "{n} fixtures"
+  },
+  "studio": {
+    "search": "Buscar criação",
+    "new": "Nova",
+    "newName": "{type} {n}",
+    "copyName": "{name} (cópia)",
+    "run": "Rodar",
+    "stop": "Parar",
+    "duplicate": "Duplicar",
+    "back": "Voltar à lista",
+    "selectHint": "Crie ou selecione uma criação.",
+    "fadeIn": "Fade in",
+    "hold": "Hold",
+    "fadeOut": "Fade out",
+    "newFolder": "Nova pasta",
+    "editFolder": "Editar pasta",
+    "stopAll": "Parar todas",
+    "newCollection": "Nova coleção",
+    "collectionFromRunning": "Nenhuma criação rodando. | Há 1 criação rodando. Criar a coleção com ela? | Há {n} criações rodando. Criar a coleção com elas?",
+    "emptyCollection": "Vazia",
+    "withRunning": "Com as que estão rodando"
+  },
+  "functionType": {
+    "scene": "Cena",
+    "chaser": "Chaser",
+    "sequence": "Sequência",
+    "collection": "Coleção",
+    "efx": "EFX",
+    "rgbMatrix": "RGB Matrix"
+  },
+  "functionHint": {
+    "scene": "Valores fixos dos canais: intensidade, cor, posição, beam.",
+    "chaser": "Passos com outras criações, um depois do outro.",
+    "sequence": "Passos com estados diferentes de uma mesma cena.",
+    "collection": "Várias criações disparadas juntas.",
+    "efx": "Movimento desenhado no pan/tilt: círculo, oito, linha…",
+    "rgbMatrix": "Efeito de cores numa grade de fixtures."
+  },
+  "scene": {
+    "fixtures": "Fixtures na cena",
+    "intensity": "Intensidade",
+    "color": "Cor",
+    "position": "Posição",
+    "effects": "Efeitos",
+    "channels": "Canais",
+    "groupsHint": "Ligar um grupo traz para a cena todas as fixtures dele; para tirar uma, use Adicionar fixtures.\nO fader grava nos canais das fixtures do grupo que estão na cena.",
+    "addFixtures": "Adicionar fixtures",
+    "clearFixtures": "Desmarcar todos",
+    "sameType": "Selecionar do mesmo tipo",
+    "pickGroup": "Selecionar grupo",
+    "addFixturesInfo": "Toque numa fixture para incluir ou tirar da cena; ao entrar, todos os canais dela vêm zerados.\nSelecionar do mesmo tipo: o toque vale para todas as fixtures do mesmo modelo.\nSelecionar grupo: inclui todas as fixtures de um grupo de fixtures.",
+    "fixturesInfo": "Toque numa fixture para escolher a que recebe os valores.\nCtrl + clique (ou toque longo, no celular) soma outras do mesmo tipo: o que mexer vale para todas.",
+    "times": "Tempos"
+  },
+  "chaser": {
+    "scene": "Cena da sequência",
+    "sceneLocked": "A cena só muda enquanto não há passos.",
+    "runOrder": "Ordem",
+    "direction": "Sentido",
+    "beats": "Tempos em batidas do BPM",
+    "timingSource": "De onde vem cada tempo",
+    "steps": "Passos ({n})",
+    "addStep": "Adicionar passo",
+    "note": "Nota",
+    "function": "Criação",
+    "up": "Subir",
+    "down": "Descer",
+    "noSteps": "Nenhum passo ainda.",
+    "stepValues": "Valores do passo {n}"
+  },
+  "runOrder": {
+    "loop": "Repetir",
+    "singleShot": "Uma vez",
+    "pingPong": "Vai e volta",
+    "random": "Aleatória"
+  },
+  "direction": {
+    "forward": "Para frente",
+    "backward": "Para trás"
+  },
+  "speedMode": {
+    "default": "Padrão",
+    "common": "Comum",
+    "perStep": "Por passo"
+  },
+  "collection": {
+    "functions": "Criações ({n})",
+    "add": "Adicionar criação",
+    "empty": "Nenhuma criação na coleção."
+  },
+  "efx": {
+    "algorithm": "Desenho",
+    "width": "Largura",
+    "height": "Altura",
+    "xOffset": "Centro X",
+    "yOffset": "Centro Y",
+    "rotation": "Rotação",
+    "xFrequency": "Freq. X",
+    "yFrequency": "Freq. Y",
+    "xPhase": "Fase X",
+    "yPhase": "Fase Y",
+    "relative": "Relativo",
+    "propagation": "Propagação",
+    "cycle": "Duração da volta",
+    "fixtures": "Fixtures ({n})",
+    "addFixture": "Adicionar fixture",
+    "reverse": "Inverter",
+    "startOffset": "Início (°)",
+    "noCandidates": "Nenhuma outra fixture com pan/tilt.",
+    "relativeInfo": "Soma o desenho à posição que as fixtures já têm (de uma cena, por exemplo), em vez de usar o centro definido aqui."
+  },
+  "efxAlgorithm": {
+    "circle": "Círculo",
+    "eight": "Oito",
+    "line": "Linha",
+    "line2": "Linha 2",
+    "diamond": "Diamante",
+    "square": "Quadrado",
+    "squareChoppy": "Quadrado (saltos)",
+    "squareTrue": "Quadrado (cantos)",
+    "leaf": "Folha",
+    "lissajous": "Lissajous"
+  },
+  "propagation": {
+    "parallel": "Juntas",
+    "serial": "Em sequência",
+    "asymmetric": "Defasadas"
+  },
+  "matrix": {
+    "group": "Grupo de fixtures",
+    "algorithm": "Algoritmo",
+    "startColor": "Cor inicial",
+    "endColor": "Cor final",
+    "step": "Duração do passo"
+  },
+  "matrixAlgorithm": {
+    "plain": "Cor fixa",
+    "chase": "Perseguição",
+    "stripes": "Listras",
+    "gradient": "Degradê",
+    "random": "Aleatório"
+  },
+  "desk": {
+    "reset": "Zerar"
+  },
+  "monitor": {
+    "app": "App e máquina",
+    "cpu": "CPU",
+    "memory": "Memória",
+    "tick": "Tick do motor",
+    "uptime": "Ligado há",
+    "clients": "Clientes conectados",
+    "outputs": "Saídas DMX",
+    "errors": "{n} erros",
+    "values": "Valores de saída"
+  },
+  "functionTypePlural": {
+    "scene": "Cenas",
+    "chaser": "Chasers",
+    "sequence": "Sequências",
+    "collection": "Coleções",
+    "efx": "EFX",
+    "rgbMatrix": "RGB Matrix"
   }
 }

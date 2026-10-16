@@ -17,11 +17,12 @@ const qr = computed(() => (remote.value.enabled && remote.value.lanUrl ? renderS
 <template>
   <div class="grid content-start gap-3 p-2 @3xl:grid-cols-2 @6xl:grid-cols-3">
     <section class="panel">
-      <h2 class="heading">{{ t('settings.display') }}</h2>
+      <h2 class="heading flex items-center gap-2">
+        {{ t('settings.display') }}
+        <RlInfo :text="t('settings.displayInfo')" />
+      </h2>
       <RlSwitch v-model="dmx">{{ t('settings.dmxValues') }}</RlSwitch>
       <RlSwitch v-if="wide" v-model="prefs.modular">{{ t('settings.modular') }}</RlSwitch>
-      <p v-else class="text-sm text-fg-muted">{{ t('settings.modularWide') }}</p>
-      <p class="text-xs text-fg-dim">{{ t('settings.perDevice') }}</p>
     </section>
 
     <section class="panel">
@@ -37,7 +38,10 @@ const qr = computed(() => (remote.value.enabled && remote.value.lanUrl ? renderS
         </span>
       </label>
       <template v-if="qr">
-        <p class="text-sm text-fg-muted">{{ t('settings.scan') }}</p>
+        <h3 class="heading flex items-center gap-2">
+          {{ t('settings.scan') }}
+          <RlInfo :text="t('settings.scanInfo')" />
+        </h3>
         <div class="flex items-center gap-3">
           <!-- eslint-disable-next-line vue/no-v-html -- SVG gerado localmente pelo uqr -->
           <div class="w-32 shrink-0 bg-white" v-html="qr" />

@@ -2,18 +2,30 @@
 // Botão físico. Modos: `action` (clique), `toggle` (liga/desliga) e `flash`
 // (ligado só enquanto pressionado; solta ao levantar o dedo, cancelar o toque ou perder a captura).
 // Destaque quando ativo: `face` (o botão inteiro acende) ou `led` (só o filete acende e o botão fica afundado).
+// `press` traz o evento (ex.: `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`.
 const props = withDefaults(defineProps<{
   mode?: 'action' | 'toggle' | 'flash'
   highlight?: 'face' | 'led'
   /** Cor do botão aceso e do filete de LED (qualquer cor CSS). */
   color?: string
   size?: 'sm' | 'md' | 'lg'
-}>(), { mode: 'action', highlight: 'face', color: 'var(--color-select)', size: 'md' })
+  // Declarado como prop (e não como evento) para o botão saber se alguém escuta o toque longo
+  onLongpress?: () => void
+}>(), { mode: 'action', highlight: 'face', color: 'var(--color-select)', size: 'md', onLongpress: undefined })
 
 const active = defineModel<boolean>({ default: false })
-const emit = defineEmits<{ press: [] }>()
+const emit = defineEmits<{ press: [event: MouseEvent] }>()
+let holdTimer: ReturnType<typeof setTimeout> | undefined
+let held = false
 
 function down(e: PointerEvent) {
+  if (props.onLongpress) {
+    held = false
+    holdTimer = setTimeout(() => {
+      held = true
+      props.onLongpress!()
+    }, 500)
+  }
   if (props.mode !== 'flash') return
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   active.value = true
@@ -23,21 +35,25 @@ function release() {
   if (props.mode === 'flash') active.value = false
 }
 
-function activate() {
+function activate(e: MouseEvent) {
   if (props.mode === 'toggle') active.value = !active.value
-  emit('press')
+  emit('press', e)
 }
 
 // Toggle e ação disparam ao soltar o dedo, e não no `click`: o navegador não gera `click`
 // para um toque feito enquanto outro dedo está na tela (ex.: segurando um fader e tocando no FINO).
 // Se o gesto virar rolagem, chega `pointercancel` em vez de `pointerup` e nada dispara.
-function up() {
-  if (props.mode !== 'flash') activate()
+// Rolagem (pointercancel) ou soltar antes de 500 ms cancelam o toque longo
+const cancelHold = () => clearTimeout(holdTimer)
+
+function up(e: PointerEvent) {
+  cancelHold()
+  if (props.mode !== 'flash' && !held) activate(e)
 }
 
 // O `click` só conta quando vem do teclado (detail 0); o do ponteiro já foi tratado no `pointerup`.
 function click(e: MouseEvent) {
-  if (e.detail === 0) activate()
+  if (e.detail === 0) activate(e)
 }
 
 // Espaço/Enter seguram o flash como o dedo.
@@ -55,7 +71,9 @@ function key(e: KeyboardEvent, pressed: boolean) {
     :style="{ '--lit': color }"
     @pointerdown="down"
     @pointerup="up"
+    @pointercancel="cancelHold"
     @lostpointercapture="release"
+    @contextmenu="onLongpress && $event.preventDefault()"
     @click="click"
     @keydown="key($event, true)"
     @keyup="key($event, false)"

@@ -10,4 +10,6 @@ Partes derivadas do QLC+ incorporadas a este projeto (algoritmos portados,
 definições de fixtures, meshes, rgbscripts) são listadas abaixo conforme
 forem adicionadas:
 
-(nenhuma até o momento)
+- Algoritmos de desenho do EFX (Circle, Eight, Line, Line2, Diamond, Square,
+  SquareChoppy, SquareTrue, Leaf, Lissajous), portados de engine/src/efx.cpp
+  (EFX::calculatePoint e rotateAndScale) para ui/app/utils/functions.ts.

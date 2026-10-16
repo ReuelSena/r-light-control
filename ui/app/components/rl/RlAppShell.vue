@@ -68,7 +68,7 @@ const sideOpen = ref(false)
 
 .nav-top {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-right: auto;
 }
 

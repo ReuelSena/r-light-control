@@ -29,6 +29,9 @@ importers:
       '@tresjs/core':
         specifier: ^5.9.3
         version: 5.9.3(three@0.186.1)(vue@3.5.44(typescript@6.0.3))
+      dockview-vue:
+        specifier: ^8.5.1
+        version: 8.5.1(vue@3.5.44(typescript@6.0.3))
       lucide-vue-next:
         specifier: ^1.0.0
         version: 1.0.0(vue@3.5.44(typescript@6.0.3))
@@ -2694,6 +2697,17 @@ packages:
   diff@8.0.4:
     resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
     engines: {node: '>=0.3.1'}
+
+  dockview-core@8.5.1:
+    resolution: {integrity: sha512-lUNJj4uvE36ks59pMeLeinzvVr0EVkGiA/c1kuUdR2V49CAIGx+bhiu0FuZNh8iqcggu/5h1v1U0KC0JrUuPSw==}
+
+  dockview-vue@8.5.1:
+    resolution: {integrity: sha512-JV/keD9/0davD0MNfo3cYhso532989NaRMsroaUZjvQgrDcz4lCEzQP1wcYjENeiQn03FoPLXSSvHTSqLetVKQ==}
+    peerDependencies:
+      vue: ^3.4.0
+
+  dockview@8.5.1:
+    resolution: {integrity: sha512-ThlNLXBHP1TBMlsAXTWvoJl17nPYVO8WTtUMyoGf15K6DBCRnoKPzIcISlWben9XBx99txUfSjkVBZ9szGA9iQ==}
 
   dot-prop@10.2.0:
     resolution: {integrity: sha512-BTJ9aZYL3vCfZlZOBLy9v8TUqWGQ0pzFnygKwFZt5udj6viBoFIBviKPUoZLDCPn1FoXffv6McQFDenrm5Krfw==}
@@ -7764,6 +7778,17 @@ snapshots:
       - srvx
 
   diff@8.0.4: {}
+
+  dockview-core@8.5.1: {}
+
+  dockview-vue@8.5.1(vue@3.5.44(typescript@6.0.3)):
+    dependencies:
+      dockview: 8.5.1
+      vue: 3.5.44(typescript@6.0.3)
+
+  dockview@8.5.1:
+    dependencies:
+      dockview-core: 8.5.1
 
   dot-prop@10.2.0:
     dependencies:

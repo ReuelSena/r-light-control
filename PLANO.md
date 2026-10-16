@@ -91,25 +91,21 @@ Validação:
 
 ### F2 — Protótipo navegável de todas as telas · 🟡
 
-Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aguardando aprovação).
+Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-16; rodada 1 aprovada, rodada 2 em andamento).
 
-- **Navegação:** Console (VC) · Programador · Funções · Patch · Visualização · Dispositivos · Configurações.
-- **Telas** (com dados fictícios):
-  - Projeto.
-  - Biblioteca e importação de .qxf.
-  - Patch.
-  - Editor de fixture.
-  - Programador.
-  - Funções: Cena, Chaser, Sequência, EFX, RGB Matrix.
-  - Virtual Console (edição e operação).
-  - MIDI learn.
-  - Dispositivos e monitor DMX.
-  - Configurações: acesso remoto, PIN, QR.
-  - Layout da Visualização 2D/3D.
-- **Contrato de dados v0:** structs em `rlc-core` → tipos TS via ts-rs. A UI usa um `EngineClient` (`MockClient` agora, `WsClient` depois).
+- **Menus (E12):** Console · Fixtures · Studio · Patch · 3D View · Mesa simples · Monitoramento · In/Out, com Configurações no ⚙.
+- **Interface modular (E13):** painéis encaixáveis e redimensionáveis, janelas externas para outros monitores; começa no modo simples.
+- **Três rodadas, uma por vez:**
+  1. Shell modular, Fixtures, Patch, In/Out e Configurações.
+  2. Studio (com ícone por tipo de criação), Mesa simples e Monitoramento.
+  3. Console (com VC-1 e VC-2) e 3D View.
+- **Contrato de dados v0:** structs em `rlc-core` → tipos TS via ts-rs, montados rodada a rodada. A UI usa um `EngineClient` (`MockClient` agora, `WsClient` depois).
 - **Saída:** prints em `docs/telas/` e rascunho de `docs/protocolo.md`.
 
 Validação:
+- [x] Rodada 1 aprovada.
+- [ ] Rodada 2 aprovada.
+- [ ] Rodada 3 aprovada.
 - [ ] Todos os fluxos percorridos no desktop, tablet e celular.
 - [ ] Telas aprovadas e congeladas como referência.
 
@@ -154,6 +150,7 @@ Validação:
 ### F5 — Patch, projeto e programador · ⬜
 
 - **Projeto:** fixtures embutidas; patch com conflitos e endereçamento automático.
+- **Grupos de canais:** gravados no projeto e usados pelos faders da mesa simples, das cenas (F6) e do console (F10).
 - **Arquivos:** salvar/abrir com escrita atômica, autosave e recuperação após crash.
 - **Programador:** seleção, intensidade, cor, pan/tilt, capabilities, highlight.
 - **Edição:** API por operações tipadas com revisão.
@@ -227,7 +224,7 @@ Validação:
 - **Base:** registro de widgets com propriedades geradas por schema.
 - **Edição:** grade com snap e edição por toque, modos Edição e Operação, páginas e frames.
 - **Widgets:** Button (Toggle/Flash/Blackout/StopAll), Slider (Level/Playback/Submaster), Label.
-- **Entradas externas:** modelo `InputRef`.
+- **Entradas externas:** modelo `InputRef` (controle MIDI ou tecla do teclado), definido na edição de cada elemento.
 - **Ref:**
   - `qmlui/virtualconsole/{vcwidget,vcbutton,vcslider,vcframe,vcpage,vclabel}.cpp`
   - `engine/src/qlcinputsource.cpp`
@@ -254,6 +251,7 @@ Validação:
 ### F12 — MIDI · ⬜
 
 - **Base:** midir com hot-plug e learn.
+- **Mapeamento:** na edição de cada elemento do console (E12), com "aprender", como no QLC+. O mesmo vale para as teclas do teclado.
 - **Mensagens:** CC, Note, Program Change, Pitch Bend.
 - **Feedback:** LEDs e faders motorizados.
 - **Opcional:** importar perfis .qxi.
@@ -331,9 +329,11 @@ Validação:
 - **VC-1 (2026-10-16): elementos configuráveis pelo usuário.** O console é montado pelo usuário, que posiciona e ajusta cada elemento a seu gosto, como no QLC+. Na edição de cada botão ele escolhe:
   - destaque (botão aceso ou LED) e cor;
   - modo (liga/desliga ou flash);
-  - ação: função, blackout geral, blackout de fixtures ou grupos específicos, ou stop all.
+  - ação: função, blackout geral, blackout de fixtures ou grupos específicos, ou stop all;
+  - entrada externa: controle MIDI ou tecla do teclado.
 
   Protótipo na F2; implementação na F10/F11. O blackout por fixtures ou grupos não existe no QLC+.
+- **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Protótipo na F2 (rodada 3); implementação na F10.
 
 ---
 

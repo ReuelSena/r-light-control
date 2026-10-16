@@ -1,7 +1,10 @@
 // Sem janela de console no executável de release.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use tauri::webview::NewWindowResponse;
+use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder};
 
 fn main() -> anyhow::Result<()> {
     let _log_guard = rlc_server::init_logging()?;
@@ -23,13 +26,43 @@ fn main() -> anyhow::Result<()> {
                 Some(dev_url) if tauri::is_dev() => dev_url,
                 _ => format!("http://127.0.0.1:{port}").parse()?,
             };
+            let handle = app.handle().clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
                 .title("R Light Control")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(800.0, 600.0)
+                .on_document_title_changed(|window, title| {
+                    let _ = window.set_title(&title);
+                })
+                // "Abrir em janela" na UI chama window.open, que vira uma janela nativa e pode ir
+                // para outro monitor (E13). Endereços de fora do app são ignorados.
+                .on_new_window(move |url, _| {
+                    if matches!(url.host_str(), Some("127.0.0.1" | "localhost")) {
+                        open_window(handle.clone(), url);
+                    }
+                    NewWindowResponse::Deny
+                })
                 .build()?;
             Ok(())
         })
         .run(tauri::generate_context!())?;
     Ok(())
+}
+
+/// Janela externa: a mesma UI, conectada ao motor como mais um cliente (E13).
+fn open_window(app: AppHandle, url: Url) {
+    static COUNT: AtomicUsize = AtomicUsize::new(0);
+    // Fora do callback do WebView2: criar uma janela dentro dele trava no Windows.
+    std::thread::spawn(move || {
+        let label = format!("janela-{}", COUNT.fetch_add(1, Ordering::Relaxed));
+        let built = WebviewWindowBuilder::new(&app, label, WebviewUrl::External(url))
+            .inner_size(1100.0, 750.0)
+            .on_document_title_changed(|window, title| {
+                let _ = window.set_title(&title);
+            })
+            .build();
+        if let Err(e) = built {
+            tracing::error!("não foi possível abrir a janela externa: {e}");
+        }
+    });
 }

@@ -4,6 +4,7 @@ import { Menu } from 'lucide-vue-next'
 // Moldura no estilo Ui24R: barra superior em metal escovado, área principal, seção master
 // e painel lateral azul à direita, barra inferior.
 // - `nav`: navegação principal; fica na barra superior e desce para baixo no celular (< 640 px).
+//   `nav-bottom` substitui o conteúdo da barra do celular, quando ele precisa ser diferente.
 // - `side`: abaixo de 1024 px vira um sheet, aberto pelo botão de menu.
 defineProps<{ sideTitle?: string }>()
 const { t } = useI18n()
@@ -36,8 +37,10 @@ const sideOpen = ref(false)
     <footer v-if="$slots.bottom" class="bar">
       <slot name="bottom" />
     </footer>
-    <nav v-if="$slots.nav" class="bar nav-bottom">
-      <slot name="nav" />
+    <nav v-if="$slots['nav-bottom'] || $slots.nav" class="bar nav-bottom">
+      <slot name="nav-bottom">
+        <slot name="nav" />
+      </slot>
     </nav>
     <RlDialog v-if="$slots.side" v-model:open="sideOpen" sheet :title="sideTitle ?? t('rl.panel')">
       <slot name="side" />
@@ -106,6 +109,16 @@ const sideOpen = ref(false)
   overflow-x: auto;
   background: #0b0c0e;
   border-top: 1px solid #000;
+}
+
+/* Barra do celular: ícone em cima, texto pequeno embaixo */
+.nav-bottom :deep(.rl-button) {
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 52px;
+  padding: 4px 2px;
+  font-size: 9px;
 }
 
 @media (max-width: 639px) {

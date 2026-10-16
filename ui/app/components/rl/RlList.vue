@@ -1,6 +1,6 @@
-<script setup lang="ts">
-// Lista de itens selecionáveis (bibliotecas, funções), com linhas altas para toque.
-defineProps<{ items: { id: string; label: string; detail?: string }[] }>()
+<script setup lang="ts" generic="T extends { id: string; label?: string; detail?: string }">
+// Lista de itens selecionáveis, com linhas altas para toque. O slot `item` personaliza a linha.
+defineProps<{ items: T[] }>()
 const selected = defineModel<string>()
 </script>
 
@@ -14,8 +14,10 @@ const selected = defineModel<string>()
       :class="{ active: item.id === selected }"
       @click="selected = item.id"
     >
-      <span class="truncate">{{ item.label }}</span>
-      <small v-if="item.detail">{{ item.detail }}</small>
+      <slot name="item" :item="item">
+        <span class="truncate">{{ item.label }}</span>
+        <small v-if="item.detail">{{ item.detail }}</small>
+      </slot>
     </li>
   </ul>
 </template>

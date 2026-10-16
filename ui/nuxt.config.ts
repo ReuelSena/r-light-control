@@ -21,7 +21,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
     // Evita o reload da página quando o Vite descobre a dependência em tempo de execução.
-    optimizeDeps: { include: ['uqr', 'three', '@tresjs/core', 'reka-ui', 'lucide-vue-next'] },
+    optimizeDeps: { include: ['uqr', 'three', '@tresjs/core', 'reka-ui', 'lucide-vue-next', 'dockview-vue'] },
   },
   i18n: {
     defaultLocale: 'pt-BR',

@@ -48,6 +48,29 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 - **E11. Virtual Console montado pelo usuário.** Como no QLC+, o usuário posiciona e configura cada elemento.
   - Aparência e comportamento dos botões são propriedades de cada elemento: destaque (aceso ou LED), cor, modo (liga/desliga ou flash) e ação (função, blackout geral, blackout de fixtures ou grupos, stop all).
   - Os botões fixos do sistema (FINO, navegação, abas) seguem os padrões do design system.
+  - **Layouts por formato de tela:** o usuário cria e ajusta o console para cada formato (ex.: celular, tablet, desktop), e cada aparelho abre o layout do seu formato.
+- **E12. Organização da interface.** Menus:
+  - **Console:** Virtual Console.
+  - **Fixtures:** criação, importação, configuração e agrupamento dos equipamentos.
+    - Dois tipos de grupo: **de fixtures** (grade 2D de cabeças, para o RGB Matrix) e **de canais** (como os "Channel Groups" do QLC+: canais de quaisquer fixtures, do mesmo atributo ou misturados, usados em faders do console e da mesa simples e nas cenas).
+    - Na lista, o grupo de canais mostra o ícone do atributo quando todos os canais são do mesmo tipo, e um ícone genérico quando são misturados.
+  - **Studio:** todas as criações (cenas, chasers, sequências, coleções, EFX, RGB Matrix…). Cada tipo tem um ícone próprio, usado em todo o projeto para identificá-lo.
+  - **Patch.**
+  - **3D View:** visualização, configuração e posicionamento dos equipamentos para o preview.
+  - **Mesa simples:** banco de faders, como no QLC+, para mexer em canais DMX específicos ou grupos de canais fora do console.
+  - **Monitoramento:** os universos mandando sinais, mais dados do app e da máquina (uso de CPU etc.).
+  - **In/Out:** uma tela só, sem abas, com duas seções:
+    - **Saídas:** universos e interfaces DMX;
+    - **Entradas:** só identifica os controladores MIDI conectados por USB.
+  - **Entradas externas por elemento:** o controle MIDI (com "aprender") ou a tecla do teclado que aciona um elemento do console é definido na edição do próprio elemento, como no QLC+. Não há tela separada de mapeamento MIDI.
+  - Configurações no ⚙.
+  - **Onde se programa:** as ferramentas de atributo (intensidade, cor, posição, beam, gobo) ficam no editor de cena do Studio, como no QLC+ 5. Não há aba "Programador".
+  - **Celular:** Console · Studio · Mesa simples · Fixtures · Mais (com os demais menus e o ⚙).
+  - A **seção master** (GM, Blackout, Stop All) fica só no Console.
+- **E13. Interface modular (opcional).**
+  - Painéis encaixáveis e redimensionáveis, como no VS Code ou no encaixe de janelas do Windows.
+  - Qualquer painel pode ir para uma **janela externa do Windows**, para usar outro monitor (ex.: 3D View num monitor dedicado). A janela externa é a mesma tela conectada ao motor como mais um cliente, então continua funcionando mesmo com a janela principal minimizada.
+  - O app **começa no modo simples** (uma tela por vez). O modular é ativado opcionalmente. No celular, é sempre o simples.
 - **E7. Android como host USB fica para a v2** (Tauri Android + plugin Kotlin com usb-serial-for-android). Na v1 o celular acessa pelo navegador na rede local.
 - **E8. Referência do QLC+** clonada em `reference/qlcplus`, fixada na tag `QLC+_5.3.0` e fora do git do projeto.
   - Essa árvore contém a UI v4 (`ui/`), a UI v5 (`qmlui/`) e o `engine/` compartilhado.
@@ -85,3 +108,8 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-16 | Ajustes pedidos na validação da F1: roda do mouse em fader e knob (E9); botão com segundo modo de destaque, `highlight="led"` (só o filete acende e o botão fica afundado). |
 | 2026-10-16 | Cores semânticas vivas no sistema todo (E6): matiz pura com saturação e brilho máximos. O filete de LED aceso usa a cor pura com brilho; o apagado fica a 30%. |
 | 2026-10-16 | F1 validada: 60 fps no celular e 100 no desktop. Decisões: aparência e comportamento dos botões do VC configuráveis por elemento (E11, pedido VC-1); os testes de toque automatizados ficam fora do projeto por enquanto. |
+| 2026-10-16 | F1 commitada. Decisões da F2: menus Console, Fixtures, Studio, Patch, 3D View e Mesa simples (E12); seção master só no Console (E12); interface modular opcional com janelas externas (E13); console com layouts por formato de tela (E11, pedido VC-2); protótipo entregue uma rodada por vez. |
+| 2026-10-16 | Mini-plano da F2 aprovado: menus Monitoramento e In/Out (E12); ferramentas de atributo no editor de cena do Studio (E12); começa no modo simples (E13); navegação do celular como proposta. |
+| 2026-10-16 | Ajustes pedidos na validação da rodada 1 da F2: grupos de canais com ícone por atributo (E12); abas agrupadas num trilho, como controle segmentado, no lugar de botões soltos (design system). |
+| 2026-10-16 | In/Out sem abas, com as seções Saídas e Entradas; o mapeamento de MIDI e de teclado fica em cada elemento do console (E12). |
+| 2026-10-16 | Rodada 1 da F2 aprovada e commitada (com arrastar fixtures na grade do Patch). |

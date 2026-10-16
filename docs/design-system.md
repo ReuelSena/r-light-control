@@ -40,6 +40,16 @@ Definidos em `@theme` no [`ui/app/assets/css/main.css`](../ui/app/assets/css/mai
 
 No celular, o `<select>` nativo abre o seletor do próprio sistema, que é melhor que qualquer imitação.
 
+Para montar telas:
+
+| Classe | Uso |
+|---|---|
+| `panel` | Bloco de conteúdo dentro de uma tela |
+| `heading` | Título de seção (maiúsculas, discreto) |
+| `field-label` | `<label>` com o texto em cima e o campo embaixo |
+| `rl-table` | Tabelas (canais, faixas, mapeamentos) |
+| `rl-led` | LED de status; a cor vem de `--led` (padrão verde) |
+
 ## Componentes (`ui/app/components/rl/`)
 
 | Componente | Quando usar | Comportamento |
@@ -54,12 +64,23 @@ No celular, o `<select>` nativo abre o seletor do próprio sistema, que é melho
 | `RlChannelStrip` | Canal ou fixture na mesa | Display (tocar emite `edit`), FLASH, SEL, fader com FINO, etiqueta colorida (laranja quando selecionada). |
 | `RlNumpad` | Digitar um valor exato | Respeita % ou DMX; emite o valor normalizado (0–1). |
 | `RlDialog` | Confirmações, edição pontual | Com `sheet`, vira painel: sobe de baixo no celular e entra pela direita em telas maiores. |
-| `RlTabs` | Alternar visões dentro de um painel | Aba ativa acende em laranja; conteúdo em slots com o nome do `value`. |
-| `RlList` | Listas selecionáveis (bibliotecas, funções) | Linhas de 48 px; `v-model` é o id selecionado. |
+| `RlTabs` | Alternar visões dentro de um painel | Abas agrupadas num trilho afundado (controle segmentado); a ativa é a tecla acesa em laranja. Ocupam a largura toda em espaços estreitos (o texto quebra em duas linhas se precisar) e, a partir de `@3xl`, só o necessário, com abas de largura igual. Conteúdo em slots com o nome do `value`, ou no slot padrão quando todas as abas mostram a mesma tela com dados diferentes (ex.: universos no Patch). O slot `actions` põe botões ao lado do trilho (ex.: **+** novo universo). Use sempre que botões trocam a visão do painel, em vez de botões soltos. |
+| `RlList` | Listas selecionáveis (bibliotecas, funções) | Linhas de 48 px; `v-model` é o id selecionado. O slot `item` personaliza a linha. |
+| `RlSwatches` | Escolher uma cor de uma paleta curta (etiqueta de fixture) | `v-model` com a cor; `colors` com as opções. |
 | `RlSwitch` | Opções liga/desliga em configurações | Alavanca com texto ao lado. |
 | `RlAppShell` | Moldura de toda tela | Slots: `toolbar`, `nav`, `toolbar-end`, padrão (principal), `master`, `side`, `bottom`. |
 
 Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e teclado prontos). Fader, knob, pad XY e seletor de cor são nossos, porque nenhuma biblioteca tem comportamento de mesa.
+
+## Ícones de atributo
+
+`attributeLook` ([`utils/fixtures.ts`](../ui/app/utils/fixtures.ts)) dá o ícone e a cor de cada atributo de canal. Use-o sempre que um canal ou atributo aparecer: editor de grupo, mesa simples, editor de cena.
+
+- Atributos da mesma família dividem o ícone e mudam só a cor:
+  - **paleta:** todas as cores, com a cor pura de cada componente;
+  - **setas:** pan e tilt.
+- Os de intensidade, posição, beam e velocidade usam o token do atributo (`intensity`, `position`, `beam`, `speed`).
+- **Grupo de canais** (`channelGroupLook`): mostra o ícone dos canais quando todos dividem o mesmo; se as cores diferem (ex.: R, G e B), o ícone fica neutro. Canais misturados mostram o ícone genérico de faders.
 
 ## Regras de interação
 
@@ -76,6 +97,10 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 - **Destaque `face` ou `led`:** `face` para estados que precisam chamar atenção de longe (blackout, flash, aba ativa). `led` para estados discretos, que parecem uma chave travada (seleção, opções ligadas).
 - **Botões disparam ao soltar o dedo (`pointerup`)**, não no `click`. O navegador não gera `click` para um toque feito enquanto outro dedo está na tela. Pelo teclado, Enter/Espaço continuam funcionando.
 - **Flash** acende ao tocar e apaga ao soltar, ao cancelar o toque ou ao perder a captura. Ele usa `touch-action: none`, para um dedo que escorrega não virar rolagem.
+- **Arrastar para posicionar** (Patch; depois, a edição do console):
+  - com o mouse, qualquer item é arrastado direto;
+  - no toque, o primeiro toque seleciona e o arrasto vale só para o item selecionado (ele recebe `touch-action: none`), para o gesto sobre o resto continuar rolando;
+  - o ponto agarrado fica sob o dedo, e o destino aparece antes de soltar: verde se livre, vermelho se houver conflito.
 - **Rolagem:** as barras (navegação, bancos, strips) rolam pelo gesto. Faders, knobs, pads e flashes não deixam o gesto virar rolagem.
 - **Proibidos na página:** zoom por pinça ou toque duplo, rolagem elástica, seleção de texto (exceto em campos) e menu de contexto do toque longo.
 
@@ -87,7 +112,9 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 | Tablet (640–1023 px) | Navegação na barra superior; painel lateral ainda em sheet. |
 | Desktop / tablet grande (≥ 1024 px) | Painel lateral azul fixo à direita. |
 
-A seção master fica sempre visível à direita. As strips rolam na horizontal.
+A seção master fica só no Console (E12). As strips rolam na horizontal.
+
+**Dentro das telas, use container queries** (`@3xl:grid-cols-2`, e não `md:`). A mesma tela pode ocupar a janela inteira, um painel estreito do modo modular ou uma janela externa. Por isso ela se adapta à largura do espaço que ocupa, e não à da janela. Equivalências usadas: `sm` → `@xl`, `md` → `@3xl`, `lg` → `@5xl`, `xl` → `@7xl`. O shell e os diálogos continuam com breakpoints de janela.
 
 ## Valores e textos
 

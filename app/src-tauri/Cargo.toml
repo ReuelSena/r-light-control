@@ -11,3 +11,4 @@ anyhow = "1.0.104"
 rlc-server = { path = "../../crates/rlc-server" }
 tauri = { version = "2.12.4", features = [] }
 tauri-plugin-single-instance = "2.5.4"
+tracing = "0.1.44"

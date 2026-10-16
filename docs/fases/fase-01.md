@@ -1,6 +1,27 @@
 # F1 — Design system (inspirado na Ui24R)
 
-**Status:** aguardando aprovação do usuário.
+**Status:** concluída e validada pelo usuário em 2026-10-16. Referência visual: [`docs/design/ui24r-mix.png`](../design/ui24r-mix.png). Regras de uso: [`docs/design-system.md`](../design-system.md).
+
+**Mudanças em relação ao plano**
+- `RlSheet` virou a opção `sheet` do `RlDialog`, porque o comportamento é o mesmo (G7).
+- Campos de texto e select usam elementos nativos com a classe `field`, sem componente próprio. No celular, o select nativo abre o seletor do sistema.
+- Os botões disparam no `pointerup`. O teste automático mostrou que o navegador não gera `click` quando outro dedo está na tela; era o caso de segurar o fader e tocar no FINO.
+
+**Verificação automática (toque emulado)**
+- Arrasto relativo.
+- Toque sem arrasto não muda o valor.
+- FINO acionado por outro dedo durante o arrasto (Δ 1 ponto, contra 13 sem FINO).
+- Toque duplo volta ao padrão.
+- Dois faders ao mesmo tempo.
+- Flash solta no cancelamento do toque.
+- Toggle por mouse (uma vez só) e por teclado.
+
+Tudo passou. `pnpm check` e o build de produção também passaram.
+
+**Ajustes pedidos na validação (2026-10-16)**
+- Roda do mouse em fader e knob: 1% por clique, 0,1% com FINO. Testado: fader, FINO, knob, e a página não rola.
+- `RlButton` com `highlight="led"`: ativo, só o filete acende e o botão fica afundado. O modo atual continua como `face` (padrão). Os dois aparecem lado a lado em "Botões e campos".
+- Cores semânticas vivas no sistema todo: matiz pura com saturação e brilho máximos (vermelho `#FF0000` etc.). O filete aceso fica puro e com brilho; o apagado, a 30%.
 
 ## Objetivo
 
@@ -15,6 +36,13 @@ Definir a linguagem visual e os componentes base, e validá-los no desktop, no t
 - **Faders grandes**, com régua e valor numérico sempre visível.
 - **Botões que acendem** no estado ativo. Na Ui24R: mute vermelho, solo amarelo. Aqui: blackout vermelho, flash amarelo, ativo verde.
 - **Feita para toque:** alvos grandes, nada depende de hover.
+- **Skeuomorfismo**, observado no print:
+  - barra superior em metal escovado;
+  - displays LCD com texto ciano sobre fundo escuro afundado;
+  - caps de fader metálicos com ranhuras (o do master é vermelho);
+  - botões em relevo que acendem por inteiro quando ativos e mostram um filete de LED colorido quando apagados;
+  - seleção em laranja (aba e canal selecionados);
+  - painel lateral azul para bancos e funções.
 
 Na adaptação para luz, uma strip pode ser um canal, uma fixture ou um playback. As cores seguem o atributo (intensidade, cor, posição…).
 
@@ -44,8 +72,8 @@ Ficam em variáveis CSS no `@theme` do Tailwind v4, então valem tanto nas class
 |---|---|
 | Superfícies | fundo `#111214` · painel `#1a1c1f` · controle `#24272b` · pressionado `#2f3338` · borda `#3a3f45` |
 | Texto | principal `#e6e8eb` · secundário `#9ba1a6` · desabilitado `#5f666d` |
-| Estados | ativo verde `#46a758` · flash/atenção amarelo `#ffc53d` · blackout/perigo vermelho `#e5484d` · seleção azul `#3e9bff` |
-| Atributos | intensidade âmbar `#ffb224` · cor = a própria cor do canal (R/G/B/W/A/UV com tons fixos) · posição ciano `#00a2c7` · beam/gobo violeta `#8e4ec6` · velocidade/efeito rosa `#d6409f` |
+| Estados (vivos, ajuste de 2026-10-16) | ativo verde `#00ff00` · flash/atenção amarelo `#ffff00` · blackout/perigo vermelho `#ff0000` · seleção laranja `#ff8000` · painel lateral azul `#0058e0` · LCD ciano `#00ffff` |
+| Atributos (vivos) | intensidade âmbar `#ffbf00` · cor = a própria cor do canal · posição azul-celeste `#00bfff` · beam/gobo violeta `#8000ff` · velocidade/efeito magenta `#ff00aa` |
 | Tipografia | Inter embutida no app (funciona sem internet), números tabulares, tamanhos 12/14/16/20/28 |
 | Medidas | espaçamento base de 4 px · raio de 6/10 px · alvo de toque mínimo de 44 px (48 px no celular) |
 
@@ -53,7 +81,7 @@ Ficam em variáveis CSS no `@theme` do Tailwind v4, então valem tanto nas class
 
 | Componente | Comportamento |
 |---|---|
-| `RlFader` | Vertical, com **arrasto relativo**: o fader não salta para onde o dedo tocou, como na Ui24R. Isso evita saltos durante o show.<br>Multitoque: cada dedo controla o seu fader.<br>Toque longo ativa o modo fino (arrasto ×0,1). Toque duplo volta ao valor padrão.<br>Valor sempre visível, régua, medidor opcional e cor por atributo. Também responde a teclado (setas, PageUp/PageDown). |
+| `RlFader` | Vertical, com **arrasto relativo**: o fader não salta para onde o dedo tocou, como na Ui24R. Isso evita saltos durante o show.<br>Multitoque: cada dedo controla o seu fader.<br>Botão **FINO** logo abaixo do fader: liga e desliga o modo de precisão (arrasto ×0,1). Toque duplo volta ao valor padrão.<br>Valor sempre visível, régua, medidor opcional e cor por atributo. Também responde a teclado (setas, PageUp/PageDown). |
 | `RlButton` | Tipos: ação, toggle e flash (momentâneo). Estados apagado/aceso, com cor.<br>O flash solta ao levantar o dedo, ao cancelar o toque e ao perder a captura, então nunca fica preso. |
 | `RlKnob` | Giratório, controlado com arrasto vertical. Mostra o valor num arco. Toque duplo reseta. |
 | `RlXYPad` | Pan/tilt com mira e modo fino. Valores de 0 a 1 em X e Y. |
@@ -91,18 +119,18 @@ Fader, knob e XY pad são feitos por nós, porque nenhuma biblioteca tem o compo
 
 Telas reais (F2), dados e motor.
 
-## Pontos para você decidir (com a minha proposta)
+## Decisões do usuário
 
-1. **Prints da Ui24R:** mande os que você gosta, em `docs/design/` ou aqui no chat. Sem eles, sigo a descrição acima e ajustamos na validação.
-2. **Arrasto do fader:** relativo (proposta, igual à Ui24R) ou o fader pula para onde o dedo tocou?
-3. **Exibição de valores:** % (0–100) como padrão, com opção de DMX (0–255) nas configurações (proposta), ou DMX como padrão?
-4. **Tema:** só escuro (proposta, pensando no palco) ou também claro?
+1. **Estilo:** skeuomórfico como na Ui24R; botões, faders e a interface toda parecem componentes físicos (E6).
+2. **Fader:** arrasto relativo, com um botão FINO abaixo dele para ajustes de precisão (E9).
+3. **Valores:** % por padrão, com opção de DMX (E10).
+4. **Tema:** só escuro (E6).
 
 ## Validação
 
-- [ ] Visual aprovado no desktop, no tablet e no celular.
-- [ ] 4 ou mais faders movidos ao mesmo tempo com vários dedos.
-- [ ] 60 fps no celular em `/dev/faders`. Em `/dev/beams`, pelo menos 30 fps.
-- [ ] Sem zoom, rolagem elástica ou seleção de texto acidentais.
-- [ ] O flash nunca fica preso (soltar o dedo fora do botão, trocar de app no meio do toque).
-- [ ] `docs/design-system.md` revisado.
+- [x] Visual aprovado no desktop, no tablet e no celular.
+- [x] 4 ou mais faders movidos ao mesmo tempo com vários dedos.
+- [x] 60 fps no celular em `/dev/faders` (100 no desktop). Em `/dev/beams`, pelo menos 30 fps.
+- [x] Sem zoom, rolagem elástica ou seleção de texto acidentais.
+- [x] O flash nunca fica preso (soltar o dedo fora do botão, trocar de app no meio do toque).
+- [x] `docs/design-system.md` revisado.

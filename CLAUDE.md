@@ -19,6 +19,8 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
 - `crates/rlc-server`: servidor axum (UI embutida + `/ws`), configurações e logs.
 - `app/src-tauri`: casca Tauri. Sobe o servidor e abre a janela.
 - `ui/`: Nuxt 4 em modo SPA (código em `ui/app/`, textos em `ui/i18n/locales/`).
+  - Componentes do design system em `ui/app/components/rl/`; regras de uso em [docs/design-system.md](docs/design-system.md).
+  - Páginas de desenvolvimento em `/dev/*`: catálogo (`showcase`), `faders`, `beams` e `conexao`.
 - `docs/`: padrões, design system, protocolo, mini-planos de fase (`docs/fases/`).
 - `reference/qlcplus`: código do QLC+ (tag `QLC+_5.3.0`, fora do git). Só leitura; nunca compilar nem executar.
 

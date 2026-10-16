@@ -36,6 +36,18 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 - **E5. Recursos da v1:** Cenas, Chasers, Sequências, Coleções, EFX, RGB Matrix, Virtual Console e entrada MIDI.
   - Fora da v1: Show/timeline com áudio, Script, Art-Net/sACN, OSC.
 - **E6. Design inspirado na Soundcraft Ui24R:** escuro, cara de mesa de som, faders grandes, touch-first, operável no navegador.
+  - Visual skeuomórfico: botões, faders, displays e painéis imitam componentes físicos (referência: `docs/design/ui24r-mix.png`).
+  - **Só tema escuro.** Não há tema claro.
+  - **Cores semânticas vivas, de contraste alto:** matiz pura com saturação e brilho máximos. Exemplos: vermelho `#FF0000`, verde `#00FF00`, amarelo `#FFFF00`, laranja `#FF8000`, ciano `#00FFFF`.
+  - O filete de LED apagado fica bem fraco, para o aceso se destacar.
+- **E9. Fader.**
+  - Arrasto **relativo**: o fader não salta para onde o dedo tocou.
+  - Um botão **FINO** logo abaixo de cada fader reduz o deslocamento, para ajustes de precisão.
+  - No desktop, a roda do mouse ajusta fader e knob: 1% por clique, 0,1% com FINO.
+- **E10. Exibição de valores.** Em % (0–100) por padrão, com opção de DMX (0–255) nas configurações.
+- **E11. Virtual Console montado pelo usuário.** Como no QLC+, o usuário posiciona e configura cada elemento.
+  - Aparência e comportamento dos botões são propriedades de cada elemento: destaque (aceso ou LED), cor, modo (liga/desliga ou flash) e ação (função, blackout geral, blackout de fixtures ou grupos, stop all).
+  - Os botões fixos do sistema (FINO, navegação, abas) seguem os padrões do design system.
 - **E7. Android como host USB fica para a v2** (Tauri Android + plugin Kotlin com usb-serial-for-android). Na v1 o celular acessa pelo navegador na rede local.
 - **E8. Referência do QLC+** clonada em `reference/qlcplus`, fixada na tag `QLC+_5.3.0` e fora do git do projeto.
   - Essa árvore contém a UI v4 (`ui/`), a UI v5 (`qmlui/`) e o `engine/` compartilhado.
@@ -69,3 +81,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 |---|---|
 | 2026-10-15 | Plano inicial aprovado (G1–G7, E1–E8, A1–A5). |
 | 2026-10-15 | F0 validada. `docs/padroes-codigo.md` e o padrão de idioma (G6) aprovados. Porta padrão do servidor: 8090 (configurável em `settings.json`). |
+| 2026-10-15 | Decisões da F1: visual skeuomórfico da Ui24R e só tema escuro (E6), fader relativo com botão FINO (E9), valores em % com opção de DMX (E10). |
+| 2026-10-16 | Ajustes pedidos na validação da F1: roda do mouse em fader e knob (E9); botão com segundo modo de destaque, `highlight="led"` (só o filete acende e o botão fica afundado). |
+| 2026-10-16 | Cores semânticas vivas no sistema todo (E6): matiz pura com saturação e brilho máximos. O filete de LED aceso usa a cor pura com brilho; o apagado fica a 30%. |
+| 2026-10-16 | F1 validada: 60 fps no celular e 100 no desktop. Decisões: aparência e comportamento dos botões do VC configuráveis por elemento (E11, pedido VC-1); os testes de toque automatizados ficam fora do projeto por enquanto. |

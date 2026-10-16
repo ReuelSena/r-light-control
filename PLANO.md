@@ -68,9 +68,9 @@ Validação:
 - [x] `docs/padroes-codigo.md` aprovado.
 - [x] `pnpm check` passa.
 
-### F1 — Design system (Ui24R) · 🟡
+### F1 — Design system (Ui24R) · ✅
 
-Mini-plano: [docs/fases/fase-01.md](docs/fases/fase-01.md) (aguardando aprovação).
+Mini-plano: [docs/fases/fase-01.md](docs/fases/fase-01.md). Concluída e validada pelo usuário em 2026-10-16 (60 fps no celular, 100 no desktop).
 
 - **Entrada do usuário:** prints e referências da Ui24R (em `docs/design/`).
 - **Tokens:** tema escuro, cores por atributo (intensidade, cor, posição, beam), tipografia, espaçamento e alvos de toque ≥44 px.
@@ -84,12 +84,14 @@ Mini-plano: [docs/fases/fase-01.md](docs/fases/fase-01.md) (aguardando aprovaç�
 - **Documentação:** `docs/design-system.md`.
 
 Validação:
-- [ ] Visual aprovado no desktop, tablet e celular.
-- [ ] 4 ou mais faders movidos ao mesmo tempo com vários dedos.
-- [ ] 60 fps no celular.
-- [ ] Sem zoom, rolagem ou seleção de texto acidentais.
+- [x] Visual aprovado no desktop, tablet e celular.
+- [x] 4 ou mais faders movidos ao mesmo tempo com vários dedos.
+- [x] 60 fps no celular.
+- [x] Sem zoom, rolagem ou seleção de texto acidentais.
 
-### F2 — Protótipo navegável de todas as telas · ⬜
+### F2 — Protótipo navegável de todas as telas · 🟡
+
+Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aguardando aprovação).
 
 - **Navegação:** Console (VC) · Programador · Funções · Patch · Visualização · Dispositivos · Configurações.
 - **Telas** (com dados fictícios):
@@ -326,7 +328,12 @@ Validação:
 
 ## Pedidos de recursos do Virtual Console (G4)
 
-_Nenhum ainda._
+- **VC-1 (2026-10-16): elementos configuráveis pelo usuário.** O console é montado pelo usuário, que posiciona e ajusta cada elemento a seu gosto, como no QLC+. Na edição de cada botão ele escolhe:
+  - destaque (botão aceso ou LED) e cor;
+  - modo (liga/desliga ou flash);
+  - ação: função, blackout geral, blackout de fixtures ou grupos específicos, ou stop all.
+
+  Protótipo na F2; implementação na F10/F11. O blackout por fixtures ou grupos não existe no QLC+.
 
 ---
 

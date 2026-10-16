@@ -1,4 +1,12 @@
 {
+  "rl": {
+    "fine": "Fino",
+    "flash": "Flash",
+    "select": "Sel",
+    "ok": "OK",
+    "close": "Fechar",
+    "panel": "Painel"
+  },
   "status": {
     "connected": "Conectado",
     "disconnected": "Desconectado — tentando reconectar…"
@@ -7,5 +15,68 @@
     "ticks": "Ticks do motor",
     "rate": "{rate} por segundo",
     "phone": "Abra no celular (mesma rede Wi-Fi)"
+  },
+  "dev": {
+    "nav": {
+      "console": "Console",
+      "programmer": "Programador",
+      "functions": "Funções",
+      "patch": "Patch",
+      "visualizer": "Visualização",
+      "devices": "Dispositivos"
+    },
+    "tabs": {
+      "strips": "Mesa",
+      "controls": "Controles",
+      "buttons": "Botões e campos"
+    },
+    "side": {
+      "title": "Bancos e funções",
+      "banks": "Bancos",
+      "functions": "Funções"
+    },
+    "fadersTest": "64 faders",
+    "page": "Página {n}",
+    "bank": "{from}–{to}",
+    "master": "Master",
+    "blackout": "Blackout",
+    "stopAll": "Stop all",
+    "tapTempo": "Tap tempo",
+    "editValue": "Valor de {name}",
+    "knobs": "Knobs",
+    "zoom": "Zoom",
+    "focus": "Foco",
+    "iris": "Íris",
+    "speed": "Velocidade",
+    "xyPad": "Pan / Tilt",
+    "color": "Cor",
+    "buttons": "Botões",
+    "faceHighlight": "Destaque: botão aceso",
+    "ledHighlight": "Destaque: LED (botão afundado)",
+    "action": "Ação",
+    "on": "Ligado",
+    "sizes": "Tamanhos",
+    "small": "Pequeno",
+    "medium": "Médio",
+    "large": "Grande",
+    "displays": "Displays",
+    "fields": "Campos",
+    "name": "Nome",
+    "address": "Endereço DMX",
+    "universe": "Universo",
+    "universeN": "Universo {n}",
+    "dmxDisplay": "Exibir valores em DMX (0–255)",
+    "list": "Lista",
+    "dialogs": "Diálogos",
+    "openDialog": "Abrir diálogo",
+    "openSheet": "Abrir painel",
+    "dialogText": "No celular o painel sobe de baixo; em telas maiores ele entra pela direita.",
+    "numpad": "Teclado numérico",
+    "lastValue": "Último valor: {value}",
+    "back": "Voltar",
+    "fps": "{n} fps",
+    "touches": "Toques: {n}",
+    "animate": "Animar",
+    "fixtures": "{n} fixtures"
   }
 }

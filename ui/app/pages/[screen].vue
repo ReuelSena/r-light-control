@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ellipsis, LayoutPanelLeft, OctagonX, Settings } from 'lucide-vue-next'
+import { Ellipsis, LayoutPanelLeft, Maximize, Minimize, OctagonX, Settings } from 'lucide-vue-next'
 
 // Moldura do app: menus (E12) e, conforme a preferência deste aparelho, uma tela por vez
 // ou o modo modular com painéis encaixáveis (E13).
@@ -17,6 +17,17 @@ const modular = computed(() => prefs.value.modular && wide.value)
 const moreOpen = ref(false)
 // Configurações num painel lateral sobre a tela atual (não é uma tela navegável)
 const settingsOpen = ref(false)
+
+// Tela cheia no navegador do celular e do tablet, como nos apps das mesas digitais (o iPhone não permite)
+const canFullscreen = document.fullscreenEnabled && matchMedia('(pointer: coarse)').matches
+const fullscreen = ref(!!document.fullscreenElement)
+const onFullscreen = () => (fullscreen.value = !!document.fullscreenElement)
+onMounted(() => document.addEventListener('fullscreenchange', onFullscreen))
+onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFullscreen))
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+  else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {})
+}
 
 // Pânico: um toque para as criações; o segundo toque logo em seguida também zera a mesa simples.
 // O LED fica aceso enquanto houver algo para parar.
@@ -81,6 +92,16 @@ function go(id: ScreenId) {
         :aria-label="t('shell.modular')"
       >
         <LayoutPanelLeft :size="18" />
+      </RlButton>
+      <RlButton
+        v-if="canFullscreen"
+        size="sm"
+        highlight="led"
+        :model-value="fullscreen"
+        :aria-label="t(fullscreen ? 'shell.exitFullscreen' : 'shell.fullscreen')"
+        @press="toggleFullscreen"
+      >
+        <component :is="fullscreen ? Minimize : Maximize" :size="18" />
       </RlButton>
       <RlButton size="sm" :model-value="settingsOpen" :aria-label="t('screens.settings')" :title="t('screens.settings')" @press="settingsOpen = true">
         <Settings :size="18" />

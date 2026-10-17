@@ -30,6 +30,10 @@
 - Zoom geral da interface no ⚙ (no app desktop; no navegador, o do navegador) e zoom do console ao lado do "Editar", guardados em cada aparelho.
 - Botões sem ícone por padrão. Nas propriedades, "Mostrar ícone" liga o do tipo da criação, e "Trocar" abre a biblioteca inteira de ícones com busca.
 
+**Pedidos depois da aprovação da rodada 3 (2026-10-16)**
+
+- Celular e tablet: botão de tela cheia na barra de cima (onde o navegador permite) e zoom da interface no ⚙, pela largura do viewport.
+
 **Decisões do início da rodada 3 (2026-10-16)**
 - **VC-2:** elementos compartilhados entre os formatos; cada formato guarda só a posição. Três formatos fixos pela largura da tela, com troca no ⚙.
 - **VC-3:** o elemento "Tempos" ajusta as criações de uma lista, como o Speed Dial do QLC+.

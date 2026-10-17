@@ -10,8 +10,9 @@ const prefs = usePrefs()
 const { mode } = useValueFormat()
 const { state, send } = useEngine()
 const wide = useMediaQuery('(min-width: 1024px)')
-// O zoom geral só existe no app desktop (zoom nativo da janela); no navegador, vale o do navegador
-const nativeZoom = '__TAURI_INTERNALS__' in window
+// O zoom geral existe no app desktop (zoom nativo da janela) e no celular e no tablet (largura do viewport,
+// no app.vue); no navegador do computador, vale o do navegador
+const zoomable = '__TAURI_INTERNALS__' in window || matchMedia('(pointer: coarse)').matches
 const dmx = computed({ get: () => mode.value === 'dmx', set: (on) => (mode.value = on ? 'dmx' : 'percent') })
 const remote = computed(() => state.value.remote)
 const pin = ref(remote.value.pin ?? '')
@@ -27,7 +28,7 @@ const qr = computed(() => (remote.value.enabled && remote.value.lanUrl ? renderS
       </h2>
       <div class="field-label">
         <span class="flex items-center gap-1">{{ t('settings.zoom') }} <RlInfo :text="t('settings.zoomInfo')" /></span>
-        <RlStepper v-if="nativeZoom" v-model="prefs.uiZoom" :steps="zoomSteps" />
+        <RlStepper v-if="zoomable" v-model="prefs.uiZoom" :steps="zoomSteps" />
         <p v-else class="text-sm text-flash">{{ t('settings.zoomBrowser') }}</p>
       </div>
       <RlSwitch v-model="dmx">{{ t('settings.dmxValues') }}</RlSwitch>

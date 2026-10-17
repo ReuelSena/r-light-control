@@ -26,7 +26,9 @@
     "modular": "Interface modular (janelas encaixáveis)",
     "usbOk": "Interfaces USB conectadas",
     "usbFail": "Alguma interface USB está desconectada",
-    "stop": "Parar criações (dois toques: zera também a mesa simples)"
+    "stop": "Parar criações (dois toques: zera também a mesa simples)",
+    "fullscreen": "Tela cheia",
+    "exitFullscreen": "Sair da tela cheia"
   },
   "dock": {
     "popout": "Abrir em janela externa",
@@ -190,7 +192,7 @@
     "formatAuto": "Automático (pela largura da tela)",
     "zoom": "Zoom da interface",
     "zoomBrowser": "No navegador, use o zoom do próprio navegador (Ctrl + e Ctrl −).",
-    "zoomInfo": "Ctrl + − e Ctrl + + também mudam o zoom. Com o console na frente, mudam o zoom do console."
+    "zoomInfo": "Vale só para este aparelho. No computador, Ctrl + − e Ctrl + + também mudam o zoom; com o console na frente, mudam o zoom do console."
   },
   "kind": {
     "colorChanger": "Troca de cor (PAR)",

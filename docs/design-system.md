@@ -169,7 +169,7 @@ A seção master fica só no Console (E12). As strips rolam na horizontal.
 
 **Dentro das telas, use container queries** (`@3xl:grid-cols-2`, e não `md:`). A mesma tela pode ocupar a janela inteira, um painel estreito do modo modular ou uma janela externa. Por isso ela se adapta à largura do espaço que ocupa, e não à da janela. Equivalências usadas: `sm` → `@xl`, `md` → `@3xl`, `lg` → `@5xl`, `xl` → `@7xl`. O shell e os diálogos continuam com breakpoints de janela.
 
-**Zoom:** o zoom geral da interface (⚙) é o zoom nativo da janela do app desktop: as medidas em px continuam valendo, e a tela se reorganiza como no zoom do navegador. Não use `zoom` do CSS na página: ele desalinha os balões (Reka/floating-ui) e os arrastos, que misturam coordenadas da tela e do elemento.
+**Zoom:** o zoom geral da interface (⚙) é o zoom nativo da janela do app desktop e, no celular e no tablet, a largura do viewport (`app.vue`), que o navegador encaixa na tela na escala escolhida: as medidas em px continuam valendo, e a tela se reorganiza como no zoom do navegador (um celular com zoom pequeno pode cair no layout de tablet). Não use `zoom` do CSS na página: ele desalinha os balões (Reka/floating-ui) e os arrastos, que misturam coordenadas da tela e do elemento.
 
 **Classes do Tailwind sobre componentes `Rl*`:** o estilo do próprio componente vence as utilidades que mexem nas mesmas propriedades (`hidden`, `justify-start`, `normal-case`…). Nesses casos use o `!` no fim (`@3xl:hidden!`).
 

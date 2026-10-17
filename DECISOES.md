@@ -47,7 +47,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - No desktop, a roda do mouse ajusta fader e knob: 1% por clique, 0,1% com FINO.
 - **E10. Exibição de valores.** Em % (0–100) por padrão, com opção de DMX (0–255) nas configurações.
   - **Zoom (2026-10-16):** cada aparelho escolhe o zoom geral da interface no ⚙ e o zoom do console ao lado do "Editar".
-    - O zoom geral é o zoom nativo da janela do app desktop, que mantém medidas, arrastos e balões coerentes. O `zoom` do CSS foi descartado porque desalinha os balões e os arrastos. No navegador, vale o zoom do próprio navegador.
+    - O zoom geral é sempre um zoom de verdade, que mantém medidas, toques, arrastos e balões coerentes: no app desktop, o zoom nativo da janela; no celular e no tablet, a largura do viewport, que o navegador encaixa na tela na escala escolhida. No navegador do computador, vale o zoom do próprio navegador. O `zoom` do CSS foi descartado porque desalinha os balões e os arrastos.
     - O zoom do console aumenta ou diminui as células da grade; se passar da tela, a grade rola.
 - **E11. Virtual Console montado pelo usuário.** Como no QLC+, o usuário posiciona e configura cada elemento.
   - Aparência e comportamento dos botões são propriedades de cada elemento: destaque (aceso ou LED), cor, modo (liga/desliga ou flash), ação (função, blackout geral, blackout de fixtures ou grupos, stop all) e ícone.
@@ -96,6 +96,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - Os grupos de canais começam desligados. Ligar um grupo traz para a cena todas as fixtures dele; para tirar uma, usa-se "Adicionar fixtures".
     - Fade in e fade out ficam no fim do editor de cena: no show, o console ajusta os fades ao vivo (VC-3).
   - **Celular:** Console · Studio · Mesa simples · Fixtures · Mais (com os demais menus). O ⚙ fica na barra de cima.
+    - **Tela cheia (2026-10-16):** no celular e no tablet, um botão na barra de cima põe o app em tela cheia no navegador, como nos apps das mesas digitais. Só aparece onde o navegador permite (o iPhone não permite).
   - A **seção master** (GM, Blackout, Stop All) fica só no Console. Exceções (2026-10-16):
     - **botão de pânico na barra superior**, em todas as telas: um toque para todas as criações; dois toques seguidos também zeram a Mesa simples inteira;
     - **"Parar todas" no Studio**, que para só as criações.
@@ -173,3 +174,4 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-16 | Configurações num painel lateral aberto pelo ⚙, sobre a tela atual, no lugar da tela navegável (E12). |
 | 2026-10-16 | Console: botão de dicas de atalho ao lado do "Editar", que mostra ou esconde as etiquetas das teclas; atalhos Alt + E (editar) e Alt + I (dicas), reservados (E12). |
 | 2026-10-16 | Rodada 3 da F2 aprovada e commitada. |
+| 2026-10-16 | Celular e tablet: botão de tela cheia na barra de cima e zoom da interface no ⚙ (pela largura do viewport) (E10, E12). |

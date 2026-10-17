@@ -19,11 +19,12 @@ const prefs = usePrefs()
 
 <template>
   <div class="flex shrink-0">
-    <section class="flex flex-1 items-center gap-2 @3xl:hidden">
+    <!-- Abaixo de 360 px (celular pequeno ou com zoom), espaços menores e o display sem o "GM" -->
+    <section class="flex flex-1 items-center gap-1.5 min-[360px]:gap-2 @3xl:hidden">
       <RlButton v-model="blackout" mode="toggle" color="var(--color-danger)" size="sm" :aria-label="t('vc.blackout')"><LightbulbOff :size="18" /></RlButton>
       <RlButton size="sm" :aria-label="t('vc.stopAll')" @press="send({ op: 'stopAllFunctions' })"><OctagonX :size="18" /></RlButton>
       <RlKnob v-model="gm" :default="1" :size="40" color="var(--color-danger)" />
-      <RlLcd>GM {{ format(gm) }}</RlLcd>
+      <RlLcd><span class="max-[359px]:hidden">GM </span>{{ format(gm) }}</RlLcd>
       <RlLcd class="ml-auto">{{ master.bpm }} BPM</RlLcd>
       <RlButton size="sm" @press="vc.tapBpm">{{ t('vc.tap') }}</RlButton>
     </section>

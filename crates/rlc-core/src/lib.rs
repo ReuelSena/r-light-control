@@ -797,10 +797,16 @@ pub struct Stats {
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct DmxInterface {
+    /// `dummy`, ou `ftdi-` e o número de série da interface USB.
     pub id: Id,
+    /// Protocolo em uso: escolhido à mão ou detectado (nome USB e, na Open DMX, a pergunta da Pro).
     pub kind: InterfaceKind,
+    /// O tipo foi escolhido à mão no In/Out (fica guardado no `settings.json`).
+    pub kind_forced: bool,
+    /// Nome gravado na interface.
     pub name: String,
     pub serial: String,
+    /// Ligada ao computador.
     pub connected: bool,
     /// Quadros DMX enviados por segundo.
     pub fps: f32,
@@ -988,6 +994,11 @@ pub enum Op {
     /// Liga ou desliga o padrão de teste da saída.
     SetTestPattern {
         pattern: Option<TestPattern>,
+    },
+    /// Tipo de uma interface USB escolhido à mão; `None` volta para o automático.
+    SetInterfaceKind {
+        interface: Id,
+        kind: Option<InterfaceKind>,
     },
 }
 

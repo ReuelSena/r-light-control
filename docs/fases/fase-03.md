@@ -1,6 +1,22 @@
 # F3 — Motor base e saída USB DMX
 
-**Status:** mini-plano aprovado em 2026-10-17 (decisões 1 a 4 como recomendado). Rodada 1 entregue em 2026-10-17, aguardando a validação do usuário.
+**Status:** mini-plano aprovado em 2026-10-17 (decisões 1 a 4 como recomendado). Rodada 1 validada em 2026-10-17. Rodada 2 entregue em 2026-10-17, aguardando a validação com o hardware.
+
+**Rodada 2 entregue**
+- **Saídas USB (`rlc-dmx/src/ftdi.rs`):** Enttec Pro (rótulo 6, 44 quadros por segundo) e Open DMX (break, MAB e 513 bytes, 30 quadros por segundo), pelo D2XX carregado do driver instalado. Cada interface na sua thread, com prioridade de tempo crítico e prazo absoluto.
+- **A interface só fica aberta com universo patchado.** Sem patch, fica livre para outro programa (o QLC+, por exemplo). Se ela falha ou é desplugada, a saída tenta reabrir a cada segundo.
+- **Descoberta e tipo:** a lista do USB é lida a cada segundo; a interface ganha o id `ftdi-` + número de série e continua na lista (e no patch) quando desplugada. O tipo:
+  - vem do nome ("DMX USB PRO" é a Pro);
+  - numa Open DMX automática, vem da pergunta do número de série no protocolo da Pro ao abrir;
+  - pode ser escolhido à mão no In/Out (`setInterfaceKind`), guardado no `settings.json`.
+- **Show de exemplo com o rig do usuário**, convertido dos `.qxf` dele, no universo "Rig RSena", patchado na Numbstar (série A81IPPE0) como no show do QLC+:
+  - 12 ParLed 18x15w nos endereços 63 a 173;
+  - 4 Beam 7R em 20 canais, nos endereços 1, 21, 258 e 278;
+  - os grupos de canais "Dimmer ParLeds" e "Dimmer Beams".
+- **Notas das fixtures do usuário:**
+  - O modo "10CH" do ParLed tem 9 canais no `.qxf`; os endereços andam de 10 em 10, como no QLC+.
+  - O Strobo do Beam 7R tem valor padrão 255 ("luz ativa") no `.qxf`, e o formato ainda não guarda valor padrão (fica para a F4). Na Mesa simples, ponha o Strobo em 255 para o feixe acender.
+- **Testes automáticos:** pacote da Pro, regra do nome, resposta da Pro, reabertura de uma interface que falha, tipo escolhido à mão e de volta ao automático.
 
 **Rodada 1 entregue**
 - **Contrato e protocolo:** o servidor é a autoridade (A2) e a UI é um cliente WebSocket. O envelope, os tópicos do `evt` e os frames binários estão em [`docs/protocolo.md`](../protocolo.md). O motor de mentira e os dados fictícios saíram da UI; o show de exemplo é `crates/rlc-server/src/exemplo.json`.
@@ -131,13 +147,22 @@ Trocar o motor de mentira pelo motor de verdade, no servidor Rust, e pôr DMX re
 ## Validação
 
 **Rodada 1**
-- [ ] Celular e desktop ao vivo: Mesa simples, Grand Master e blackout mudam nos dois na hora.
-- [ ] Uma edição num aparelho (fixture, elemento do console, palco) aparece no outro.
-- [ ] Ao derrubar e voltar a rede do celular, ele recebe o estado completo.
-- [ ] Monitoramento com números reais e a saída Dummy a ~44 quadros por segundo.
+- [x] Celular e desktop ao vivo: Mesa simples, Grand Master e blackout mudam nos dois na hora.
+- [x] Uma edição num aparelho (fixture, elemento do console, palco) aparece no outro.
+- [x] Ao derrubar e voltar a rede do celular, ele recebe o estado completo.
+- [x] Monitoramento com números reais e a saída Dummy a ~44 quadros por segundo.
 
-**Rodada 2**
-- [ ] A Pro e a Open DMX controlam fixtures reais.
+**Rodada 2** (com a Numbstar ligada e o universo "Rig RSena" nela)
+
+Antes de começar:
+- **Feche o QLC+:** só um programa por vez abre a interface.
+- **Teste de 10 min:** `/dev/dmx` → Rampa, **só com os ParLed na linha DMX**. A rampa passa por todos os canais, inclusive o reset e o liga/desliga da lâmpada dos Beam 7R.
+- **Beam 7R:** acende com o Strobo em 255, a lâmpada ligada (canal 16 a partir de 128) e o dimmer.
+- **Instalador:** `target\release\bundle\nsis\R Light Control_0.1.0_x64-setup.exe` (`pnpm build`). Ele baixa o WebView2 se faltar; o driver da FTDI o Windows instala ao ligar a interface (ou `R:\Light\CDM212364_Setup.exe`).
+- **Importar .qxf continua simulado até a F4:** o resultado é uma cópia do PAR genérico, com avisos fixos.
+
+- [ ] A Numbstar aparece no In/Out como Open DMX, e a Mesa simples acende os ParLed (dimmer e uma cor de um deles: canais 63 e 64).
+- [ ] A Pro, sem uma Enttec Pro de verdade: só pelos testes automáticos do pacote. Com a interface nova, o tipo certo aparece sozinho ou é escolhido à mão.
 - [ ] 10 min do teste de saída sem tremulação.
 - [ ] A saída volta em até 3 s depois de replugar.
 - [ ] Blackout instantâneo.

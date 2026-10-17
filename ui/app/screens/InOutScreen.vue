@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { KeyboardMusic, Plus, Trash2, Usb } from 'lucide-vue-next'
+import type { DmxInterface } from '~/types/generated/DmxInterface'
+import type { InterfaceKind } from '~/types/generated/InterfaceKind'
 import type { Universe } from '~/types/generated/Universe'
 
 // In/Out (E12): saídas (universos e interfaces DMX) e entradas (controladores MIDI conectados).
@@ -13,6 +15,11 @@ const interfaceOf = (u: Universe) => state.value.interfaces.find((i) => i.id ===
 
 function updateUniverse(u: Universe, changes: Partial<Universe>) {
   send({ op: 'updateUniverse', universe: { ...u, ...changes } })
+}
+
+// Tipo de uma interface USB: automático ou escolhido à mão (fica guardado para ela)
+function setKind(i: DmxInterface, value: string) {
+  send({ op: 'setInterfaceKind', interface: i.id, kind: value === 'auto' ? null : (value as InterfaceKind) })
 }
 </script>
 
@@ -41,6 +48,8 @@ function updateUniverse(u: Universe, changes: Partial<Universe>) {
                   <span class="rl-led" :style="{ '--led': interfaceOf(u)?.connected ? 'var(--color-on)' : 'var(--color-fg-dim)' }" />
                   <select class="field min-w-0 flex-1" :value="u.output ?? ''" @change="updateUniverse(u, { output: ($event.target as HTMLSelectElement).value || null })">
                     <option value="">{{ t('io.none') }}</option>
+                    <!-- Patchado numa interface que não está ligada agora -->
+                    <option v-if="u.output && !interfaceOf(u)" :value="u.output">{{ t('io.missing', { id: u.output.replace('ftdi-', '') }) }}</option>
                     <option v-for="i in state.interfaces" :key="i.id" :value="i.id">{{ i.name }}</option>
                   </select>
                 </span>
@@ -65,7 +74,7 @@ function updateUniverse(u: Universe, changes: Partial<Universe>) {
       </section>
 
       <section class="panel">
-        <h3 class="heading">{{ t('io.interfaces') }}</h3>
+        <h3 class="heading flex items-center gap-2">{{ t('io.interfaces') }} <RlInfo :text="t('io.info.interfaces')" /></h3>
         <div v-for="i in state.interfaces" :key="i.id" class="sunken flex flex-wrap items-center gap-3 rounded-md p-3">
           <Usb :size="22" class="text-fg-muted" />
           <!-- basis-48: em painel estreito os medidores descem para a linha de baixo -->
@@ -79,6 +88,14 @@ function updateUniverse(u: Universe, changes: Partial<Universe>) {
           </span>
           <RlLcd>{{ i.fps.toFixed(0) }} fps</RlLcd>
           <RlLcd>{{ i.jitterMs.toFixed(1) }} ms</RlLcd>
+          <label v-if="i.kind !== 'dummy'" class="flex basis-full items-center gap-2 text-xs text-fg-muted">
+            {{ t('io.kind') }}
+            <select class="field min-w-0 flex-1" :value="i.kindForced ? i.kind : 'auto'" @change="setKind(i, ($event.target as HTMLSelectElement).value)">
+              <option value="auto">{{ t('io.kindAuto', { kind: t(`interfaceKind.${i.kind}`) }) }}</option>
+              <option value="enttecPro">{{ t('interfaceKind.enttecPro') }}</option>
+              <option value="openDmx">{{ t('interfaceKind.openDmx') }}</option>
+            </select>
+          </label>
         </div>
       </section>
     </div>

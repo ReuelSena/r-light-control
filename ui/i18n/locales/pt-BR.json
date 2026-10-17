@@ -168,7 +168,13 @@
     "controllers": "Controladores MIDI (USB)",
     "deviceConnected": "Conectado",
     "deviceDisconnected": "Desconectado",
-    "noControllers": "Nenhum controlador conectado."
+    "noControllers": "Nenhum controlador conectado.",
+    "kind": "Tipo",
+    "kindAuto": "Automático ({kind})",
+    "missing": "Interface {id} (não ligada)",
+    "info": {
+      "interfaces": "Interfaces USB com chip FTDI, pelo driver da FTDI (o Windows instala ao ligar a interface). O tipo vem do nome gravado nela: \"DMX USB PRO\" é a Enttec Pro; o resto começa como Open DMX e, ao abrir, recebe uma pergunta no protocolo da Pro: se responder, vira Pro. Se a luz não responder, escolha o tipo à mão; fica guardado para essa interface. Desplugada, ela continua na lista e volta sozinha ao ser ligada de novo."
+    }
   },
   "settings": {
     "display": "Exibição",

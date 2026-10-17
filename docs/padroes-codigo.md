@@ -31,6 +31,7 @@ if value == 255 { … }
   - `anyhow` nos binários e no código de borda.
 - Nada de `unwrap()` fora de testes. Use `expect("motivo")` só para invariantes que nunca deveriam falhar.
 - O motor (`rlc-engine`) não usa async: threads e canais. Tokio só no servidor e em I/O de arquivos.
+- `unsafe` só na fronteira com bibliotecas do sistema (FFI): hoje, a D2XX da FTDI (`rlc-dmx/src/ftdi.rs`) e a prioridade das threads de saída. Cada bloco leva um comentário `SAFETY` dizendo por que é seguro.
 - Testes como especificação: nomes que descrevem o comportamento (`htp_keeps_highest_intensity`), num `mod tests` no próprio arquivo ou em `tests/`.
 - Um crate novo só quando houver uma fronteira real (I/O isolado, binário separado, tempo de compilação).
 
@@ -41,7 +42,9 @@ if value == 255 { … }
 - Componentes do design system com prefixo `Rl` (`RlFader`, `RlButton`) em `ui/app/components/rl/`.
 - Estado:
   - local no componente por padrão;
+  - o estado do servidor vem só do `useEngine()`: as telas mudam o estado com operações (`send`), nunca editando o `state` direto;
   - store Pinia por domínio só quando o estado é compartilhado entre telas.
+- Quem espera a resposta de uma operação (`await send(...)`) não trata a recusa: ela rejeita com `Refused`, o código depois do `await` não roda e o app mostra o motivo.
 - Composables só quando reutilizados.
 - Todo texto visível passa pelo i18n (`t('chave')`). Os textos ficam em `ui/i18n/locales/pt-BR.json`.
 - Dados de alta frequência (valores DMX, preview) ficam fora da reatividade do Vue (`shallowRef`, `markRaw`, `Uint8Array`).
@@ -52,8 +55,8 @@ if value == 255 { … }
 ## 5. Comunicação UI ↔ servidor
 
 - Só por WebSocket (`/ws`) e HTTP (E2). O desktop e o celular usam exatamente o mesmo código.
-- Mensagens JSON com campo `t` (tipo): `hello`, `cmd`, `ack`, `err`, `evt`. Dados de alta taxa vão em frames binários.
-- A especificação completa vai para `docs/protocolo.md` na F2.
+- Mensagens JSON com campo `t` (tipo): `hello`, `snapshot`, `cmd`, `ack`, `err`, `evt`. Dados de alta taxa vão em frames binários.
+- Especificação em `docs/protocolo.md`; as regras de cada operação ficam em `crates/rlc-server/src/apply.rs`.
 
 ## 6. Git
 

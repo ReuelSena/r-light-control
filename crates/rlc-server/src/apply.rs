@@ -505,6 +505,19 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             s.test_pattern = pattern;
             vec![T::TestPattern]
         }
+        Op::SetInterfaceKind { interface, kind } => {
+            let usb = s
+                .interfaces
+                .iter_mut()
+                .find(|i| i.id == interface && i.kind != InterfaceKind::Dummy)
+                .ok_or("Interface USB não encontrada.")?;
+            if kind == Some(InterfaceKind::Dummy) {
+                return Err("Uma interface USB não vira Dummy.".into());
+            }
+            usb.kind_forced = kind.is_some();
+            usb.kind = kind.unwrap_or_else(|| crate::hub::kind_by_name(&usb.name));
+            vec![T::Interfaces]
+        }
     };
     Ok((topics, Value::Null))
 }
@@ -780,7 +793,39 @@ mod tests {
             .iter()
             .map(|u| u.output.clone())
             .collect();
-        assert_eq!(outputs, vec![None, Some("dummy".into())]);
+        assert_eq!(outputs[..2], [None, Some("dummy".into())]);
+    }
+
+    #[test]
+    fn interface_kind_is_forced_and_back_to_automatic() {
+        let mut s = example();
+        let mut usb = s.interfaces[0].clone();
+        (usb.id, usb.kind, usb.name) = (
+            "ftdi-A1".into(),
+            InterfaceKind::OpenDmx,
+            "INTERFACE DMX - NUMBSTAR".into(),
+        );
+        s.interfaces.push(usb);
+        let set = |kind| Op::SetInterfaceKind {
+            interface: "ftdi-A1".into(),
+            kind,
+        };
+        apply(&mut s, set(Some(InterfaceKind::EnttecPro))).unwrap();
+        assert_eq!(
+            (s.interfaces[1].kind, s.interfaces[1].kind_forced),
+            (InterfaceKind::EnttecPro, true)
+        );
+        apply(&mut s, set(None)).unwrap();
+        assert_eq!(
+            (s.interfaces[1].kind, s.interfaces[1].kind_forced),
+            (InterfaceKind::OpenDmx, false)
+        );
+        assert!(apply(&mut s, set(Some(InterfaceKind::Dummy))).is_err());
+        let dummy = Op::SetInterfaceKind {
+            interface: "dummy".into(),
+            kind: Some(InterfaceKind::OpenDmx),
+        };
+        assert!(apply(&mut s, dummy).is_err());
     }
 
     #[test]

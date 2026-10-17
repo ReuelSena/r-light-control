@@ -102,6 +102,7 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global |
 | `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
 | `setTestPattern` | `pattern?` | Padrão de teste da saída (`ramp` ou `chase`; sem ele, desliga). Página `/dev/dmx` |
+| `setInterfaceKind` | `interface, kind?` | Tipo de uma interface USB (`enttecPro` ou `openDmx`) escolhido à mão e guardado no `settings.json`; sem `kind`, volta ao automático. A saída reabre no protocolo novo |
 
 **Console (`Project.console`):** páginas e elementos (`VcWidget`). Cada elemento tem `id`, `page`, `frame` (moldura ou `null`), `caption`, `color`, `inputs` (controle MIDI e tecla por parte do elemento) e `layouts` com a posição em células em cada formato (`phone`, `tablet`, `desktop`; `null` = não aparece nele). O `type` (`button`, `slider`, `cueList`, `xyPad`, `speedDial`, `frame`, `clock`, `animation`, `label`) fica no mesmo nível dos campos do tipo.
 
@@ -118,7 +119,7 @@ Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 - `master`: Grand Master, blackout e BPM;
 - `widgetValues`: valores ao vivo dos elementos do console (não são salvos no projeto): slider e animation `[nível]`, XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms, cue list `[passo]` escolhido à mão, botão de apagar fixtures `[1]` quando ligado;
 - `stats`: CPU e memória do app, duração do último tick do motor e tempo ligado, para o Monitoramento;
-- `interfaces`: as saídas DMX, com quadros por segundo, maior atraso do último segundo e erros. Na rodada 1 da F3, só a Dummy;
+- `interfaces`: as saídas DMX: a Dummy e as interfaces USB com chip FTDI (id `ftdi-` + número de série), com o tipo (`kind`, e `kindForced` quando escolhido à mão), se estão ligadas, quadros por segundo, maior atraso do último segundo e erros. Desplugada, a interface continua na lista;
 - `testPattern`: o padrão de teste ligado, se houver;
 - `remote.clients`: os aparelhos conectados de verdade (nome pelo sistema do navegador, endereço).
 

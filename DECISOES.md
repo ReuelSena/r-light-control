@@ -33,8 +33,13 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - Importação apenas de fixtures `.qxf` do QLC+, convertidas para o formato próprio.
   - Não há importação de `.qxw`.
 - **E4. Interfaces da v1:** Enttec DMX USB Pro e compatíveis, e Open DMX (FTDI sem microcontrolador). Mais uma saída "Dummy" para desenvolver sem hardware.
-  - **Driver (2026-10-17):** só o D2XX da FTDI, que vem no driver oficial (o Windows instala sozinho). Sem reserva pela porta COM, como no QLC+.
-  - **Modelo:** pelo nome USB, como no QLC+: "DMX USB PRO" é a Pro; o resto é Open DMX. A interface do usuário (genérica, nome "Numbstar") entra como Open DMX.
+  - **Driver (2026-10-17):** só o D2XX da FTDI, que vem no driver oficial (o Windows instala sozinho). Sem reserva pela porta COM, como no QLC+. A biblioteca (`ftd2xx.dll`) é carregada do driver instalado, não vai embutida no app.
+  - **Tipo da interface (2026-10-17):**
+    - pelo nome USB, como no QLC+: "DMX USB PRO" é a Pro; o resto começa como Open DMX;
+    - uma Open DMX automática, ao abrir, recebe a pergunta do número de série no protocolo da Pro: se responder, vira Pro (para as compatíveis com outro nome);
+    - o tipo pode ser escolhido à mão no In/Out, e fica guardado para a interface (pelo número de série) no `settings.json`.
+  - **Interfaces compatíveis:** com chip FTDI (o D2XX só fala com elas). As de chip CH340 ou CP2102 não funcionam (também não funcionam no QLC+).
+  - A interface do usuário (genérica, nome "INTERFACE DMX - NUMBSTAR", série A81IPPE0) é Open DMX: é assim que o QLC+ a detecta, sem tipo forçado nas configurações dele.
 - **E5. Recursos da v1:** Cenas, Chasers, Sequências, Coleções, EFX, RGB Matrix, Virtual Console e entrada MIDI.
   - Fora da v1: Show/timeline com áudio, Script, Art-Net/sACN, OSC.
 - **E6. Design inspirado na Soundcraft Ui24R:** escuro, cara de mesa de som, faders grandes, touch-first, operável no navegador.
@@ -190,3 +195,6 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-17 | Mini-plano da F3 aprovado: todo o estado no servidor; sem salvar até a F5; só o driver D2XX; blackout como no QLC+ (A2, E4). Interface do usuário: genérica, nome USB "Numbstar", tratada como Open DMX. |
 | 2026-10-17 | F2 validada e concluída, com as telas congeladas em `docs/telas/`. Início da F3 (estudo das referências e mini-plano). |
 | 2026-10-17 | Rodada 1 da F3 entregue: servidor como autoridade, motor a 50 Hz e saída Dummy. Controles otimistas sob o dedo (A2); frame binário com o id do universo (A3). |
+| 2026-10-17 | Rodada 1 da F3 validada pelo usuário. |
+| 2026-10-17 | Rodada 2 da F3: tipo da interface pelo nome, pela pergunta da Pro e à mão no In/Out (guardado por interface); D2XX carregada do driver instalado. Show de exemplo com o rig do usuário (12 ParLed 18x15w e 4 Beam 7R) num universo na Numbstar (E4). |
+| 2026-10-17 | Importação de `.qxf`: continua simulada até a F4 (sem recusa nem conversão à mão). O usuário vai importar o Strobo 1000w ele mesmo, pelo app, na F4. |

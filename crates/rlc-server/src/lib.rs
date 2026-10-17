@@ -5,6 +5,7 @@ mod apply;
 mod hub;
 mod ws;
 
+use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -39,6 +40,8 @@ pub struct Settings {
     pub allow_lan: bool,
     /// PIN de acesso, exigido a partir da F11.
     pub pin: Option<String>,
+    /// Tipo escolhido à mão para cada interface USB (pelo id, `ftdi-` e o número de série).
+    pub interface_kinds: BTreeMap<String, rlc_core::InterfaceKind>,
 }
 
 impl Default for Settings {
@@ -48,6 +51,7 @@ impl Default for Settings {
             bind: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
             allow_lan: true,
             pin: None,
+            interface_kinds: BTreeMap::new(),
         }
     }
 }
@@ -154,7 +158,11 @@ pub async fn start(settings: &Settings) -> anyhow::Result<u16> {
         let mut every = tokio::time::interval(Duration::from_secs(1));
         loop {
             every.tick().await;
-            stats.lock().refresh_stats();
+            // A lista do USB pode levar alguns ms: fora da trava do estado
+            let devices = tokio::task::spawn_blocking(rlc_dmx::ftdi::devices)
+                .await
+                .unwrap_or_default();
+            stats.lock().refresh(&devices);
         }
     });
     let app = Router::new()

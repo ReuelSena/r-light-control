@@ -113,22 +113,23 @@ Validação:
 
 ### F3 — Motor base + saída USB DMX · 🟡
 
-Mini-plano: [docs/fases/fase-03.md](docs/fases/fase-03.md) (aprovado em 2026-10-17; rodada 1 entregue e aguardando validação).
+Mini-plano: [docs/fases/fase-03.md](docs/fases/fase-03.md) (aprovado em 2026-10-17; rodada 1 validada; rodada 2 entregue, aguardando a validação com o hardware).
 
 - **Motor:** tick, N universos, camada de mesa, Grand Master, blackout e pânico.
 - **`rlc-dmx`:**
   - Enttec Pro (label 6).
   - Open DMX via D2XX (sem reserva pela porta COM, como no QLC+).
   - Dummy.
-- **Dispositivos:** descoberta por VID/PID, hot-plug, estatísticas (fps, jitter, erros).
-- **UI:** telas Dispositivos, Mesa e Monitor DMX ligadas ao motor. Primeiro instalador.
+- **Dispositivos:** descoberta pelo D2XX a cada segundo, tipo pelo nome, pela pergunta da Pro ou à mão, reconexão, estatísticas (fps, jitter, erros).
+- **UI:** In/Out, Mesa simples e Monitoramento ligados ao motor. Primeiro instalador.
 - **Protocolo:** cliente WebSocket no lugar do `MockClient`; `evt` com o pedaço do estado que mudou; frames binários dos universos; IDs UUIDv7 gerados pela UI (A2–A4).
 - **Ref:**
   - `plugins/dmxusb/src/{dmxusbwidget,enttecdmxusbpro,enttecdmxusbopen,ftd2xx-interface,qtserial-interface}.cpp`
   - `engine/src/{outputpatch,inputoutputmap,grandmaster,mastertimer-win32}.cpp`
 
-Validação:
-- [ ] A Pro e a Open DMX controlam fixtures reais.
+Validação (detalhada em [docs/fases/fase-03.md](docs/fases/fase-03.md)):
+- [x] Rodada 1: servidor de verdade, aparelhos sincronizados, Monitoramento real.
+- [ ] A Open DMX do usuário (Numbstar) controla fixtures reais. A Pro fica nos testes automáticos até o usuário ter uma.
 - [ ] 10 min de varredura sem flicker.
 - [ ] A saída volta em até 3 s depois de replugar.
 - [ ] Blackout instantâneo.
@@ -137,7 +138,7 @@ Validação:
 
 ### F4 — Fixtures: formato e importador .qxf · ⬜
 
-- **Formato:** schema JSON de fixture (`schemaVersion`) com taxonomia própria de atributos.
+- **Formato:** schema JSON de fixture (`schemaVersion`) com taxonomia própria de atributos e o valor padrão de cada canal (o `Default` do `.qxf`; ex.: o Strobo do Beam 7R em 255, "luz ativa").
 - **Importador:** `rlc-qxf`, com relatório de conversão.
 - **Biblioteca:** do usuário, com busca e upload também pelo celular.
 - **Decisão desta fase:** embutir ou não a biblioteca do QLC+ já convertida.
@@ -145,8 +146,12 @@ Validação:
   - `engine/src/{qlcfixturedef,qlcfixturemode,qlcchannel,qlccapability,qlcphysical,qlcfixturehead}.cpp`
   - `resources/schemas/fixture.xsd`
 
+- **Até a F4,** o "Importar .qxf" da biblioteca é simulado, como no protótipo: o resultado é uma cópia do PAR genérico com o nome do arquivo, e os avisos do relatório são textos fixos. O usuário decidiu esperar a F4 (sem recusar a importação nem converter à mão).
+- **Fixtures do usuário:** o ParLed 18x15w e o Beam 7R já foram convertidos à mão para o show de exemplo (`crates/rlc-server/src/exemplo.json`). O Strobo 1000w (`R:\Light\QLC+\Fixtures\RSena\RSena-Strobo-1000w.qxf`) fica de fora: o usuário quer importá-lo ele mesmo, pelo app, quando o importador estiver pronto.
+
 Validação:
-- [ ] Os .qxf das fixtures reais importam sem erro.
+- [ ] Os .qxf das fixtures reais importam sem erro: o usuário importa o Strobo 1000w pelo app.
+- [ ] A importação do ParLed 18x15w e do Beam 7R bate com a conversão feita à mão no exemplo (incluindo o valor padrão do Strobo do Beam).
 - [ ] Relatório correto.
 - [ ] Conferência manual contra o QLC+.
 

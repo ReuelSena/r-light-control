@@ -9,6 +9,7 @@ use std::time::Instant;
 
 use axum::extract::ws::Utf8Bytes;
 use rlc_core::*;
+use rlc_dmx::ftdi::{self, FtdiInfo, Protocol};
 use rlc_engine::{Command, Engine, Published};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -40,6 +41,7 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
         interfaces: vec![DmxInterface {
             id: "dummy".into(),
             kind: InterfaceKind::Dummy,
+            kind_forced: false,
             name: "Dummy (virtual)".into(),
             serial: String::new(),
             connected: true,
@@ -106,24 +108,14 @@ impl Hub {
         snapshot.remote.pin = settings.pin.clone();
 
         let engine = Engine::spawn();
-        let universe = Arc::new(Mutex::new(None::<Id>));
-        let (frames, patched) = (engine.frames.clone(), universe.clone());
-        let output = rlc_dmx::spawn("dummy", rlc_dmx::Dummy, 44, move || {
-            let id = patched.lock().ok()?.clone()?;
-            frames.load().get(&id).copied()
-        });
+        let dummy = start_output(&engine, &snapshot.project, &snapshot.interfaces[0]);
         let mut hub = Self {
             allow_lan: watch::channel(snapshot.remote.enabled).0,
             snapshot,
             rev: 0,
             events: broadcast::channel(1024).0,
             engine,
-            outputs: vec![Slot {
-                interface: "dummy".into(),
-                universe,
-                output,
-                frames_seen: 0,
-            }],
+            outputs: vec![dummy],
             started: Instant::now(),
             last_stats: Instant::now(),
             system: System::new(),
@@ -139,7 +131,25 @@ impl Hub {
     /// Aplica uma operação de um cliente. Recusada, nada muda e ninguém é avisado.
     pub fn command(&mut self, op: Op) -> Result<Value, String> {
         let new_project = op == Op::NewProject;
+        let kind_change = match &op {
+            Op::SetInterfaceKind { interface, kind } => Some((interface.clone(), *kind)),
+            _ => None,
+        };
         let (mut topics, reply) = apply(&mut self.snapshot, op)?;
+        // Tipo escolhido à mão: guardado pelo id da interface e com a saída reaberta no protocolo novo
+        if let Some((id, kind)) = kind_change {
+            let mut settings = Settings::load();
+            match kind {
+                Some(kind) => settings.interface_kinds.insert(id.clone(), kind),
+                None => settings.interface_kinds.remove(&id),
+            };
+            settings.save();
+            if let Some(interface) = self.snapshot.interfaces.iter().find(|i| i.id == id) {
+                let slot = start_output(&self.engine, &self.snapshot.project, interface);
+                self.outputs.retain(|s| s.interface != id);
+                self.outputs.push(slot);
+            }
+        }
         if !new_project && !self.snapshot.dirty && topics.iter().any(|t| t.is_project()) {
             self.snapshot.dirty = true;
             topics.push(Topic::Dirty);
@@ -203,12 +213,8 @@ impl Hub {
         ]) {
             self.engine.send(Command::Patch(intensity_patch(p)));
             for slot in &self.outputs {
-                let universe = p
-                    .universes
-                    .iter()
-                    .find(|u| u.output.as_ref() == Some(&slot.interface));
                 if let Ok(mut patched) = slot.universe.lock() {
-                    *patched = universe.map(|u| u.id.clone());
+                    *patched = patched_universe(p, &slot.interface);
                 }
             }
         }
@@ -227,8 +233,45 @@ impl Hub {
         }
     }
 
-    /// Números do Monitoramento, a cada segundo: o app, o motor e cada interface.
-    pub fn refresh_stats(&mut self) {
+    /// A cada segundo: as interfaces USB ligadas agora (as novas ganham a sua saída) e os números do
+    /// Monitoramento (o app, o motor e cada interface).
+    pub fn refresh(&mut self, devices: &[FtdiInfo]) {
+        for device in devices {
+            let id = format!("ftdi-{}", device.serial);
+            if self.snapshot.interfaces.iter().any(|i| i.id == id) {
+                continue;
+            }
+            let forced = Settings::load().interface_kinds.get(&id).copied();
+            let interface = DmxInterface {
+                kind: forced.unwrap_or_else(|| kind_by_name(&device.description)),
+                kind_forced: forced.is_some(),
+                id,
+                name: device.description.clone(),
+                serial: device.serial.clone(),
+                connected: true,
+                fps: 0.0,
+                jitter_ms: 0.0,
+                errors: 0,
+            };
+            tracing::info!(
+                "interface USB: {} ({}), {:?}",
+                interface.name,
+                interface.serial,
+                interface.kind
+            );
+            self.outputs.push(start_output(
+                &self.engine,
+                &self.snapshot.project,
+                &interface,
+            ));
+            self.snapshot.interfaces.push(interface);
+        }
+        // Desplugada, continua na lista (e no patch) até voltar
+        for interface in &mut self.snapshot.interfaces {
+            if interface.kind != InterfaceKind::Dummy {
+                interface.connected = devices.iter().any(|d| d.serial == interface.serial);
+            }
+        }
         let seconds = self.last_stats.elapsed().as_secs_f32().max(0.001);
         self.last_stats = Instant::now();
         let pid = Pid::from_u32(std::process::id());
@@ -264,9 +307,61 @@ impl Hub {
             interface.fps = ((frames - slot.frames_seen) as f32 / seconds * 10.0).round() / 10.0;
             interface.jitter_ms = stats.jitter_us.swap(0, Ordering::Relaxed) as f32 / 1000.0;
             interface.errors = stats.errors.load(Ordering::Relaxed);
+            // Respondeu como Pro ao abrir: é uma Pro compatível, mesmo com outro nome
+            if !interface.kind_forced && stats.pro.load(Ordering::Relaxed) {
+                interface.kind = InterfaceKind::EnttecPro;
+            }
             slot.frames_seen = frames;
         }
         self.publish(&[Topic::Stats, Topic::Interfaces]);
+    }
+}
+
+/// Thread de saída de uma interface, já com o universo patchado nela.
+fn start_output(engine: &Engine, project: &Project, interface: &DmxInterface) -> Slot {
+    let universe = Arc::new(Mutex::new(patched_universe(project, &interface.id)));
+    let (frames, patched) = (engine.frames.clone(), universe.clone());
+    let source = move || {
+        let id = patched.lock().ok()?.clone()?;
+        frames.load().get(&id).copied()
+    };
+    let output = match interface.kind {
+        InterfaceKind::Dummy => rlc_dmx::spawn("dummy", |_| Ok(Box::new(rlc_dmx::Dummy)), source),
+        kind => {
+            let serial = interface.serial.clone();
+            let protocol = match kind {
+                InterfaceKind::EnttecPro => Protocol::EnttecPro,
+                _ => Protocol::OpenDmx,
+            };
+            let auto = !interface.kind_forced;
+            rlc_dmx::spawn(
+                &interface.serial,
+                move |stats| ftdi::open(&serial, protocol, auto, stats),
+                source,
+            )
+        }
+    };
+    Slot {
+        interface: interface.id.clone(),
+        universe,
+        output,
+        frames_seen: 0,
+    }
+}
+
+/// Universo que manda na interface (uma interface manda um universo só).
+fn patched_universe(p: &Project, interface: &str) -> Option<Id> {
+    p.universes
+        .iter()
+        .find(|u| u.output.as_deref() == Some(interface))
+        .map(|u| u.id.clone())
+}
+
+/// Tipo pelo nome USB, como no QLC+ (a Open DMX ainda pode virar Pro se responder como uma).
+pub fn kind_by_name(description: &str) -> InterfaceKind {
+    match ftdi::protocol_by_name(description) {
+        Protocol::EnttecPro => InterfaceKind::EnttecPro,
+        Protocol::OpenDmx => InterfaceKind::OpenDmx,
     }
 }
 

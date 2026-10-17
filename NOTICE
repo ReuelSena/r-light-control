@@ -13,3 +13,10 @@ forem adicionadas:
 - Algoritmos de desenho do EFX (Circle, Eight, Line, Line2, Diamond, Square,
   SquareChoppy, SquareTrue, Leaf, Lissajous), portados de engine/src/efx.cpp
   (EFX::calculatePoint e rotateAndScale) para ui/app/utils/functions.ts.
+
+- Saídas Enttec DMX USB Pro e Open DMX: pacote, tempos de break e MAB,
+  frequências e regra de detecção pelo nome, seguindo plugins/dmxusb
+  (enttecdmxusbpro.cpp, enttecdmxusbopen.cpp e dmxusbwidget.cpp) para
+  crates/rlc-dmx/src/ftdi.rs; Grand Master no modo "reduzir" e blackout só
+  nos canais de intensidade, como em engine/src/universe.cpp, para
+  crates/rlc-engine/src/lib.rs.

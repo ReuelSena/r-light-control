@@ -18,7 +18,7 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
 
 - `crates/rlc-core`: contrato de dados (só tipos). `cargo test -p rlc-core` gera os tipos TypeScript em `ui/app/types/generated/` (nunca editar à mão).
 - `crates/rlc-engine`: motor (A1). Thread a 50 Hz com prazo absoluto, que publica o quadro de cada universo sem trava.
-- `crates/rlc-dmx`: saídas DMX, cada interface na sua thread (na rodada 1 da F3, só a Dummy).
+- `crates/rlc-dmx`: saídas DMX, cada interface na sua thread: Dummy e, em `ftdi.rs`, Enttec Pro e Open DMX pelo D2XX da FTDI (carregado do driver instalado).
 - `crates/rlc-server`: servidor axum (UI embutida + `/ws`), configurações e logs. É a autoridade do estado (A2): `apply.rs` tem as regras de cada operação, `hub.rs` o estado, o motor e as saídas, `ws.rs` a conversa com cada cliente. O show de exemplo é `src/exemplo.json`.
 - `crates/rlc-headless`: o mesmo servidor sem janela (`rlc-headless --port N`), para testes.
 - `app/src-tauri`: casca Tauri. Sobe o servidor, abre a janela e transforma `window.open` em janela nativa (E13).
@@ -29,7 +29,7 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
   - `utils/console.ts`: formatos e grade do console, tipos de elemento e cópia de layout entre formatos (VC-2). `composables/useConsole.ts`: o que cada elemento faz em operação (toque e teclas).
   - Componentes do design system em `ui/app/components/rl/`; regras de uso em [docs/design-system.md](docs/design-system.md).
   - Páginas de desenvolvimento em `/dev/*`: catálogo (`showcase`), `faders`, `beams` e `dmx` (padrões de teste da saída).
-- `docs/`: padrões, design system, protocolo, mini-planos de fase (`docs/fases/`).
+- `docs/`: padrões, design system, protocolo, mini-planos de fase (`docs/fases/`) e as telas congeladas da F2 (`docs/telas/`).
 - `reference/qlcplus`: código do QLC+ (tag `QLC+_5.3.0`, fora do git). Só leitura; nunca compilar nem executar.
 
 ## Comandos
@@ -37,9 +37,10 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
 - `pnpm install`: dependências da UI e do CLI do Tauri.
 - `pnpm dev`: app desktop com a UI em hot reload. O celular abre a URL do QR, que em dev aponta para a porta 3000.
 - `pnpm check`: rustfmt, clippy `-D warnings`, `cargo test`, typecheck e lint da UI. Precisa passar antes de entregar uma fase.
-- `pnpm build`: gera o instalador.
+- `pnpm build`: gera o instalador (`target/release/bundle/nsis/`).
+- O servidor guarda o estado em memória até a F5: para voltar ao show de exemplo, reinicie o `pnpm dev`.
 
 ## Arquivos do usuário (Windows)
 
-- Configurações: `%APPDATA%\r-light-control\settings.json` (porta, bind, acesso pela rede local e PIN).
+- Configurações: `%APPDATA%\r-light-control\settings.json` (porta, bind, acesso pela rede local, PIN e o tipo escolhido para cada interface USB).
 - Logs: `%LOCALAPPDATA%\r-light-control\logs\`.

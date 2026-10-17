@@ -40,7 +40,6 @@ function moveFixture(patch: Partial<Placement>) {
 const element = computed(() => stage.value.elements.find((e) => e.id === selection.elements))
 const elementKinds = Object.keys(stageElementKinds) as StageElementKind[]
 const elementName = (e: StageElement) => t(`view3d.elements.${e.kind}`)
-const newId = () => `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 
 function saveElements(elements: StageElement[], select?: string) {
   saveStage({ elements })
@@ -51,7 +50,7 @@ function saveElements(elements: StageElement[], select?: string) {
 function addElement(kind: StageElementKind) {
   let x = 0
   while (stage.value.elements.some((e) => Math.abs(e.x - x) < 0.05 && Math.abs(e.z) < 0.05)) x += stageElementKinds[kind].width
-  const created = { id: newId(), kind, x, y: 0, z: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
+  const created = { id: uuidv7(), kind, x, y: 0, z: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
   saveElements([...stage.value.elements, created], created.id)
   adding.value = false
 }
@@ -59,7 +58,7 @@ function addElement(kind: StageElementKind) {
 const moveElement = (patch: Partial<Placement>) => saveElements(stage.value.elements.map((e) => (e.id === element.value!.id ? { ...e, ...patch } : e)), element.value!.id)
 
 function duplicate() {
-  const copy = { ...element.value!, id: newId(), ...besideOf(element.value!) }
+  const copy = { ...element.value!, id: uuidv7(), ...besideOf(element.value!) }
   saveElements([...stage.value.elements, copy], copy.id)
 }
 

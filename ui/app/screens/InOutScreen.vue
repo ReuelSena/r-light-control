@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { KeyboardMusic, Plus, RefreshCw, Trash2, Usb } from 'lucide-vue-next'
+import { KeyboardMusic, Plus, Trash2, Usb } from 'lucide-vue-next'
 import type { Universe } from '~/types/generated/Universe'
 
 // In/Out (E12): saídas (universos e interfaces DMX) e entradas (controladores MIDI conectados).
@@ -7,19 +7,12 @@ import type { Universe } from '~/types/generated/Universe'
 const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
-const scanning = ref(false)
 
 const fixturesIn = (id: string) => project.value.fixtures.filter((f) => f.universe === id).length
 const interfaceOf = (u: Universe) => state.value.interfaces.find((i) => i.id === u.output)
 
 function updateUniverse(u: Universe, changes: Partial<Universe>) {
   send({ op: 'updateUniverse', universe: { ...u, ...changes } })
-}
-
-// Na F3 a busca é de verdade; aqui só mostra o estado "procurando"
-function scan() {
-  scanning.value = true
-  setTimeout(() => (scanning.value = false), 1200)
 }
 </script>
 
@@ -72,25 +65,19 @@ function scan() {
       </section>
 
       <section class="panel">
-        <div class="flex items-center justify-between gap-2">
-          <h3 class="heading">{{ t('io.interfaces') }}</h3>
-          <RlButton size="sm" @press="scan">
-            <RefreshCw :size="16" :class="{ 'animate-spin': scanning }" />
-            {{ scanning ? t('io.scanning') : t('io.scan') }}
-          </RlButton>
-        </div>
+        <h3 class="heading">{{ t('io.interfaces') }}</h3>
         <div v-for="i in state.interfaces" :key="i.id" class="sunken flex flex-wrap items-center gap-3 rounded-md p-3">
           <Usb :size="22" class="text-fg-muted" />
           <!-- basis-48: em painel estreito os medidores descem para a linha de baixo -->
           <div class="min-w-0 flex-1 basis-48">
             <p class="truncate font-semibold">{{ i.name }}</p>
-            <p class="text-xs text-fg-muted">{{ t(`interfaceKind.${i.kind}`) }} · {{ t('io.serial') }} {{ i.serial }}</p>
+            <p class="text-xs text-fg-muted">{{ t(`interfaceKind.${i.kind}`) }}<template v-if="i.serial"> · {{ t('io.serial') }} {{ i.serial }}</template></p>
           </div>
           <span class="flex items-center gap-1.5 text-xs">
             <span class="rl-led" :style="{ '--led': i.connected ? 'var(--color-on)' : 'var(--color-danger)' }" />
             {{ i.connected ? t('io.connected') : t('io.disconnected') }}
           </span>
-          <RlLcd>{{ i.fps }} fps</RlLcd>
+          <RlLcd>{{ i.fps.toFixed(0) }} fps</RlLcd>
           <RlLcd>{{ i.jitterMs.toFixed(1) }} ms</RlLcd>
         </div>
       </section>

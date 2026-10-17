@@ -28,7 +28,9 @@
     "usbFail": "Alguma interface USB está desconectada",
     "stop": "Parar criações (dois toques: zera também a mesa simples)",
     "fullscreen": "Tela cheia",
-    "exitFullscreen": "Sair da tela cheia"
+    "exitFullscreen": "Sair da tela cheia",
+    "test": "TESTE",
+    "testPattern": "Padrão de teste da saída ligado (/dev/dmx). O pânico desliga."
   },
   "dock": {
     "popout": "Abrir em janela externa",
@@ -51,10 +53,7 @@
     "notSaved": "Ainda não foi salvo",
     "new": "Novo",
     "discard": "Descartar alterações?",
-    "save": "Salvar",
-    "saveAs": "Salvar como",
-    "saveAsButton": "Salvar",
-    "recent": "Recentes"
+    "filesLater": "Salvar e abrir projetos chegam na F5. Até lá, o que se muda vale até fechar o app."
   },
   "fixtures": {
     "project": "No projeto",
@@ -163,8 +162,6 @@
     "universeInUse": "Tem fixtures: mova-as antes de remover",
     "addUniverse": "Adicionar universo",
     "interfaces": "Interfaces detectadas",
-    "scan": "Procurar",
-    "scanning": "Procurando…",
     "serial": "serial",
     "connected": "Conectada",
     "disconnected": "Desconectada",
@@ -238,15 +235,6 @@
     "openDmx": "Open DMX (FTDI)",
     "dummy": "Virtual (sem hardware)"
   },
-  "status": {
-    "connected": "Conectado",
-    "disconnected": "Desconectado — tentando reconectar…"
-  },
-  "home": {
-    "ticks": "Ticks do motor",
-    "rate": "{rate} por segundo",
-    "phone": "Abra no celular (mesma rede Wi-Fi)"
-  },
   "dev": {
     "nav": {
       "console": "Console",
@@ -308,7 +296,16 @@
     "fps": "{n} fps",
     "touches": "Toques: {n}",
     "animate": "Animar",
-    "fixtures": "{n} fixtures"
+    "fixtures": "{n} fixtures",
+    "dmx": {
+      "title": "Teste da saída DMX",
+      "info": "Padrões gerados pelo motor em todos os canais, por cima da Mesa simples, com o Grand Master e o blackout valendo. Use a rampa por 10 minutos para conferir que a luz não tremula. O pânico da barra de cima desliga o teste.",
+      "off": "Desligado",
+      "ramp": "Rampa",
+      "chase": "Perseguição",
+      "outputs": "Saídas",
+      "universe": "Primeiros canais de {name}"
+    }
   },
   "studio": {
     "search": "Buscar criação",
@@ -674,5 +671,8 @@
       "pulpit": "Púlpito",
       "plant": "Planta"
     }
+  },
+  "connection": {
+    "lost": "Sem conexão com o servidor. Reconectando…"
   }
 }

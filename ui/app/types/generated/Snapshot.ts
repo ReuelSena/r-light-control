@@ -7,6 +7,7 @@ import type { MidiDevice } from "./MidiDevice";
 import type { Project } from "./Project";
 import type { RemoteAccess } from "./RemoteAccess";
 import type { Stats } from "./Stats";
+import type { TestPattern } from "./TestPattern";
 import type { WidgetValue } from "./WidgetValue";
 
 /**
@@ -36,4 +37,8 @@ desk: Desk, master: Master,
 /**
  * Valores ao vivo dos elementos do console (não são salvos no projeto).
  */
-widgetValues: Array<WidgetValue>, stats: Stats, };
+widgetValues: Array<WidgetValue>, stats: Stats, 
+/**
+ * Padrão de teste da saída (página /dev/dmx); por cima da Mesa simples enquanto estiver ligado.
+ */
+testPattern: TestPattern | null, };

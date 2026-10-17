@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Pad XY (pan/tilt): arrasto relativo como o fader (E9), com botão FINO. Toque duplo centraliza.
-const value = defineModel<{ x: number; y: number }>({ required: true })
+const model = defineModel<{ x: number; y: number }>({ required: true })
+// Otimista sob o dedo: o gesto não espera a volta do servidor
+const value = useOptimistic(model)
 const { t } = useI18n()
 const { format } = useValueFormat()
 const fine = ref(false)

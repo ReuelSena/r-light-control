@@ -12,6 +12,8 @@ export default defineNuxtConfig({
   css: ['@fontsource-variable/inter', '@fontsource/share-tech-mono', '~/assets/css/main.css'],
   // 0.0.0.0 para o celular acessar o servidor de dev pela rede local.
   devServer: { host: '0.0.0.0', port: 3000 },
+  // Tela de "Conectando…" enquanto o app espera o estado do servidor (plugins/engine.client.ts)
+  spaLoadingTemplate: 'spa-loading-template.html',
   runtimeConfig: {
     // Porta do servidor Rust, usada só em dev (em produção a UI vem dele mesmo).
     public: { serverPort: 8090 },

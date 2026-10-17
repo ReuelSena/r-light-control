@@ -44,7 +44,6 @@ const cols = computed(() => formatColumns[format.value])
 const rectIn = (w: VcWidget) => w.layouts[format.value]
 // Fora deste formato: os que não têm posição nele (o filho de uma moldura fora do formato volta com ela)
 const unplaced = computed(() => widgets.value.filter((w) => !rectIn(w) && (!w.frame || widgets.value.some((f) => f.id === w.frame && rectIn(f)))))
-const newId = () => `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value))
 const say = (text: string) => {
   notice.value = text
@@ -74,7 +73,7 @@ function blank(type: WidgetType): VcWidget {
   }
   const [w, h] = widgetKinds[type].size
   const layouts = { phone: null, tablet: null, desktop: null, [format.value]: spot(null, w, h) }
-  return { id: newId(), page: page.value, frame: null, caption: t(`vc.kind.${type}`), color: '#ff8000', layouts, inputs: [], ...kinds[type] } as VcWidget
+  return { id: uuidv7(), page: page.value, frame: null, caption: t(`vc.kind.${type}`), color: '#ff8000', layouts, inputs: [], ...kinds[type] } as VcWidget
 }
 
 function add(type: WidgetType) {
@@ -88,7 +87,7 @@ function duplicate() {
   const copies: VcWidget[] = []
   for (const w of selected.value) {
     const r = rectIn(w)!
-    copies.push({ ...clone(w), id: newId(), caption: t('studio.copyName', { name: w.caption }), layouts: { phone: null, tablet: null, desktop: null, [format.value]: spot(w.frame, r.w, r.h) } })
+    copies.push({ ...clone(w), id: uuidv7(), caption: t('studio.copyName', { name: w.caption }), layouts: { phone: null, tablet: null, desktop: null, [format.value]: spot(w.frame, r.w, r.h) } })
   }
   send({ op: 'saveWidgets', widgets: copies })
   selection.value = copies.map((c) => c.id)
@@ -128,7 +127,7 @@ function align(side: 'left' | 'right' | 'top' | 'bottom') {
 
 // ---------- Páginas e formatos ----------
 async function addPage() {
-  const id = newId()
+  const id = uuidv7()
   await send({ op: 'saveConsolePage', page: { id, name: t('vc.pageName', { n: project.value.console.pages.length + 1 }) } })
   page.value = id
 }

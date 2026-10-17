@@ -1,20 +1,25 @@
-//! Servidor HTTP/WebSocket: entrega a UI e conversa com os clientes.
-//! A janela do desktop e os navegadores na rede local usam o mesmo caminho (E2).
+//! Servidor HTTP/WebSocket: entrega a UI, guarda o estado (a autoridade, A2) e conversa com os
+//! clientes. A janela do desktop e os navegadores na rede local usam o mesmo caminho (E2).
+
+mod apply;
+mod hub;
+mod ws;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use anyhow::Context;
 use axum::Router;
-use axum::extract::State;
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::http::{StatusCode, Uri, header};
+use axum::extract::ws::WebSocketUpgrade;
+use axum::extract::{ConnectInfo, State};
+use axum::http::{HeaderMap, StatusCode, Uri, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use rlc_engine::Published;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tokio::sync::watch;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
@@ -25,11 +30,15 @@ const APP_DIR: &str = "r-light-control";
 
 /// Configurações do usuário, em `%APPDATA%\r-light-control\settings.json`.
 #[derive(Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub port: u16,
-    /// `0.0.0.0` libera o acesso pela rede local; `127.0.0.1` restringe ao próprio PC.
+    /// `0.0.0.0` abre a porta para a rede local; `127.0.0.1` restringe ao próprio PC.
     pub bind: IpAddr,
+    /// Aceita aparelhos da rede local (o "Permitir aparelhos da rede local" do ⚙).
+    pub allow_lan: bool,
+    /// PIN de acesso, exigido a partir da F11.
+    pub pin: Option<String>,
 }
 
 impl Default for Settings {
@@ -37,15 +46,23 @@ impl Default for Settings {
         Self {
             port: 8090,
             bind: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+            allow_lan: true,
+            pin: None,
         }
     }
 }
 
 impl Settings {
+    fn path() -> PathBuf {
+        dirs::config_dir()
+            .unwrap_or_default()
+            .join(APP_DIR)
+            .join("settings.json")
+    }
+
     /// Lê o arquivo. Se ele não existir, cria com os valores padrão para o usuário poder editar.
     pub fn load() -> Self {
-        let dir = dirs::config_dir().unwrap_or_default().join(APP_DIR);
-        let path = dir.join("settings.json");
+        let path = Self::path();
         if let Ok(text) = std::fs::read_to_string(&path) {
             return serde_json::from_str(&text).unwrap_or_else(|e| {
                 tracing::warn!(
@@ -56,16 +73,21 @@ impl Settings {
             });
         }
         let settings = Self::default();
-        let saved = std::fs::create_dir_all(&dir).and_then(|_| {
+        settings.save();
+        settings
+    }
+
+    pub fn save(&self) {
+        let path = Self::path();
+        let saved = std::fs::create_dir_all(path.parent().unwrap_or(&path)).and_then(|_| {
             std::fs::write(
                 &path,
-                serde_json::to_string_pretty(&settings).unwrap_or_default(),
+                serde_json::to_string_pretty(self).unwrap_or_default(),
             )
         });
         if let Err(e) = saved {
-            tracing::warn!("não foi possível criar {}: {e}", path.display());
+            tracing::warn!("não foi possível gravar {}: {e}", path.display());
         }
-        settings
     }
 }
 
@@ -93,7 +115,27 @@ pub fn init_logging() -> anyhow::Result<WorkerGuard> {
     Ok(guard)
 }
 
-/// Abre a porta, inicia o tick e passa a servir em segundo plano. Retorna a porta aberta.
+/// O que cada requisição recebe: o estado (atrás da trava, A2), os quadros do motor (sem trava)
+/// e se a rede local está liberada.
+#[derive(Clone)]
+pub(crate) struct AppState {
+    hub: Arc<Mutex<hub::Hub>>,
+    frames: Published,
+    allow_lan: watch::Receiver<bool>,
+}
+
+impl AppState {
+    fn lock(&self) -> MutexGuard<'_, hub::Hub> {
+        self.hub.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// Este computador sempre entra; os outros, só com a rede local liberada.
+    fn allowed(&self, address: SocketAddr) -> bool {
+        address.ip().is_loopback() || *self.allow_lan.borrow()
+    }
+}
+
+/// Abre a porta, inicia o motor e as saídas e passa a servir em segundo plano. Retorna a porta aberta.
 /// Precisa ser chamada dentro de um runtime Tokio.
 pub async fn start(settings: &Settings) -> anyhow::Result<u16> {
     let addr = SocketAddr::new(settings.bind, settings.port);
@@ -101,12 +143,27 @@ pub async fn start(settings: &Settings) -> anyhow::Result<u16> {
         .await
         .with_context(|| format!("não foi possível abrir a porta {addr}"))?;
     let port = listener.local_addr()?.port();
+    let hub = hub::Hub::new(settings, port);
+    let state = AppState {
+        frames: hub.frames(),
+        allow_lan: hub.allow_lan.subscribe(),
+        hub: Arc::new(Mutex::new(hub)),
+    };
+    let stats = state.clone();
+    tokio::spawn(async move {
+        let mut every = tokio::time::interval(Duration::from_secs(1));
+        loop {
+            every.tick().await;
+            stats.lock().refresh_stats();
+        }
+    });
     let app = Router::new()
         .route("/ws", get(ws_upgrade))
         .fallback(static_file)
-        .with_state(spawn_tick());
+        .with_state(state);
     tokio::spawn(async move {
-        if let Err(e) = axum::serve(listener, app).await {
+        let service = app.into_make_service_with_connect_info::<SocketAddr>();
+        if let Err(e) = axum::serve(listener, service).await {
             tracing::error!("o servidor parou: {e}");
         }
     });
@@ -114,55 +171,21 @@ pub async fn start(settings: &Settings) -> anyhow::Result<u16> {
     Ok(port)
 }
 
-/// Contador a 50 Hz. Provisório: na F3 vira a thread do motor (`rlc-engine`).
-fn spawn_tick() -> watch::Receiver<u64> {
-    let (tx, rx) = watch::channel(0);
-    thread::spawn(move || {
-        // Prazo absoluto: um atraso num tick é compensado no seguinte, sem deriva.
-        let mut next = Instant::now();
-        loop {
-            next += Duration::from_millis(20);
-            thread::sleep(next.saturating_duration_since(Instant::now()));
-            tx.send_modify(|count| *count += 1);
-        }
-    });
-    rx
-}
-
-async fn ws_upgrade(ws: WebSocketUpgrade, State(ticks): State<watch::Receiver<u64>>) -> Response {
-    ws.on_upgrade(|socket| client(socket, ticks))
-}
-
-async fn client(mut socket: WebSocket, mut ticks: watch::Receiver<u64>) {
-    let hello = json!({ "t": "hello", "v": PROTOCOL_VERSION, "data": {
-        "appVersion": env!("CARGO_PKG_VERSION"),
-        "lanIp": local_ip_address::local_ip().ok(),
-    }});
-    if socket
-        .send(Message::Text(hello.to_string().into()))
-        .await
-        .is_err()
-    {
-        return;
+async fn ws_upgrade(
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+) -> Response {
+    if !state.allowed(address) {
+        return StatusCode::FORBIDDEN.into_response();
     }
-    loop {
-        tokio::select! {
-            changed = ticks.changed() => {
-                if changed.is_err() {
-                    break;
-                }
-                let count = *ticks.borrow_and_update();
-                let msg = json!({ "t": "evt", "topic": "tick", "data": count });
-                if socket.send(Message::Text(msg.to_string().into())).await.is_err() {
-                    break;
-                }
-            }
-            // Na F0 o cliente ainda não envia comandos; aqui só detectamos o fechamento.
-            msg = socket.recv() => if !matches!(msg, Some(Ok(_))) {
-                break;
-            },
-        }
-    }
+    let user_agent = headers
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
+    ws.on_upgrade(move |socket| ws::client(socket, state, address, user_agent))
 }
 
 #[derive(RustEmbed)]
@@ -171,7 +194,18 @@ async fn client(mut socket: WebSocket, mut ticks: watch::Receiver<u64>) {
 struct UiFiles;
 
 /// Arquivos da UI embutidos no binário. Rotas desconhecidas devolvem o `index.html` (SPA).
-async fn static_file(uri: Uri) -> Response {
+async fn static_file(
+    State(state): State<AppState>,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    uri: Uri,
+) -> Response {
+    if !state.allowed(address) {
+        return (
+            StatusCode::FORBIDDEN,
+            "Acesso pela rede local desligado no ⚙ do app.",
+        )
+            .into_response();
+    }
     let path = uri.path().trim_start_matches('/');
     match UiFiles::get(path).or_else(|| UiFiles::get("index.html")) {
         Some(file) => (

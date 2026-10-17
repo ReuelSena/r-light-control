@@ -32,6 +32,18 @@ pub struct Snapshot {
     /// Valores ao vivo dos elementos do console (não são salvos no projeto).
     pub widget_values: Vec<WidgetValue>,
     pub stats: Stats,
+    /// Padrão de teste da saída (página /dev/dmx); por cima da Mesa simples enquanto estiver ligado.
+    pub test_pattern: Option<TestPattern>,
+}
+
+/// Padrões de teste gerados pelo motor em todos os canais, para conferir a saída DMX.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum TestPattern {
+    /// Todos os canais sobem e descem juntos.
+    Ramp,
+    /// A mesma rampa, atrasada canal a canal: uma onda que corre pelos endereços.
+    Chase,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -831,10 +843,10 @@ pub struct RemoteAccess {
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteClient {
+    /// O mesmo id que o cliente recebe no `hello`: é assim que ele se reconhece na lista.
     pub id: Id,
     pub name: String,
     pub address: String,
-    pub this_device: bool,
 }
 
 // ---------- Operações (A2) ----------
@@ -972,6 +984,10 @@ pub enum Op {
     SetRemoteAccess {
         enabled: bool,
         pin: Option<String>,
+    },
+    /// Liga ou desliga o padrão de teste da saída.
+    SetTestPattern {
+        pattern: Option<TestPattern>,
     },
 }
 

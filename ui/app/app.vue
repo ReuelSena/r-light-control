@@ -2,6 +2,8 @@
 type Tauri = { invoke: (cmd: string, args: object) => Promise<unknown> }
 const prefs = usePrefs()
 const route = useRoute()
+const { t } = useI18n()
+const { connected, error } = useEngine()
 
 // Zoom geral (⚙), sempre um zoom de verdade, que mantém medidas, toques, arrastos e balões coerentes
 // (o `zoom` do CSS desalinha os balões):
@@ -53,4 +55,15 @@ onMounted(() => {
 
 <template>
   <NuxtPage />
+  <!-- Sem conexão, as telas ficam cobertas (sem toque) até o servidor voltar -->
+  <div v-if="!connected" class="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4">
+    <p class="panel text-center text-flash">{{ t('connection.lost') }}</p>
+  </div>
+  <p
+    v-if="error"
+    class="panel fixed inset-x-0 bottom-24 z-[60] mx-auto w-fit max-w-[90vw] border-danger! text-sm text-fg"
+    role="alert"
+  >
+    {{ error }}
+  </p>
 </template>

@@ -1,0 +1,6 @@
+[package]
+name = "rlc-dmx"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

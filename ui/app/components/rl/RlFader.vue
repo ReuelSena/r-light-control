@@ -9,7 +9,9 @@ const props = withDefaults(defineProps<{
   cap?: 'silver' | 'red'
 }>(), { default: 0, meter: undefined, meterColor: undefined, cap: 'silver' })
 
-const value = defineModel<number>({ required: true })
+const model = defineModel<number>({ required: true })
+// Otimista sob o dedo: o gesto não espera a volta do servidor
+const value = useOptimistic(model)
 const { t } = useI18n()
 const fine = ref(false)
 const track = ref<HTMLElement>()

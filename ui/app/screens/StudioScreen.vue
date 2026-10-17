@@ -19,11 +19,10 @@ watch(selectedId, () => (confirmRemove.value = false))
 const selected = computed(() => project.value.functions.find((f) => f.id === selectedId.value))
 const running = (id: string) => state.value.running.includes(id)
 const toggleRun = (id: string) => send({ op: 'setFunctionRunning', id, running: !running(id) })
-const newId = () => `f${Date.now().toString(36)}`
 
 // Conteúdo inicial de cada tipo
 function blank(type: FunctionType): Function {
-  const id = newId()
+  const id = uuidv7()
   const folder = null
   const name = t('studio.newName', { type: t(`functionType.${type}`), n: project.value.functions.filter((f) => f.type === type).length + 1 })
   const timing = { fadeInMs: 0, holdMs: 1000, fadeOutMs: 0 }
@@ -63,7 +62,7 @@ async function create(type: FunctionType, withRunning = false) {
 }
 
 async function duplicate() {
-  const copy = { ...JSON.parse(JSON.stringify(selected.value)), id: newId(), name: t('studio.copyName', { name: selected.value!.name }) }
+  const copy = { ...JSON.parse(JSON.stringify(selected.value)), id: uuidv7(), name: t('studio.copyName', { name: selected.value!.name }) }
   await send({ op: 'saveFunction', function: copy })
   selectedId.value = copy.id
 }

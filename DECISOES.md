@@ -33,6 +33,8 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - Importação apenas de fixtures `.qxf` do QLC+, convertidas para o formato próprio.
   - Não há importação de `.qxw`.
 - **E4. Interfaces da v1:** Enttec DMX USB Pro e compatíveis, e Open DMX (FTDI sem microcontrolador). Mais uma saída "Dummy" para desenvolver sem hardware.
+  - **Driver (2026-10-17):** só o D2XX da FTDI, que vem no driver oficial (o Windows instala sozinho). Sem reserva pela porta COM, como no QLC+.
+  - **Modelo:** pelo nome USB, como no QLC+: "DMX USB PRO" é a Pro; o resto é Open DMX. A interface do usuário (genérica, nome "Numbstar") entra como Open DMX.
 - **E5. Recursos da v1:** Cenas, Chasers, Sequências, Coleções, EFX, RGB Matrix, Virtual Console e entrada MIDI.
   - Fora da v1: Show/timeline com áudio, Script, Art-Net/sACN, OSC.
 - **E6. Design inspirado na Soundcraft Ui24R:** escuro, cara de mesa de som, faders grandes, touch-first, operável no navegador.
@@ -120,6 +122,9 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - O projeto tem um único escritor. Cada operação tipada é validada, incrementa a revisão e é difundida a todos os clientes.
   - O servidor é a autoridade. A UI só é otimista no controle que está sob o dedo.
   - **Edição simultânea (2026-10-17):** a última gravação vale, em tudo (inclusive no palco). Não há trava nem mescla.
+  - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acende nada: a saída é a Mesa simples, com o Grand Master e o blackout.
+  - **Sem salvar até a F5 (2026-10-17):** o servidor abre com o show de exemplo; "Novo projeto" funciona, Abrir e Salvar ficam desligados. O que se muda se perde ao fechar o app.
+  - **Blackout (2026-10-17):** como no QLC+, zera só os canais de intensidade (dimmer e cores) e mantém o resto (pan, tilt, gobo), para os moving heads não se mexerem. Canais sem fixture contam como intensidade.
   - **Estado ao vivo não é salvo (2026-10-17):** criações rodando, Mesa simples, valores dos elementos do console e seção master ficam fora do projeto. Ao reabrir, tudo começa parado e zerado, como no QLC+.
   - **Preferências de cada aparelho (2026-10-17):** zoom, formato do console, dicas de atalho, qualidade e fumaça do 3D ficam no navegador de cada aparelho, fora do projeto e do contrato.
 - **A3. Protocolo WebSocket.**
@@ -182,3 +187,6 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-17 | Revisão do contrato v0 e do protocolo: a última gravação vale; IDs UUIDv7 gerados pela UI e conferidos pelo servidor; `evt` com o pedaço do estado que mudou; estado ao vivo não é salvo; preferências por aparelho fora do contrato; PIN só na F11 (A2–A4). |
 | 2026-10-17 | Celular: o zoom de 100% passa a ser 75% da escala do navegador; os outros degraus seguem a mesma proporção (E10). |
 | 2026-10-16 | Celular e tablet: botão de tela cheia na barra de cima e zoom da interface no ⚙ (pela largura do viewport) (E10, E12). |
+| 2026-10-17 | Mini-plano da F3 aprovado: todo o estado no servidor; sem salvar até a F5; só o driver D2XX; blackout como no QLC+ (A2, E4). Interface do usuário: genérica, nome USB "Numbstar", tratada como Open DMX. |
+| 2026-10-17 | F2 validada e concluída, com as telas congeladas em `docs/telas/`. Início da F3 (estudo das referências e mini-plano). |
+| 2026-10-17 | Rodada 1 da F3 entregue: servidor como autoridade, motor a 50 Hz e saída Dummy. Controles otimistas sob o dedo (A2); frame binário com o id do universo (A3). |

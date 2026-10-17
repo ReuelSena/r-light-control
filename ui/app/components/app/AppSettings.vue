@@ -8,7 +8,7 @@ const open = defineModel<boolean>('open', { default: false })
 const { t } = useI18n()
 const prefs = usePrefs()
 const { mode } = useValueFormat()
-const { state, send } = useEngine()
+const { state, send, clientId } = useEngine()
 const wide = useMediaQuery('(min-width: 1024px)')
 // O zoom geral existe no app desktop (zoom nativo da janela) e no celular e no tablet (largura do viewport,
 // no app.vue); no navegador do computador, vale o do navegador
@@ -16,7 +16,9 @@ const zoomable = '__TAURI_INTERNALS__' in window || matchMedia('(pointer: coarse
 const dmx = computed({ get: () => mode.value === 'dmx', set: (on) => (mode.value = on ? 'dmx' : 'percent') })
 const remote = computed(() => state.value.remote)
 const pin = ref(remote.value.pin ?? '')
-const qr = computed(() => (remote.value.enabled && remote.value.lanUrl ? renderSVG(remote.value.lanUrl, { border: 2 }) : ''))
+// Em dev a UI vem do servidor do Nuxt, não do Rust: o celular abre a porta dele
+const lanUrl = computed(() => (import.meta.dev ? remote.value.lanUrl?.replace(/:\d+$/, `:${location.port}`) : remote.value.lanUrl))
+const qr = computed(() => (remote.value.enabled && lanUrl.value ? renderSVG(lanUrl.value, { border: 2 }) : ''))
 </script>
 
 <template>
@@ -60,7 +62,7 @@ const qr = computed(() => (remote.value.enabled && remote.value.lanUrl ? renderS
         <div class="flex flex-col items-start gap-2">
           <!-- eslint-disable-next-line vue/no-v-html -- SVG gerado localmente pelo uqr -->
           <div class="w-32 shrink-0 bg-white" v-html="qr" />
-          <code class="text-sm break-all text-lcd">{{ remote.lanUrl }}</code>
+          <code class="text-sm break-all text-lcd">{{ lanUrl }}</code>
         </div>
       </template>
       <h3 class="heading">{{ t('settings.clients') }}</h3>
@@ -69,7 +71,7 @@ const qr = computed(() => (remote.value.enabled && remote.value.lanUrl ? renderS
           <span class="rl-led" />
           <span class="font-semibold">{{ c.name }}</span>
           <span class="text-fg-muted">{{ c.address }}</span>
-          <span v-if="c.thisDevice" class="text-xs text-fg-dim">· {{ t('settings.thisDevice') }}</span>
+          <span v-if="c.id === clientId" class="text-xs text-fg-dim">· {{ t('settings.thisDevice') }}</span>
         </li>
       </ul>
 

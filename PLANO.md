@@ -89,9 +89,9 @@ Validação:
 - [x] 60 fps no celular.
 - [x] Sem zoom, rolagem ou seleção de texto acidentais.
 
-### F2 — Protótipo navegável de todas as telas · 🟡
+### F2 — Protótipo navegável de todas as telas · ✅
 
-Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-16; rodadas 1, 2 e 3 aprovadas).
+Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-16; rodadas 1, 2 e 3 aprovadas). Concluída e validada pelo usuário em 2026-10-17, com as telas congeladas em [docs/telas/](docs/telas/).
 
 - **Menus (E12):** Console · Fixtures · Studio · Patch · 3D View · Mesa simples · Monitoramento · In/Out, com as Configurações num painel lateral aberto pelo ⚙.
 - **Interface modular (E13):** painéis encaixáveis e redimensionáveis, janelas externas para outros monitores; começa no modo simples.
@@ -106,17 +106,19 @@ Validação:
 - [x] Rodada 1 aprovada.
 - [x] Rodada 2 aprovada.
 - [x] Rodada 3 aprovada.
-- [ ] Todos os fluxos percorridos no desktop, tablet e celular.
-- [ ] Telas aprovadas e congeladas como referência.
+- [x] Todos os fluxos percorridos no desktop, tablet e celular.
+- [x] Telas aprovadas e congeladas como referência.
 
 ## Etapa B — Núcleo
 
-### F3 — Motor base + saída USB DMX · ⬜
+### F3 — Motor base + saída USB DMX · 🟡
+
+Mini-plano: [docs/fases/fase-03.md](docs/fases/fase-03.md) (aprovado em 2026-10-17; rodada 1 entregue e aguardando validação).
 
 - **Motor:** tick, N universos, camada de mesa, Grand Master, blackout e pânico.
 - **`rlc-dmx`:**
   - Enttec Pro (label 6).
-  - Open DMX via D2XX, com fallback por serialport `set_break`.
+  - Open DMX via D2XX (sem reserva pela porta COM, como no QLC+).
   - Dummy.
 - **Dispositivos:** descoberta por VID/PID, hot-plug, estatísticas (fps, jitter, erros).
 - **UI:** telas Dispositivos, Mesa e Monitor DMX ligadas ao motor. Primeiro instalador.
@@ -343,7 +345,7 @@ Validação:
 
 | Risco | Mitigação |
 |---|---|
-| Jitter no Open DMX | Thread TIME_CRITICAL, `timeBeginPeriod`, latency timer de 1–2 ms, medição de jitter na F3, fallback para VCP |
+| Jitter no Open DMX | Thread TIME_CRITICAL, prazo absoluto, medição de jitter na F3 |
 | Semântica diferente do QLC+ | Portar `engine/test` como especificação, relógio determinístico |
 | Sincronização entre vários clientes | Servidor como autoridade, revisões, trava do controle sob o dedo, snapshot ao reconectar |
 | Segurança na rede local | Checagem de Origin, PIN → token, papéis, bind configurável |

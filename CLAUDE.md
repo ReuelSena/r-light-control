@@ -17,15 +17,18 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
 ## Estrutura
 
 - `crates/rlc-core`: contrato de dados (só tipos). `cargo test -p rlc-core` gera os tipos TypeScript em `ui/app/types/generated/` (nunca editar à mão).
-- `crates/rlc-server`: servidor axum (UI embutida + `/ws`), configurações e logs.
+- `crates/rlc-engine`: motor (A1). Thread a 50 Hz com prazo absoluto, que publica o quadro de cada universo sem trava.
+- `crates/rlc-dmx`: saídas DMX, cada interface na sua thread (na rodada 1 da F3, só a Dummy).
+- `crates/rlc-server`: servidor axum (UI embutida + `/ws`), configurações e logs. É a autoridade do estado (A2): `apply.rs` tem as regras de cada operação, `hub.rs` o estado, o motor e as saídas, `ws.rs` a conversa com cada cliente. O show de exemplo é `src/exemplo.json`.
+- `crates/rlc-headless`: o mesmo servidor sem janela (`rlc-headless --port N`), para testes.
 - `app/src-tauri`: casca Tauri. Sobe o servidor, abre a janela e transforma `window.open` em janela nativa (E13).
 - `ui/`: Nuxt 4 em modo SPA (código em `ui/app/`, textos em `ui/i18n/locales/`).
   - `screens/`: telas do app; o registro fica em `utils/screens.ts`. A mesma tela vira página (`pages/[screen].vue`), painel do modo modular (`components/app/AppDock.vue`) ou janela externa (`pages/janela/[screen].vue`).
-  - `composables/useEngine.ts`: a única porta das telas para o motor. `engine/mock.ts` é o motor de mentira da F2. Protocolo em [docs/protocolo.md](docs/protocolo.md).
-  - `utils/functions.ts`: ícones dos tipos de criação e as contas do EFX, do RGB Matrix e dos passos do chaser, usadas pelas prévias do Studio e pela saída simulada.
+  - `composables/useEngine.ts`: a única porta das telas para o motor. `engine/ws.ts` é o cliente WebSocket do servidor. Protocolo em [docs/protocolo.md](docs/protocolo.md). O app só abre com o estado do servidor (`plugins/engine.client.ts`).
+  - `utils/functions.ts`: ícones dos tipos de criação e as contas do EFX, do RGB Matrix e dos passos do chaser, usadas pelas prévias do Studio e pelo console.
   - `utils/console.ts`: formatos e grade do console, tipos de elemento e cópia de layout entre formatos (VC-2). `composables/useConsole.ts`: o que cada elemento faz em operação (toque e teclas).
   - Componentes do design system em `ui/app/components/rl/`; regras de uso em [docs/design-system.md](docs/design-system.md).
-  - Páginas de desenvolvimento em `/dev/*`: catálogo (`showcase`), `faders`, `beams` e `conexao`.
+  - Páginas de desenvolvimento em `/dev/*`: catálogo (`showcase`), `faders`, `beams` e `dmx` (padrões de teste da saída).
 - `docs/`: padrões, design system, protocolo, mini-planos de fase (`docs/fases/`).
 - `reference/qlcplus`: código do QLC+ (tag `QLC+_5.3.0`, fora do git). Só leitura; nunca compilar nem executar.
 
@@ -38,5 +41,5 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
 
 ## Arquivos do usuário (Windows)
 
-- Configurações: `%APPDATA%\r-light-control\settings.json` (porta e bind).
+- Configurações: `%APPDATA%\r-light-control\settings.json` (porta, bind, acesso pela rede local e PIN).
 - Logs: `%LOCALAPPDATA%\r-light-control\logs\`.

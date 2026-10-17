@@ -1,6 +1,6 @@
 # F2 — Protótipo navegável de todas as telas
 
-**Status:** aprovado em 2026-10-16 (E11–E13). Rodada 1 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 2 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 3 aprovada em 2026-10-16, depois dos ajustes da validação.
+**Status:** aprovado em 2026-10-16 (E11–E13). Rodada 1 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 2 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 3 aprovada em 2026-10-16, depois dos ajustes da validação. Fase concluída e validada em 2026-10-17, com as telas congeladas em [`docs/telas/`](../telas/).
 
 **Rodada 3 entregue**
 - **Console, operação:** páginas em abas e os elementos botão, slider (nível em grupos de canais, playback ou submaster; fader ou knob), cue list, XY pad, Tempos (VC-3), moldura (com opção solo), relógio (hora, cronômetro ou contagem), animation (RGB Matrix) e texto. Seção master fixa: Grand Master, Blackout, Stop All e BPM com tap. As teclas definidas nos elementos funcionam.
@@ -249,6 +249,6 @@ Motor, USB, arquivos de verdade (abrir e salvar são simulados) e MIDI de verdad
 - [x] Rodada 1 aprovada (shell modular, janela externa, Fixtures, Patch, In/Out, Configurações).
 - [x] Rodada 2 aprovada (Studio, editores, Mesa simples, Monitoramento).
 - [x] Rodada 3 aprovada (Console em operação e edição, VC-1, VC-2, 3D View).
-- [ ] Todos os fluxos percorridos no desktop, no tablet e no celular.
+- [x] Todos os fluxos percorridos no desktop, no tablet e no celular.
 - [x] Contrato v0 e rascunho do `docs/protocolo.md` revisados (2026-10-17).
-- [ ] Telas congeladas, com prints em `docs/telas/`.
+- [x] Telas congeladas, com prints em `docs/telas/` (2026-10-17).

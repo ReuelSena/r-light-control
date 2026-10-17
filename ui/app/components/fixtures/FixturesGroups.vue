@@ -12,13 +12,13 @@ const channelGroup = computed(() => project.value.channelGroups.find((g) => g.id
 const name = () => t('groups.newName', { n: project.value.fixtureGroups.length + project.value.channelGroups.length + 1 })
 
 async function createFixtureGroup() {
-  const id = `g${Date.now().toString(36)}`
+  const id = uuidv7()
   await send({ op: 'saveFixtureGroup', group: { id, name: name(), width: 4, height: 2, cells: [] } })
   selectedId.value = id
 }
 
 async function createChannelGroup() {
-  const id = `cg${Date.now().toString(36)}`
+  const id = uuidv7()
   await send({ op: 'saveChannelGroup', group: { id, name: name(), channels: [] } })
   selectedId.value = id
 }

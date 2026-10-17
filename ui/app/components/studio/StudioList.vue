@@ -89,7 +89,7 @@ function cancel() {
 
 function saveFolder() {
   const { id, kind, name } = folderDialog.value!
-  send({ op: 'saveFolder', folder: { id: id ?? `d${Date.now().toString(36)}`, kind, name: name.trim() || t('studio.newFolder') } })
+  send({ op: 'saveFolder', folder: { id: id ?? uuidv7(), kind, name: name.trim() || t('studio.newFolder') } })
   folderDialog.value = undefined
 }
 

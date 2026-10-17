@@ -1,0 +1,4832 @@
+{
+ "project": {
+  "name": "Show de exemplo",
+  "universes": [
+   {
+    "id": "u1",
+    "name": "Palco",
+    "output": "dummy"
+   },
+   {
+    "id": "u2",
+    "name": "Fundo",
+    "output": null
+   }
+  ],
+  "fixtureDefs": [
+   {
+    "id": "generico-par-rgbw",
+    "manufacturer": "Genérico",
+    "model": "PAR LED RGBW",
+    "kind": "colorChanger",
+    "channels": [
+     {
+      "name": "Dimmer",
+      "attribute": "dimmer",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Dimmer",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Branco",
+      "attribute": "white",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Branco",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Strobe",
+      "attribute": "shutter",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 9,
+        "name": "Aberto",
+        "color": null
+       },
+       {
+        "min": 10,
+        "max": 255,
+        "name": "Strobe lento → rápido",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Macro de cor",
+      "attribute": "colorMacro",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 9,
+        "name": "Desligado",
+        "color": null
+       },
+       {
+        "min": 10,
+        "max": 39,
+        "name": "Vermelho",
+        "color": "#ff0000"
+       },
+       {
+        "min": 40,
+        "max": 69,
+        "name": "Verde",
+        "color": "#00ff00"
+       },
+       {
+        "min": 70,
+        "max": 99,
+        "name": "Azul",
+        "color": "#0000ff"
+       },
+       {
+        "min": 100,
+        "max": 129,
+        "name": "Branco",
+        "color": "#ffffff"
+       },
+       {
+        "min": 130,
+        "max": 255,
+        "name": "Troca automática",
+        "color": null
+       }
+      ]
+     }
+    ],
+    "modes": [
+     {
+      "name": "7 canais",
+      "channels": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ],
+      "heads": []
+     },
+     {
+      "name": "4 canais (RGBW)",
+      "channels": [
+       1,
+       2,
+       3,
+       4
+      ],
+      "heads": []
+     }
+    ],
+    "physical": {
+     "widthMm": 240,
+     "heightMm": 300,
+     "depthMm": 200,
+     "weightKg": 2.5,
+     "powerW": 60,
+     "lensMinDeg": 25,
+     "lensMaxDeg": 25,
+     "panMaxDeg": 0,
+     "tiltMaxDeg": 0
+    }
+   },
+   {
+    "id": "generico-par-rgb",
+    "manufacturer": "Genérico",
+    "model": "PAR LED RGB",
+    "kind": "colorChanger",
+    "channels": [
+     {
+      "name": "Vermelho",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul",
+        "color": null
+       }
+      ]
+     }
+    ],
+    "modes": [
+     {
+      "name": "3 canais",
+      "channels": [
+       0,
+       1,
+       2
+      ],
+      "heads": []
+     }
+    ],
+    "physical": {
+     "widthMm": 200,
+     "heightMm": 250,
+     "depthMm": 180,
+     "weightKg": 1.8,
+     "powerW": 36,
+     "lensMinDeg": 25,
+     "lensMaxDeg": 25,
+     "panMaxDeg": 0,
+     "tiltMaxDeg": 0
+    }
+   },
+   {
+    "id": "generico-moving-spot",
+    "manufacturer": "Genérico",
+    "model": "Moving Head Spot 150",
+    "kind": "movingHead",
+    "channels": [
+     {
+      "name": "Pan",
+      "attribute": "pan",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Pan",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Pan fino",
+      "attribute": "pan",
+      "fine": true,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Pan fino",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Tilt",
+      "attribute": "tilt",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Tilt",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Tilt fino",
+      "attribute": "tilt",
+      "fine": true,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Tilt fino",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Velocidade P/T",
+      "attribute": "speed",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Rápido → lento",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Dimmer",
+      "attribute": "dimmer",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Dimmer",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Shutter",
+      "attribute": "shutter",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 7,
+        "name": "Fechado",
+        "color": null
+       },
+       {
+        "min": 8,
+        "max": 15,
+        "name": "Aberto",
+        "color": null
+       },
+       {
+        "min": 16,
+        "max": 255,
+        "name": "Strobe lento → rápido",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Roda de cores",
+      "attribute": "colorWheel",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 9,
+        "name": "Branco",
+        "color": "#ffffff"
+       },
+       {
+        "min": 10,
+        "max": 19,
+        "name": "Vermelho",
+        "color": "#ff0000"
+       },
+       {
+        "min": 20,
+        "max": 29,
+        "name": "Laranja",
+        "color": "#ff8000"
+       },
+       {
+        "min": 30,
+        "max": 39,
+        "name": "Amarelo",
+        "color": "#ffff00"
+       },
+       {
+        "min": 40,
+        "max": 49,
+        "name": "Verde",
+        "color": "#00ff00"
+       },
+       {
+        "min": 50,
+        "max": 59,
+        "name": "Azul",
+        "color": "#0000ff"
+       },
+       {
+        "min": 60,
+        "max": 69,
+        "name": "Magenta",
+        "color": "#ff00aa"
+       },
+       {
+        "min": 128,
+        "max": 255,
+        "name": "Rotação",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Gobo",
+      "attribute": "gobo",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 9,
+        "name": "Aberto",
+        "color": null
+       },
+       {
+        "min": 10,
+        "max": 19,
+        "name": "Gobo 1",
+        "color": null
+       },
+       {
+        "min": 20,
+        "max": 29,
+        "name": "Gobo 2",
+        "color": null
+       },
+       {
+        "min": 30,
+        "max": 39,
+        "name": "Gobo 3",
+        "color": null
+       },
+       {
+        "min": 40,
+        "max": 49,
+        "name": "Gobo 4",
+        "color": null
+       },
+       {
+        "min": 50,
+        "max": 59,
+        "name": "Gobo 5",
+        "color": null
+       },
+       {
+        "min": 60,
+        "max": 69,
+        "name": "Gobo 6",
+        "color": null
+       },
+       {
+        "min": 70,
+        "max": 79,
+        "name": "Gobo 7",
+        "color": null
+       },
+       {
+        "min": 128,
+        "max": 255,
+        "name": "Shake",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Rotação do gobo",
+      "attribute": "goboRotation",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Rotação do gobo",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Prisma",
+      "attribute": "prism",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 127,
+        "name": "Desligado",
+        "color": null
+       },
+       {
+        "min": 128,
+        "max": 255,
+        "name": "Prisma 3 faces",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Foco",
+      "attribute": "focus",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Foco",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Zoom",
+      "attribute": "zoom",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Zoom",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Reset",
+      "attribute": "maintenance",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 199,
+        "name": "Nada",
+        "color": null
+       },
+       {
+        "min": 200,
+        "max": 255,
+        "name": "Reset",
+        "color": null
+       }
+      ]
+     }
+    ],
+    "modes": [
+     {
+      "name": "14 canais",
+      "channels": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13
+      ],
+      "heads": []
+     },
+     {
+      "name": "9 canais",
+      "channels": [
+       0,
+       2,
+       4,
+       5,
+       6,
+       7,
+       8,
+       11,
+       12
+      ],
+      "heads": []
+     }
+    ],
+    "physical": {
+     "widthMm": 300,
+     "heightMm": 450,
+     "depthMm": 250,
+     "weightKg": 12,
+     "powerW": 150,
+     "lensMinDeg": 12,
+     "lensMaxDeg": 30,
+     "panMaxDeg": 540,
+     "tiltMaxDeg": 270
+    }
+   },
+   {
+    "id": "generico-barra-8px",
+    "manufacturer": "Genérico",
+    "model": "Barra LED 8 pixels RGB",
+    "kind": "ledBar",
+    "channels": [
+     {
+      "name": "Vermelho 1",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 1",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 1",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 1",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 1",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 1",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho 2",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 2",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 2",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 2",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 2",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 2",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho 3",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 3",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 3",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 3",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 3",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 3",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho 4",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 4",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 4",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 4",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 4",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 4",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho 5",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 5",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 5",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 5",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 5",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 5",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho 6",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 6",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 6",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 6",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 6",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 6",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho 7",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 7",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 7",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 7",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 7",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 7",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Vermelho 8",
+      "attribute": "red",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Vermelho 8",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Verde 8",
+      "attribute": "green",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Verde 8",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Azul 8",
+      "attribute": "blue",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Azul 8",
+        "color": null
+       }
+      ]
+     }
+    ],
+    "modes": [
+     {
+      "name": "24 canais (8 pixels)",
+      "channels": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15,
+       16,
+       17,
+       18,
+       19,
+       20,
+       21,
+       22,
+       23
+      ],
+      "heads": [
+       [
+        0,
+        1,
+        2
+       ],
+       [
+        3,
+        4,
+        5
+       ],
+       [
+        6,
+        7,
+        8
+       ],
+       [
+        9,
+        10,
+        11
+       ],
+       [
+        12,
+        13,
+        14
+       ],
+       [
+        15,
+        16,
+        17
+       ],
+       [
+        18,
+        19,
+        20
+       ],
+       [
+        21,
+        22,
+        23
+       ]
+      ]
+     },
+     {
+      "name": "3 canais (barra inteira)",
+      "channels": [
+       0,
+       1,
+       2
+      ],
+      "heads": [
+       [
+        0,
+        1,
+        2
+       ]
+      ]
+     }
+    ],
+    "physical": {
+     "widthMm": 1000,
+     "heightMm": 80,
+     "depthMm": 80,
+     "weightKg": 3,
+     "powerW": 80,
+     "lensMinDeg": 25,
+     "lensMaxDeg": 25,
+     "panMaxDeg": 0,
+     "tiltMaxDeg": 0
+    }
+   },
+   {
+    "id": "generico-strobe",
+    "manufacturer": "Genérico",
+    "model": "Strobe LED",
+    "kind": "strobe",
+    "channels": [
+     {
+      "name": "Dimmer",
+      "attribute": "dimmer",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Dimmer",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Velocidade",
+      "attribute": "shutter",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Lento → rápido",
+        "color": null
+       }
+      ]
+     }
+    ],
+    "modes": [
+     {
+      "name": "2 canais",
+      "channels": [
+       0,
+       1
+      ],
+      "heads": []
+     }
+    ],
+    "physical": {
+     "widthMm": 400,
+     "heightMm": 200,
+     "depthMm": 150,
+     "weightKg": 3,
+     "powerW": 200,
+     "lensMinDeg": 25,
+     "lensMaxDeg": 25,
+     "panMaxDeg": 0,
+     "tiltMaxDeg": 0
+    }
+   },
+   {
+    "id": "generico-hazer",
+    "manufacturer": "Genérico",
+    "model": "Máquina de haze",
+    "kind": "hazer",
+    "channels": [
+     {
+      "name": "Saída",
+      "attribute": "effect",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 9,
+        "name": "Desligado",
+        "color": null
+       },
+       {
+        "min": 10,
+        "max": 255,
+        "name": "Pouco → muito",
+        "color": null
+       }
+      ]
+     },
+     {
+      "name": "Ventilador",
+      "attribute": "speed",
+      "fine": false,
+      "capabilities": [
+       {
+        "min": 0,
+        "max": 255,
+        "name": "Ventilador",
+        "color": null
+       }
+      ]
+     }
+    ],
+    "modes": [
+     {
+      "name": "2 canais",
+      "channels": [
+       0,
+       1
+      ],
+      "heads": []
+     }
+    ],
+    "physical": {
+     "widthMm": 450,
+     "heightMm": 300,
+     "depthMm": 250,
+     "weightKg": 9,
+     "powerW": 700,
+     "lensMinDeg": 25,
+     "lensMaxDeg": 25,
+     "panMaxDeg": 0,
+     "tiltMaxDeg": 0
+    }
+   }
+  ],
+  "fixtures": [
+   {
+    "id": "par1",
+    "defId": "generico-par-rgbw",
+    "mode": "7 canais",
+    "name": "PAR 1",
+    "color": "#ff8000",
+    "universe": "u1",
+    "address": 1
+   },
+   {
+    "id": "par2",
+    "defId": "generico-par-rgbw",
+    "mode": "7 canais",
+    "name": "PAR 2",
+    "color": "#ff8000",
+    "universe": "u1",
+    "address": 8
+   },
+   {
+    "id": "par3",
+    "defId": "generico-par-rgbw",
+    "mode": "7 canais",
+    "name": "PAR 3",
+    "color": "#ff8000",
+    "universe": "u1",
+    "address": 15
+   },
+   {
+    "id": "par4",
+    "defId": "generico-par-rgbw",
+    "mode": "7 canais",
+    "name": "PAR 4",
+    "color": "#ff8000",
+    "universe": "u1",
+    "address": 22
+   },
+   {
+    "id": "par5",
+    "defId": "generico-par-rgbw",
+    "mode": "7 canais",
+    "name": "PAR 5",
+    "color": "#ff8000",
+    "universe": "u1",
+    "address": 29
+   },
+   {
+    "id": "par6",
+    "defId": "generico-par-rgbw",
+    "mode": "7 canais",
+    "name": "PAR 6",
+    "color": "#ff8000",
+    "universe": "u1",
+    "address": 36
+   },
+   {
+    "id": "par7",
+    "defId": "generico-par-rgb",
+    "mode": "3 canais",
+    "name": "PAR 7",
+    "color": "#ff00aa",
+    "universe": "u1",
+    "address": 41
+   },
+   {
+    "id": "mh1",
+    "defId": "generico-moving-spot",
+    "mode": "14 canais",
+    "name": "MH 1",
+    "color": "#00bfff",
+    "universe": "u1",
+    "address": 101
+   },
+   {
+    "id": "mh2",
+    "defId": "generico-moving-spot",
+    "mode": "14 canais",
+    "name": "MH 2",
+    "color": "#00bfff",
+    "universe": "u1",
+    "address": 115
+   },
+   {
+    "id": "mh3",
+    "defId": "generico-moving-spot",
+    "mode": "14 canais",
+    "name": "MH 3",
+    "color": "#00bfff",
+    "universe": "u1",
+    "address": 129
+   },
+   {
+    "id": "mh4",
+    "defId": "generico-moving-spot",
+    "mode": "14 canais",
+    "name": "MH 4",
+    "color": "#00bfff",
+    "universe": "u1",
+    "address": 143
+   },
+   {
+    "id": "strobe",
+    "defId": "generico-strobe",
+    "mode": "2 canais",
+    "name": "Strobe",
+    "color": "#ffffff",
+    "universe": "u1",
+    "address": 200
+   },
+   {
+    "id": "hazer",
+    "defId": "generico-hazer",
+    "mode": "2 canais",
+    "name": "Haze",
+    "color": "#00ff00",
+    "universe": "u1",
+    "address": 210
+   },
+   {
+    "id": "barra1",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 1",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 1
+   },
+   {
+    "id": "barra2",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 2",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 25
+   }
+  ],
+  "fixtureGroups": [
+   {
+    "id": "g1",
+    "name": "PARs frente",
+    "width": 6,
+    "height": 1,
+    "cells": [
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "par1",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "par2",
+      "head": 0
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "par3",
+      "head": 0
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "par4",
+      "head": 0
+     },
+     {
+      "x": 4,
+      "y": 0,
+      "fixture": "par5",
+      "head": 0
+     },
+     {
+      "x": 5,
+      "y": 0,
+      "fixture": "par6",
+      "head": 0
+     }
+    ]
+   },
+   {
+    "id": "g2",
+    "name": "Barras LED",
+    "width": 8,
+    "height": 2,
+    "cells": [
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 7
+     }
+    ]
+   }
+  ],
+  "channelGroups": [
+   {
+    "id": "cg1",
+    "name": "Dimmer PARs",
+    "channels": [
+     {
+      "fixture": "par1",
+      "channel": 0
+     },
+     {
+      "fixture": "par2",
+      "channel": 0
+     },
+     {
+      "fixture": "par3",
+      "channel": 0
+     },
+     {
+      "fixture": "par4",
+      "channel": 0
+     },
+     {
+      "fixture": "par5",
+      "channel": 0
+     },
+     {
+      "fixture": "par6",
+      "channel": 0
+     }
+    ]
+   },
+   {
+    "id": "cg2",
+    "name": "Vermelho geral",
+    "channels": [
+     {
+      "fixture": "par1",
+      "channel": 1
+     },
+     {
+      "fixture": "par2",
+      "channel": 1
+     },
+     {
+      "fixture": "par3",
+      "channel": 1
+     },
+     {
+      "fixture": "par4",
+      "channel": 1
+     },
+     {
+      "fixture": "par5",
+      "channel": 1
+     },
+     {
+      "fixture": "par6",
+      "channel": 1
+     },
+     {
+      "fixture": "par7",
+      "channel": 0
+     }
+    ]
+   },
+   {
+    "id": "cg3",
+    "name": "RGB PARs",
+    "channels": [
+     {
+      "fixture": "par1",
+      "channel": 1
+     },
+     {
+      "fixture": "par1",
+      "channel": 2
+     },
+     {
+      "fixture": "par1",
+      "channel": 3
+     },
+     {
+      "fixture": "par2",
+      "channel": 1
+     },
+     {
+      "fixture": "par2",
+      "channel": 2
+     },
+     {
+      "fixture": "par2",
+      "channel": 3
+     },
+     {
+      "fixture": "par3",
+      "channel": 1
+     },
+     {
+      "fixture": "par3",
+      "channel": 2
+     },
+     {
+      "fixture": "par3",
+      "channel": 3
+     },
+     {
+      "fixture": "par4",
+      "channel": 1
+     },
+     {
+      "fixture": "par4",
+      "channel": 2
+     },
+     {
+      "fixture": "par4",
+      "channel": 3
+     },
+     {
+      "fixture": "par5",
+      "channel": 1
+     },
+     {
+      "fixture": "par5",
+      "channel": 2
+     },
+     {
+      "fixture": "par5",
+      "channel": 3
+     },
+     {
+      "fixture": "par6",
+      "channel": 1
+     },
+     {
+      "fixture": "par6",
+      "channel": 2
+     },
+     {
+      "fixture": "par6",
+      "channel": 3
+     }
+    ]
+   },
+   {
+    "id": "cg4",
+    "name": "Pan/Tilt MHs",
+    "channels": [
+     {
+      "fixture": "mh1",
+      "channel": 0
+     },
+     {
+      "fixture": "mh1",
+      "channel": 2
+     },
+     {
+      "fixture": "mh2",
+      "channel": 0
+     },
+     {
+      "fixture": "mh2",
+      "channel": 2
+     },
+     {
+      "fixture": "mh3",
+      "channel": 0
+     },
+     {
+      "fixture": "mh3",
+      "channel": 2
+     },
+     {
+      "fixture": "mh4",
+      "channel": 0
+     },
+     {
+      "fixture": "mh4",
+      "channel": 2
+     }
+    ]
+   },
+   {
+    "id": "cg5",
+    "name": "Strobe e haze",
+    "channels": [
+     {
+      "fixture": "strobe",
+      "channel": 0
+     },
+     {
+      "fixture": "hazer",
+      "channel": 0
+     }
+    ]
+   }
+  ],
+  "functions": [
+   {
+    "id": "s1",
+    "name": "Frente âmbar",
+    "folder": "d1",
+    "type": "scene",
+    "values": [
+     {
+      "fixture": "par1",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par1",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par1",
+      "channel": 2,
+      "value": 140
+     },
+     {
+      "fixture": "par2",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par2",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par2",
+      "channel": 2,
+      "value": 140
+     },
+     {
+      "fixture": "par3",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par3",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par3",
+      "channel": 2,
+      "value": 140
+     },
+     {
+      "fixture": "par4",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par4",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par4",
+      "channel": 2,
+      "value": 140
+     },
+     {
+      "fixture": "par5",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par5",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par5",
+      "channel": 2,
+      "value": 140
+     },
+     {
+      "fixture": "par6",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par6",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par6",
+      "channel": 2,
+      "value": 140
+     }
+    ],
+    "channelGroups": [
+     {
+      "group": "cg1",
+      "value": 255
+     }
+    ],
+    "fadeInMs": 1000,
+    "fadeOutMs": 1000
+   },
+   {
+    "id": "s2",
+    "name": "Frente azul",
+    "folder": "d1",
+    "type": "scene",
+    "values": [
+     {
+      "fixture": "par1",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par1",
+      "channel": 3,
+      "value": 255
+     },
+     {
+      "fixture": "par2",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par2",
+      "channel": 3,
+      "value": 255
+     },
+     {
+      "fixture": "par3",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par3",
+      "channel": 3,
+      "value": 255
+     },
+     {
+      "fixture": "par4",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par4",
+      "channel": 3,
+      "value": 255
+     },
+     {
+      "fixture": "par5",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par5",
+      "channel": 3,
+      "value": 255
+     },
+     {
+      "fixture": "par6",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par6",
+      "channel": 3,
+      "value": 255
+     }
+    ],
+    "channelGroups": [
+     {
+      "group": "cg1",
+      "value": 255
+     }
+    ],
+    "fadeInMs": 1000,
+    "fadeOutMs": 1000
+   },
+   {
+    "id": "s3",
+    "name": "Frente vermelha",
+    "folder": "d1",
+    "type": "scene",
+    "values": [
+     {
+      "fixture": "par1",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par1",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par2",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par2",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par3",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par3",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par4",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par4",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par5",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par5",
+      "channel": 1,
+      "value": 255
+     },
+     {
+      "fixture": "par6",
+      "channel": 0,
+      "value": 255
+     },
+     {
+      "fixture": "par6",
+      "channel": 1,
+      "value": 255
+     }
+    ],
+    "channelGroups": [
+     {
+      "group": "cg1",
+      "value": 255
+     }
+    ],
+    "fadeInMs": 1000,
+    "fadeOutMs": 1000
+   },
+   {
+    "id": "s4",
+    "name": "MHs no centro",
+    "folder": null,
+    "type": "scene",
+    "values": [
+     {
+      "fixture": "mh1",
+      "channel": 0,
+      "value": 128
+     },
+     {
+      "fixture": "mh1",
+      "channel": 2,
+      "value": 128
+     },
+     {
+      "fixture": "mh1",
+      "channel": 5,
+      "value": 255
+     },
+     {
+      "fixture": "mh1",
+      "channel": 6,
+      "value": 10
+     },
+     {
+      "fixture": "mh1",
+      "channel": 12,
+      "value": 100
+     },
+     {
+      "fixture": "mh2",
+      "channel": 0,
+      "value": 128
+     },
+     {
+      "fixture": "mh2",
+      "channel": 2,
+      "value": 128
+     },
+     {
+      "fixture": "mh2",
+      "channel": 5,
+      "value": 255
+     },
+     {
+      "fixture": "mh2",
+      "channel": 6,
+      "value": 10
+     },
+     {
+      "fixture": "mh2",
+      "channel": 12,
+      "value": 100
+     },
+     {
+      "fixture": "mh3",
+      "channel": 0,
+      "value": 128
+     },
+     {
+      "fixture": "mh3",
+      "channel": 2,
+      "value": 128
+     },
+     {
+      "fixture": "mh3",
+      "channel": 5,
+      "value": 255
+     },
+     {
+      "fixture": "mh3",
+      "channel": 6,
+      "value": 10
+     },
+     {
+      "fixture": "mh3",
+      "channel": 12,
+      "value": 100
+     },
+     {
+      "fixture": "mh4",
+      "channel": 0,
+      "value": 128
+     },
+     {
+      "fixture": "mh4",
+      "channel": 2,
+      "value": 128
+     },
+     {
+      "fixture": "mh4",
+      "channel": 5,
+      "value": 255
+     },
+     {
+      "fixture": "mh4",
+      "channel": 6,
+      "value": 10
+     },
+     {
+      "fixture": "mh4",
+      "channel": 12,
+      "value": 100
+     }
+    ],
+    "channelGroups": [],
+    "fadeInMs": 1000,
+    "fadeOutMs": 1000
+   },
+   {
+    "id": "s5",
+    "name": "Haze leve",
+    "folder": null,
+    "type": "scene",
+    "values": [
+     {
+      "fixture": "hazer",
+      "channel": 0,
+      "value": 80
+     },
+     {
+      "fixture": "hazer",
+      "channel": 1,
+      "value": 120
+     }
+    ],
+    "channelGroups": [],
+    "fadeInMs": 1000,
+    "fadeOutMs": 1000
+   },
+   {
+    "id": "c1",
+    "name": "Troca de cores",
+    "folder": null,
+    "type": "chaser",
+    "scene": null,
+    "runOrder": "loop",
+    "direction": "forward",
+    "beats": false,
+    "fadeInMode": "perStep",
+    "holdMode": "perStep",
+    "fadeOutMode": "default",
+    "common": {
+     "fadeInMs": 500,
+     "holdMs": 2000,
+     "fadeOutMs": 0
+    },
+    "steps": [
+     {
+      "function": "s1",
+      "timing": {
+       "fadeInMs": 1000,
+       "holdMs": 2000,
+       "fadeOutMs": 0
+      },
+      "note": "",
+      "values": []
+     },
+     {
+      "function": "s2",
+      "timing": {
+       "fadeInMs": 1000,
+       "holdMs": 2000,
+       "fadeOutMs": 0
+      },
+      "note": "",
+      "values": []
+     },
+     {
+      "function": "s3",
+      "timing": {
+       "fadeInMs": 1000,
+       "holdMs": 2000,
+       "fadeOutMs": 0
+      },
+      "note": "",
+      "values": []
+     }
+    ]
+   },
+   {
+    "id": "q1",
+    "name": "Subida da frente",
+    "folder": null,
+    "type": "sequence",
+    "scene": "s1",
+    "runOrder": "pingPong",
+    "direction": "forward",
+    "beats": false,
+    "fadeInMode": "common",
+    "holdMode": "common",
+    "fadeOutMode": "common",
+    "common": {
+     "fadeInMs": 800,
+     "holdMs": 400,
+     "fadeOutMs": 0
+    },
+    "steps": [
+     {
+      "function": "s1",
+      "timing": {
+       "fadeInMs": 800,
+       "holdMs": 400,
+       "fadeOutMs": 0
+      },
+      "note": "25%",
+      "values": [
+       {
+        "fixture": "par1",
+        "channel": 0,
+        "value": 64
+       },
+       {
+        "fixture": "par1",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par1",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par2",
+        "channel": 0,
+        "value": 64
+       },
+       {
+        "fixture": "par2",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par2",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par3",
+        "channel": 0,
+        "value": 64
+       },
+       {
+        "fixture": "par3",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par3",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par4",
+        "channel": 0,
+        "value": 64
+       },
+       {
+        "fixture": "par4",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par4",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par5",
+        "channel": 0,
+        "value": 64
+       },
+       {
+        "fixture": "par5",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par5",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par6",
+        "channel": 0,
+        "value": 64
+       },
+       {
+        "fixture": "par6",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par6",
+        "channel": 2,
+        "value": 140
+       }
+      ]
+     },
+     {
+      "function": "s1",
+      "timing": {
+       "fadeInMs": 800,
+       "holdMs": 400,
+       "fadeOutMs": 0
+      },
+      "note": "50%",
+      "values": [
+       {
+        "fixture": "par1",
+        "channel": 0,
+        "value": 128
+       },
+       {
+        "fixture": "par1",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par1",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par2",
+        "channel": 0,
+        "value": 128
+       },
+       {
+        "fixture": "par2",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par2",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par3",
+        "channel": 0,
+        "value": 128
+       },
+       {
+        "fixture": "par3",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par3",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par4",
+        "channel": 0,
+        "value": 128
+       },
+       {
+        "fixture": "par4",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par4",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par5",
+        "channel": 0,
+        "value": 128
+       },
+       {
+        "fixture": "par5",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par5",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par6",
+        "channel": 0,
+        "value": 128
+       },
+       {
+        "fixture": "par6",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par6",
+        "channel": 2,
+        "value": 140
+       }
+      ]
+     },
+     {
+      "function": "s1",
+      "timing": {
+       "fadeInMs": 800,
+       "holdMs": 400,
+       "fadeOutMs": 0
+      },
+      "note": "100%",
+      "values": [
+       {
+        "fixture": "par1",
+        "channel": 0,
+        "value": 255
+       },
+       {
+        "fixture": "par1",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par1",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par2",
+        "channel": 0,
+        "value": 255
+       },
+       {
+        "fixture": "par2",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par2",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par3",
+        "channel": 0,
+        "value": 255
+       },
+       {
+        "fixture": "par3",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par3",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par4",
+        "channel": 0,
+        "value": 255
+       },
+       {
+        "fixture": "par4",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par4",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par5",
+        "channel": 0,
+        "value": 255
+       },
+       {
+        "fixture": "par5",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par5",
+        "channel": 2,
+        "value": 140
+       },
+       {
+        "fixture": "par6",
+        "channel": 0,
+        "value": 255
+       },
+       {
+        "fixture": "par6",
+        "channel": 1,
+        "value": 255
+       },
+       {
+        "fixture": "par6",
+        "channel": 2,
+        "value": 140
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "k1",
+    "name": "Abertura",
+    "folder": null,
+    "type": "collection",
+    "functions": [
+     "c1",
+     "s4",
+     "e1",
+     "s5"
+    ]
+   },
+   {
+    "id": "e1",
+    "name": "Círculo nos MHs",
+    "folder": null,
+    "type": "efx",
+    "algorithm": "circle",
+    "width": 64,
+    "height": 64,
+    "xOffset": 128,
+    "yOffset": 128,
+    "rotation": 0,
+    "xFrequency": 2,
+    "yFrequency": 3,
+    "xPhase": 90,
+    "yPhase": 0,
+    "relative": false,
+    "propagation": "asymmetric",
+    "fixtures": [
+     {
+      "fixture": "mh1",
+      "reverse": false,
+      "startOffset": 0
+     },
+     {
+      "fixture": "mh2",
+      "reverse": false,
+      "startOffset": 0
+     },
+     {
+      "fixture": "mh3",
+      "reverse": false,
+      "startOffset": 0
+     },
+     {
+      "fixture": "mh4",
+      "reverse": false,
+      "startOffset": 0
+     }
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 4000,
+     "fadeOutMs": 0
+    }
+   },
+   {
+    "id": "r1",
+    "name": "Degradê nas barras",
+    "folder": null,
+    "type": "rgbMatrix",
+    "group": "g2",
+    "algorithm": "gradient",
+    "colors": [
+     "#ff0000",
+     "#0000ff"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 200,
+     "fadeOutMs": 0
+    }
+   },
+   {
+    "id": "r2",
+    "name": "Perseguição nos PARs",
+    "folder": null,
+    "type": "rgbMatrix",
+    "group": "g1",
+    "algorithm": "chase",
+    "colors": [
+     "#ffbf00",
+     "#000000"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 250,
+     "fadeOutMs": 0
+    }
+   }
+  ],
+  "folders": [
+   {
+    "id": "d1",
+    "name": "Frente",
+    "kind": "scene"
+   }
+  ],
+  "console": {
+   "pages": [
+    {
+     "id": "p1",
+     "name": "Show"
+    },
+    {
+     "id": "p2",
+     "name": "Efeitos"
+    }
+   ],
+   "widgets": [
+    {
+     "id": "fr1",
+     "page": "p1",
+     "frame": null,
+     "caption": "Frente",
+     "color": "#ff8000",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 0,
+       "w": 16,
+       "h": 13
+      },
+      "tablet": {
+       "x": 0,
+       "y": 0,
+       "w": 16,
+       "h": 13
+      },
+      "desktop": {
+       "x": 0,
+       "y": 0,
+       "w": 16,
+       "h": 13
+      }
+     },
+     "inputs": [],
+     "type": "frame",
+     "solo": true
+    },
+    {
+     "id": "b1",
+     "page": "p1",
+     "frame": "fr1",
+     "caption": "Âmbar",
+     "color": "#ffbf00",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 0,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 0,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [
+      {
+       "control": "main",
+       "midi": null,
+       "key": "1"
+      }
+     ],
+     "type": "button",
+     "action": "function",
+     "function": "s1",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b2",
+     "page": "p1",
+     "frame": "fr1",
+     "caption": "Azul",
+     "color": "#0080ff",
+     "layouts": {
+      "phone": {
+       "x": 4,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 4,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 4,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [
+      {
+       "control": "main",
+       "midi": null,
+       "key": "2"
+      }
+     ],
+     "type": "button",
+     "action": "function",
+     "function": "s2",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b3",
+     "page": "p1",
+     "frame": "fr1",
+     "caption": "Vermelha",
+     "color": "#ff0000",
+     "layouts": {
+      "phone": {
+       "x": 8,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 8,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 8,
+       "y": 1,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [
+      {
+       "control": "main",
+       "midi": null,
+       "key": "3"
+      }
+     ],
+     "type": "button",
+     "action": "function",
+     "function": "s3",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b4",
+     "page": "p1",
+     "frame": "fr1",
+     "caption": "Apagar PARs",
+     "color": "#ff0000",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 5,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 0,
+       "y": 5,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 0,
+       "y": 5,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "blackoutFixtures",
+     "function": null,
+     "fixtures": [],
+     "groups": [
+      "g1"
+     ],
+     "mode": "toggle",
+     "highlight": "led",
+     "icon": "LightbulbOff"
+    },
+    {
+     "id": "sl1",
+     "page": "p1",
+     "frame": "fr1",
+     "caption": "Sub frente",
+     "color": "#ff8000",
+     "layouts": {
+      "phone": {
+       "x": 12,
+       "y": 1,
+       "w": 4,
+       "h": 12
+      },
+      "tablet": {
+       "x": 12,
+       "y": 1,
+       "w": 4,
+       "h": 12
+      },
+      "desktop": {
+       "x": 12,
+       "y": 1,
+       "w": 4,
+       "h": 12
+      }
+     },
+     "inputs": [],
+     "type": "slider",
+     "mode": "submaster",
+     "channelGroups": [],
+     "function": null,
+     "knob": false
+    },
+    {
+     "id": "b6",
+     "page": "p1",
+     "frame": null,
+     "caption": "Troca de cores",
+     "color": "#ff00aa",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 13,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 16,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 16,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [
+      {
+       "control": "main",
+       "midi": {
+        "device": "m1",
+        "channel": 1,
+        "message": "note",
+        "number": 36,
+        "feedback": true
+       },
+       "key": null
+      }
+     ],
+     "type": "button",
+     "action": "function",
+     "function": "c1",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b7",
+     "page": "p1",
+     "frame": null,
+     "caption": "Círculo",
+     "color": "#00bfff",
+     "layouts": {
+      "phone": {
+       "x": 4,
+       "y": 13,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 20,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 20,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "e1",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b8",
+     "page": "p1",
+     "frame": null,
+     "caption": "Degradê",
+     "color": "#8000ff",
+     "layouts": {
+      "phone": {
+       "x": 8,
+       "y": 13,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 24,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 24,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "r1",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b9",
+     "page": "p1",
+     "frame": null,
+     "caption": "Perseguição",
+     "color": "#ffbf00",
+     "layouts": {
+      "phone": {
+       "x": 12,
+       "y": 13,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 28,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 28,
+       "y": 0,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "r2",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b10",
+     "page": "p1",
+     "frame": null,
+     "caption": "Abertura",
+     "color": "#ff8000",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 29,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 0,
+       "y": 13,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 16,
+       "y": 4,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "k1",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "led",
+     "icon": null
+    },
+    {
+     "id": "b11",
+     "page": "p1",
+     "frame": null,
+     "caption": "Haze",
+     "color": "#00ff00",
+     "layouts": {
+      "phone": {
+       "x": 4,
+       "y": 29,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 4,
+       "y": 13,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 20,
+       "y": 4,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [
+      {
+       "control": "main",
+       "midi": null,
+       "key": "H"
+      }
+     ],
+     "type": "button",
+     "action": "function",
+     "function": "s5",
+     "fixtures": [],
+     "groups": [],
+     "mode": "flash",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b12",
+     "page": "p1",
+     "frame": null,
+     "caption": "Parar tudo",
+     "color": "#ff0000",
+     "layouts": {
+      "phone": {
+       "x": 8,
+       "y": 29,
+       "w": 4,
+       "h": 4
+      },
+      "tablet": {
+       "x": 8,
+       "y": 13,
+       "w": 4,
+       "h": 4
+      },
+      "desktop": {
+       "x": 24,
+       "y": 4,
+       "w": 4,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "stopAll",
+     "function": null,
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": "OctagonX"
+    },
+    {
+     "id": "sl2",
+     "page": "p1",
+     "frame": null,
+     "caption": "Dimmer PARs",
+     "color": "#ffbf00",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 17,
+       "w": 4,
+       "h": 12
+      },
+      "tablet": {
+       "x": 16,
+       "y": 4,
+       "w": 4,
+       "h": 12
+      },
+      "desktop": {
+       "x": 32,
+       "y": 0,
+       "w": 4,
+       "h": 12
+      }
+     },
+     "inputs": [
+      {
+       "control": "main",
+       "midi": {
+        "device": "m1",
+        "channel": 1,
+        "message": "controlChange",
+        "number": 21,
+        "feedback": true
+       },
+       "key": null
+      }
+     ],
+     "type": "slider",
+     "mode": "level",
+     "channelGroups": [
+      "cg1"
+     ],
+     "function": null,
+     "knob": false
+    },
+    {
+     "id": "sl3",
+     "page": "p1",
+     "frame": null,
+     "caption": "MHs centro",
+     "color": "#00bfff",
+     "layouts": {
+      "phone": {
+       "x": 4,
+       "y": 17,
+       "w": 4,
+       "h": 12
+      },
+      "tablet": {
+       "x": 20,
+       "y": 4,
+       "w": 4,
+       "h": 12
+      },
+      "desktop": {
+       "x": 36,
+       "y": 0,
+       "w": 4,
+       "h": 12
+      }
+     },
+     "inputs": [],
+     "type": "slider",
+     "mode": "playback",
+     "channelGroups": [],
+     "function": "s4",
+     "knob": false
+    },
+    {
+     "id": "xy1",
+     "page": "p1",
+     "frame": null,
+     "caption": "Posição MHs",
+     "color": "#00bfff",
+     "layouts": {
+      "phone": {
+       "x": 8,
+       "y": 17,
+       "w": 8,
+       "h": 12
+      },
+      "tablet": {
+       "x": 24,
+       "y": 4,
+       "w": 8,
+       "h": 12
+      },
+      "desktop": {
+       "x": 40,
+       "y": 0,
+       "w": 8,
+       "h": 12
+      }
+     },
+     "inputs": [],
+     "type": "xyPad",
+     "fixtures": [
+      "mh1",
+      "mh2",
+      "mh3",
+      "mh4"
+     ]
+    },
+    {
+     "id": "sd1",
+     "page": "p1",
+     "frame": null,
+     "caption": "Fades da frente",
+     "color": "#ffff00",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 33,
+       "w": 12,
+       "h": 8
+      },
+      "tablet": {
+       "x": 12,
+       "y": 16,
+       "w": 12,
+       "h": 8
+      },
+      "desktop": {
+       "x": 16,
+       "y": 8,
+       "w": 12,
+       "h": 8
+      }
+     },
+     "inputs": [],
+     "type": "speedDial",
+     "functions": [
+      "s1",
+      "s2",
+      "s3"
+     ],
+     "fadeIn": true,
+     "fadeOut": true,
+     "hold": false
+    },
+    {
+     "id": "cl1",
+     "page": "p1",
+     "frame": null,
+     "caption": "Troca de cores",
+     "color": "#ff00aa",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 45,
+       "w": 16,
+       "h": 12
+      },
+      "tablet": {
+       "x": 0,
+       "y": 24,
+       "w": 16,
+       "h": 12
+      },
+      "desktop": {
+       "x": 0,
+       "y": 13,
+       "w": 16,
+       "h": 12
+      }
+     },
+     "inputs": [
+      {
+       "control": "previous",
+       "midi": null,
+       "key": "ArrowLeft"
+      },
+      {
+       "control": "next",
+       "midi": null,
+       "key": "ArrowRight"
+      }
+     ],
+     "type": "cueList",
+     "chaser": "c1"
+    },
+    {
+     "id": "ck1",
+     "page": "p1",
+     "frame": null,
+     "caption": "Relógio",
+     "color": "#00ffff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 41,
+       "w": 8,
+       "h": 4
+      },
+      "tablet": {
+       "x": 24,
+       "y": 16,
+       "w": 8,
+       "h": 4
+      },
+      "desktop": {
+       "x": 28,
+       "y": 12,
+       "w": 8,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "clock",
+     "mode": "clock",
+     "countdownS": 0
+    },
+    {
+     "id": "lb1",
+     "page": "p1",
+     "frame": null,
+     "caption": "Palco",
+     "color": "#ff8000",
+     "layouts": {
+      "phone": {
+       "x": 8,
+       "y": 41,
+       "w": 8,
+       "h": 3
+      },
+      "tablet": {
+       "x": 0,
+       "y": 17,
+       "w": 8,
+       "h": 3
+      },
+      "desktop": {
+       "x": 40,
+       "y": 12,
+       "w": 8,
+       "h": 3
+      }
+     },
+     "inputs": [],
+     "type": "label",
+     "background": "#402000",
+     "border": "#ff8000"
+    },
+    {
+     "id": "an1",
+     "page": "p2",
+     "frame": null,
+     "caption": "Barras",
+     "color": "#8000ff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "tablet": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "desktop": {
+       "x": 0,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      }
+     },
+     "inputs": [],
+     "type": "animation",
+     "matrix": "r1"
+    },
+    {
+     "id": "an2",
+     "page": "p2",
+     "frame": null,
+     "caption": "PARs",
+     "color": "#ffbf00",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 12,
+       "w": 12,
+       "h": 12
+      },
+      "tablet": {
+       "x": 12,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      },
+      "desktop": {
+       "x": 12,
+       "y": 0,
+       "w": 12,
+       "h": 12
+      }
+     },
+     "inputs": [],
+     "type": "animation",
+     "matrix": "r2"
+    },
+    {
+     "id": "cl2",
+     "page": "p2",
+     "frame": null,
+     "caption": "Subida da frente",
+     "color": "#ff8000",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 24,
+       "w": 16,
+       "h": 12
+      },
+      "tablet": {
+       "x": 0,
+       "y": 12,
+       "w": 16,
+       "h": 12
+      },
+      "desktop": {
+       "x": 24,
+       "y": 0,
+       "w": 16,
+       "h": 12
+      }
+     },
+     "inputs": [],
+     "type": "cueList",
+     "chaser": "q1"
+    },
+    {
+     "id": "ck2",
+     "page": "p2",
+     "frame": null,
+     "caption": "Cronômetro",
+     "color": "#00ffff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 36,
+       "w": 8,
+       "h": 4
+      },
+      "tablet": {
+       "x": 24,
+       "y": 0,
+       "w": 8,
+       "h": 4
+      },
+      "desktop": {
+       "x": 40,
+       "y": 0,
+       "w": 8,
+       "h": 4
+      }
+     },
+     "inputs": [],
+     "type": "clock",
+     "mode": "stopwatch",
+     "countdownS": 0
+    }
+   ]
+  },
+  "stage": {
+   "width": 10,
+   "depth": 8,
+   "height": 6,
+   "fixtures": [
+    {
+     "fixture": "par1",
+     "x": -3.75,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 35,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "par2",
+     "x": -2.25,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 35,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "par3",
+     "x": -0.75,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 35,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "par4",
+     "x": 0.75,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 35,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "par5",
+     "x": 2.25,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 35,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "par6",
+     "x": 3.75,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 35,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "par7",
+     "x": 0,
+     "y": 0.2,
+     "z": -3.6,
+     "rotationX": 165,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "mh1",
+     "x": -3,
+     "y": 5,
+     "z": -2,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "mh2",
+     "x": -1,
+     "y": 5,
+     "z": -2,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "mh3",
+     "x": 1,
+     "y": 5,
+     "z": -2,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "mh4",
+     "x": 3,
+     "y": 5,
+     "z": -2,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "strobe",
+     "x": 0,
+     "y": 5,
+     "z": 0.5,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "hazer",
+     "x": 4,
+     "y": 0,
+     "z": -3.5,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "barra1",
+     "x": -2.5,
+     "y": 0.1,
+     "z": -3.8,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "fixture": "barra2",
+     "x": 2.5,
+     "y": 0.1,
+     "z": -3.8,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    }
+   ],
+   "elements": [
+    {
+     "id": "t1",
+     "kind": "truss300",
+     "x": -3,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "t4",
+     "kind": "truss300",
+     "x": -3,
+     "y": 5,
+     "z": -2,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "t2",
+     "kind": "truss300",
+     "x": 0,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "t5",
+     "kind": "truss300",
+     "x": 0,
+     "y": 5,
+     "z": -2,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "t3",
+     "kind": "truss300",
+     "x": 3,
+     "y": 4.5,
+     "z": 2.5,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "t6",
+     "kind": "truss300",
+     "x": 3,
+     "y": 5,
+     "z": -2,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "sub1",
+     "kind": "subwoofer",
+     "x": -4.2,
+     "y": 0,
+     "z": 3.4,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "sub2",
+     "kind": "subwoofer",
+     "x": 4.2,
+     "y": 0,
+     "z": 3.4,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "cx1",
+     "kind": "speaker",
+     "x": -4.2,
+     "y": 0.6,
+     "z": 3.4,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "cx2",
+     "kind": "speaker",
+     "x": 4.2,
+     "y": 0.6,
+     "z": 3.4,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "pr1",
+     "kind": "riser",
+     "x": -1,
+     "y": 0,
+     "z": -0.8,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "pr2",
+     "kind": "riser",
+     "x": 1,
+     "y": 0,
+     "z": -0.8,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "bt1",
+     "kind": "drums",
+     "x": 0,
+     "y": 0.4,
+     "z": -0.9,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "ps1",
+     "kind": "person",
+     "x": 0,
+     "y": 0,
+     "z": 1.5,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "pd1",
+     "kind": "micStand",
+     "x": 0,
+     "y": 0,
+     "z": 1.85,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    },
+    {
+     "id": "rt1",
+     "kind": "monitor",
+     "x": 0,
+     "y": 0,
+     "z": 2.6,
+     "rotationX": 0,
+     "rotationY": 0,
+     "rotationZ": 0
+    }
+   ]
+  }
+ },
+ "library": [
+  {
+   "id": "generico-par-rgbw",
+   "manufacturer": "Genérico",
+   "model": "PAR LED RGBW",
+   "kind": "colorChanger",
+   "channels": [
+    {
+     "name": "Dimmer",
+     "attribute": "dimmer",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Dimmer",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Branco",
+     "attribute": "white",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Branco",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Strobe",
+     "attribute": "shutter",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 9,
+       "name": "Aberto",
+       "color": null
+      },
+      {
+       "min": 10,
+       "max": 255,
+       "name": "Strobe lento → rápido",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Macro de cor",
+     "attribute": "colorMacro",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 9,
+       "name": "Desligado",
+       "color": null
+      },
+      {
+       "min": 10,
+       "max": 39,
+       "name": "Vermelho",
+       "color": "#ff0000"
+      },
+      {
+       "min": 40,
+       "max": 69,
+       "name": "Verde",
+       "color": "#00ff00"
+      },
+      {
+       "min": 70,
+       "max": 99,
+       "name": "Azul",
+       "color": "#0000ff"
+      },
+      {
+       "min": 100,
+       "max": 129,
+       "name": "Branco",
+       "color": "#ffffff"
+      },
+      {
+       "min": 130,
+       "max": 255,
+       "name": "Troca automática",
+       "color": null
+      }
+     ]
+    }
+   ],
+   "modes": [
+    {
+     "name": "7 canais",
+     "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ],
+     "heads": []
+    },
+    {
+     "name": "4 canais (RGBW)",
+     "channels": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "heads": []
+    }
+   ],
+   "physical": {
+    "widthMm": 240,
+    "heightMm": 300,
+    "depthMm": 200,
+    "weightKg": 2.5,
+    "powerW": 60,
+    "lensMinDeg": 25,
+    "lensMaxDeg": 25,
+    "panMaxDeg": 0,
+    "tiltMaxDeg": 0
+   }
+  },
+  {
+   "id": "generico-par-rgb",
+   "manufacturer": "Genérico",
+   "model": "PAR LED RGB",
+   "kind": "colorChanger",
+   "channels": [
+    {
+     "name": "Vermelho",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul",
+       "color": null
+      }
+     ]
+    }
+   ],
+   "modes": [
+    {
+     "name": "3 canais",
+     "channels": [
+      0,
+      1,
+      2
+     ],
+     "heads": []
+    }
+   ],
+   "physical": {
+    "widthMm": 200,
+    "heightMm": 250,
+    "depthMm": 180,
+    "weightKg": 1.8,
+    "powerW": 36,
+    "lensMinDeg": 25,
+    "lensMaxDeg": 25,
+    "panMaxDeg": 0,
+    "tiltMaxDeg": 0
+   }
+  },
+  {
+   "id": "generico-moving-spot",
+   "manufacturer": "Genérico",
+   "model": "Moving Head Spot 150",
+   "kind": "movingHead",
+   "channels": [
+    {
+     "name": "Pan",
+     "attribute": "pan",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Pan",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Pan fino",
+     "attribute": "pan",
+     "fine": true,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Pan fino",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Tilt",
+     "attribute": "tilt",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Tilt",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Tilt fino",
+     "attribute": "tilt",
+     "fine": true,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Tilt fino",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Velocidade P/T",
+     "attribute": "speed",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Rápido → lento",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Dimmer",
+     "attribute": "dimmer",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Dimmer",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Shutter",
+     "attribute": "shutter",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 7,
+       "name": "Fechado",
+       "color": null
+      },
+      {
+       "min": 8,
+       "max": 15,
+       "name": "Aberto",
+       "color": null
+      },
+      {
+       "min": 16,
+       "max": 255,
+       "name": "Strobe lento → rápido",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Roda de cores",
+     "attribute": "colorWheel",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 9,
+       "name": "Branco",
+       "color": "#ffffff"
+      },
+      {
+       "min": 10,
+       "max": 19,
+       "name": "Vermelho",
+       "color": "#ff0000"
+      },
+      {
+       "min": 20,
+       "max": 29,
+       "name": "Laranja",
+       "color": "#ff8000"
+      },
+      {
+       "min": 30,
+       "max": 39,
+       "name": "Amarelo",
+       "color": "#ffff00"
+      },
+      {
+       "min": 40,
+       "max": 49,
+       "name": "Verde",
+       "color": "#00ff00"
+      },
+      {
+       "min": 50,
+       "max": 59,
+       "name": "Azul",
+       "color": "#0000ff"
+      },
+      {
+       "min": 60,
+       "max": 69,
+       "name": "Magenta",
+       "color": "#ff00aa"
+      },
+      {
+       "min": 128,
+       "max": 255,
+       "name": "Rotação",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Gobo",
+     "attribute": "gobo",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 9,
+       "name": "Aberto",
+       "color": null
+      },
+      {
+       "min": 10,
+       "max": 19,
+       "name": "Gobo 1",
+       "color": null
+      },
+      {
+       "min": 20,
+       "max": 29,
+       "name": "Gobo 2",
+       "color": null
+      },
+      {
+       "min": 30,
+       "max": 39,
+       "name": "Gobo 3",
+       "color": null
+      },
+      {
+       "min": 40,
+       "max": 49,
+       "name": "Gobo 4",
+       "color": null
+      },
+      {
+       "min": 50,
+       "max": 59,
+       "name": "Gobo 5",
+       "color": null
+      },
+      {
+       "min": 60,
+       "max": 69,
+       "name": "Gobo 6",
+       "color": null
+      },
+      {
+       "min": 70,
+       "max": 79,
+       "name": "Gobo 7",
+       "color": null
+      },
+      {
+       "min": 128,
+       "max": 255,
+       "name": "Shake",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Rotação do gobo",
+     "attribute": "goboRotation",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Rotação do gobo",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Prisma",
+     "attribute": "prism",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 127,
+       "name": "Desligado",
+       "color": null
+      },
+      {
+       "min": 128,
+       "max": 255,
+       "name": "Prisma 3 faces",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Foco",
+     "attribute": "focus",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Foco",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Zoom",
+     "attribute": "zoom",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Zoom",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Reset",
+     "attribute": "maintenance",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 199,
+       "name": "Nada",
+       "color": null
+      },
+      {
+       "min": 200,
+       "max": 255,
+       "name": "Reset",
+       "color": null
+      }
+     ]
+    }
+   ],
+   "modes": [
+    {
+     "name": "14 canais",
+     "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+     ],
+     "heads": []
+    },
+    {
+     "name": "9 canais",
+     "channels": [
+      0,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      11,
+      12
+     ],
+     "heads": []
+    }
+   ],
+   "physical": {
+    "widthMm": 300,
+    "heightMm": 450,
+    "depthMm": 250,
+    "weightKg": 12,
+    "powerW": 150,
+    "lensMinDeg": 12,
+    "lensMaxDeg": 30,
+    "panMaxDeg": 540,
+    "tiltMaxDeg": 270
+   }
+  },
+  {
+   "id": "generico-barra-8px",
+   "manufacturer": "Genérico",
+   "model": "Barra LED 8 pixels RGB",
+   "kind": "ledBar",
+   "channels": [
+    {
+     "name": "Vermelho 1",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 1",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 1",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 1",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 1",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 1",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho 2",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 2",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 2",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 2",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 2",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 2",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho 3",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 3",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 3",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 3",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 3",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 3",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho 4",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 4",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 4",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 4",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 4",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 4",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho 5",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 5",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 5",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 5",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 5",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 5",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho 6",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 6",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 6",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 6",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 6",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 6",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho 7",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 7",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 7",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 7",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 7",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 7",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Vermelho 8",
+     "attribute": "red",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Vermelho 8",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Verde 8",
+     "attribute": "green",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Verde 8",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Azul 8",
+     "attribute": "blue",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Azul 8",
+       "color": null
+      }
+     ]
+    }
+   ],
+   "modes": [
+    {
+     "name": "24 canais (8 pixels)",
+     "channels": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+     ],
+     "heads": [
+      [
+       0,
+       1,
+       2
+      ],
+      [
+       3,
+       4,
+       5
+      ],
+      [
+       6,
+       7,
+       8
+      ],
+      [
+       9,
+       10,
+       11
+      ],
+      [
+       12,
+       13,
+       14
+      ],
+      [
+       15,
+       16,
+       17
+      ],
+      [
+       18,
+       19,
+       20
+      ],
+      [
+       21,
+       22,
+       23
+      ]
+     ]
+    },
+    {
+     "name": "3 canais (barra inteira)",
+     "channels": [
+      0,
+      1,
+      2
+     ],
+     "heads": [
+      [
+       0,
+       1,
+       2
+      ]
+     ]
+    }
+   ],
+   "physical": {
+    "widthMm": 1000,
+    "heightMm": 80,
+    "depthMm": 80,
+    "weightKg": 3,
+    "powerW": 80,
+    "lensMinDeg": 25,
+    "lensMaxDeg": 25,
+    "panMaxDeg": 0,
+    "tiltMaxDeg": 0
+   }
+  },
+  {
+   "id": "generico-strobe",
+   "manufacturer": "Genérico",
+   "model": "Strobe LED",
+   "kind": "strobe",
+   "channels": [
+    {
+     "name": "Dimmer",
+     "attribute": "dimmer",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Dimmer",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Velocidade",
+     "attribute": "shutter",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Lento → rápido",
+       "color": null
+      }
+     ]
+    }
+   ],
+   "modes": [
+    {
+     "name": "2 canais",
+     "channels": [
+      0,
+      1
+     ],
+     "heads": []
+    }
+   ],
+   "physical": {
+    "widthMm": 400,
+    "heightMm": 200,
+    "depthMm": 150,
+    "weightKg": 3,
+    "powerW": 200,
+    "lensMinDeg": 25,
+    "lensMaxDeg": 25,
+    "panMaxDeg": 0,
+    "tiltMaxDeg": 0
+   }
+  },
+  {
+   "id": "generico-hazer",
+   "manufacturer": "Genérico",
+   "model": "Máquina de haze",
+   "kind": "hazer",
+   "channels": [
+    {
+     "name": "Saída",
+     "attribute": "effect",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 9,
+       "name": "Desligado",
+       "color": null
+      },
+      {
+       "min": 10,
+       "max": 255,
+       "name": "Pouco → muito",
+       "color": null
+      }
+     ]
+    },
+    {
+     "name": "Ventilador",
+     "attribute": "speed",
+     "fine": false,
+     "capabilities": [
+      {
+       "min": 0,
+       "max": 255,
+       "name": "Ventilador",
+       "color": null
+      }
+     ]
+    }
+   ],
+   "modes": [
+    {
+     "name": "2 canais",
+     "channels": [
+      0,
+      1
+     ],
+     "heads": []
+    }
+   ],
+   "physical": {
+    "widthMm": 450,
+    "heightMm": 300,
+    "depthMm": 250,
+    "weightKg": 9,
+    "powerW": 700,
+    "lensMinDeg": 25,
+    "lensMaxDeg": 25,
+    "panMaxDeg": 0,
+    "tiltMaxDeg": 0
+   }
+  }
+ ],
+ "midiDevices": [
+  {
+   "id": "m1",
+   "name": "Controlador MIDI USB",
+   "output": true,
+   "connected": true
+  },
+  {
+   "id": "m2",
+   "name": "loopMIDI Port",
+   "output": false,
+   "connected": true
+  }
+ ]
+}

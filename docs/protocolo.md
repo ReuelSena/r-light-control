@@ -1,46 +1,73 @@
 # Protocolo UI ↔ motor (v0)
 
-Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026-10-17. Os detalhes (tópicos do `evt` e frames binários) são fechados na F3, quando o servidor Rust passa a falar com a UI de verdade.
+Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026-10-17. Implementado na F3: o servidor ([`crates/rlc-server`](../crates/rlc-server/src/)) é a autoridade, e a UI é um cliente WebSocket ([`ui/app/engine/ws.ts`](../ui/app/engine/ws.ts)).
 
 - **Fonte da verdade:** os tipos ficam em [`crates/rlc-core/src/lib.rs`](../crates/rlc-core/src/lib.rs). A UI usa os mesmos tipos em TypeScript, gerados pelo ts-rs em `ui/app/types/generated/` ao rodar `cargo test -p rlc-core`. Nunca se editam os tipos gerados à mão.
-- **Porta única das telas:** [`useEngine()`](../ui/app/composables/useEngine.ts) devolve `{ state, send }`. Na F2 é o `MockClient` ([`ui/app/engine/mock.ts`](../ui/app/engine/mock.ts)); na F3 passa a ser o cliente WebSocket, sem mudar as telas.
+- **Porta única das telas:** [`useEngine()`](../ui/app/composables/useEngine.ts) devolve `{ state, output, send, connected, clientId, error }`.
+- **Regras das operações:** [`crates/rlc-server/src/apply.rs`](../crates/rlc-server/src/apply.rs). Cada uma valida, aplica e diz que pedaços do estado mudou. Uma operação recusada não muda nada.
 
 ## Modelo (A2, A3)
 
-1. **Ao conectar**, o cliente recebe um `Snapshot` com o estado completo: projeto, biblioteca, interfaces, MIDI e acesso remoto.
-2. **Para alterar algo**, o cliente envia uma operação tipada (`Op`). O servidor valida, aplica e difunde o novo estado a **todos** os clientes (janela principal, janelas externas, celulares).
-3. **O servidor é a autoridade.** A tela não altera o estado sozinha; só a UI do controle sob o dedo é otimista (fader, por exemplo).
-4. **Dados de alta taxa** (valores DMX, preview) vão em frames binários, fora do JSON. Definição na F3.
+1. **Ao conectar**, o cliente recebe o `hello` e um `Snapshot` com o estado completo.
+2. **Para alterar algo**, o cliente envia uma operação tipada (`Op`). O servidor valida, aplica, aumenta a revisão e avisa **todos** os clientes (janela principal, janelas externas, celulares) com o pedaço do estado que mudou.
+3. **O servidor é a autoridade.** A tela não altera o estado sozinha. Só o controle sob o dedo é otimista: fader, knob e pad XY mostram o próprio movimento na hora e voltam ao valor do servidor 300 ms depois do último movimento (`useOptimistic`).
+4. **Valores dos universos** vão em frames binários, fora do JSON.
 
 ## Envelope WebSocket (`/ws`)
 
 ```jsonc
 // servidor → cliente, ao conectar
-{ "t": "hello", "v": 1, "data": { "appVersion": "0.1.0", "lanIp": "192.168.0.6" } }
+{ "t": "hello", "v": 1, "data": { "appVersion": "0.1.0", "clientId": "0199…" } }
 { "t": "snapshot", "rev": 42, "data": { /* Snapshot */ } }
 
 // cliente → servidor
 { "t": "cmd", "id": 7, "data": { "op": "autoAddress", "ids": ["f1"], "universe": "u1", "start": 1 } }
 
-// servidor → cliente que enviou
+// servidor → todos: o pedaço do estado que mudou, no caminho dele
+{ "t": "evt", "rev": 43, "topic": "project.fixtures", "data": [ /* a lista nova */ ] }
+
+// servidor → cliente que enviou, depois dos evt da operação
 { "t": "ack", "id": 7, "data": null }          // ou a resposta da operação (ex.: ImportReport)
 { "t": "err", "id": 7, "data": "motivo legível" }
-
-// servidor → todos
-{ "t": "evt", "topic": "patch", "rev": 43, "data": { /* parte do estado que mudou */ } }
 ```
 
-`rev` é a revisão do projeto. Um cliente que perde uma revisão pede um novo `snapshot`.
+- **Ordem:** os `evt` de uma operação chegam antes do `ack` dela. Quem espera a resposta já encontra o estado novo.
+- **`rev`** é a revisão do estado: cada operação aplicada (e cada atualização do Monitoramento) aumenta uma. Os `evt` de uma mesma operação têm a mesma revisão.
+- **Cliente lento:** se ele perder avisos, o servidor manda um `snapshot` novo e continua dali.
+- **`err` sem `id`:** mensagem que nem chegou a ser um comando (JSON inválido).
+- **`clientId`:** é o id do aparelho em `remote.clients`. É assim que ele se reconhece na lista do ⚙.
 
-O `evt` leva **o pedaço do estado que mudou** (ex.: `topic: "fixtures"` com a lista nova), e o cliente o põe no lugar. A UI não repete as regras do motor. Os tópicos exatos são definidos na F3.
+**Tópicos do `evt`** (o caminho no `Snapshot`, aplicado no lugar pelo cliente):
+- **Projeto:** `project` (projeto inteiro, no "Novo projeto"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`.
+- **Arquivo e biblioteca:** `projectPath`, `dirty` e `library`.
+- **Aparelhos e acesso:** `interfaces` e `remote`.
+- **Ao vivo:** `running`, `desk`, `master`, `widgetValues`, `stats` e `testPattern`.
+
+`stats` e `interfaces` chegam a cada segundo, com os números do Monitoramento.
+
+## Frames binários
+
+A 25 Hz, só dos universos que mudaram desde o último envio (todos, logo depois de conectar):
+
+| Byte | Conteúdo |
+|---|---|
+| 0 | Tipo: `1` = valores de um universo |
+| 1 | Tamanho do id do universo, em bytes (`n`) |
+| 2 … 1+n | Id do universo (UTF-8) |
+| 2+n … 513+n | Os 512 valores, do canal 1 ao 512 |
+
+O id vai no frame, e não a posição na lista, para um universo criado ou removido nunca trocar os valores de lugar. No `useEngine()`, os valores ficam em `output[id]`.
 
 ## Regras (revisão de 2026-10-17)
 
 - **Edição simultânea:** a última gravação vale, sem trava nem mescla.
-- **IDs:** UUIDv7 gerados pela UI (gerador próprio, porque `crypto.randomUUID` não existe no celular em HTTP), para a tela já escolher o que acabou de criar. O servidor recusa um ID repetido.
+- **IDs:** UUIDv7.
+  - **Criados pela UI:** a UI gera o id (gerador próprio, porque `crypto.randomUUID` não existe no celular em HTTP), para a tela já escolher o que acabou de criar.
+  - **Criados pelo servidor:** `addFixtures` e `addUniverse`, que não recebem id.
+  - **Validação:** o servidor recusa um id vazio e ids repetidos na mesma operação (vários elementos do console, elementos do palco). As operações `save…` criam ou substituem pelo id.
 - **Estado ao vivo** (criações rodando, Mesa simples, valores do console, seção master) não é salvo no projeto: ao reabrir, começa parado e zerado.
 - **Preferências de cada aparelho** (zoom, formato do console, dicas de atalho, qualidade e fumaça do 3D) ficam no navegador, fora do contrato.
-- **Acesso:** a conexão só exige PIN na F11 (PIN → token, papéis).
+- **Acesso:** com "Permitir aparelhos da rede local" desligado, o servidor recusa quem não é este computador (HTTP 403), e os aparelhos de fora já conectados caem na hora. A escolha e o PIN ficam no `settings.json`. O PIN só passa a ser exigido na F11 (PIN → token, papéis).
 
 ## Operações v0 (`Op`)
 
@@ -48,24 +75,23 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 
 | Operação | Campos | Efeito |
 |---|---|---|
-| `newProject` | — | Projeto vazio |
-| `openProject` | `path` | Abre um arquivo (F5) |
-| `saveProject` | `path` (opcional) | Salva no arquivo atual ou em outro |
-| `addFixtures` | `defId, mode, name, color, count, universe, address?` | Adiciona `count` fixtures; sem `address`, usa o próximo endereço livre |
+| `newProject` | — | Projeto vazio, com um universo na saída Dummy; zera a Mesa simples e o ao vivo |
+| `openProject` / `saveProject` | `path` / `path?` | Recusadas até a F5 (arquivos de verdade) |
+| `addFixtures` | `defId, mode, name, color, count, universe, address?` | Adiciona `count` fixtures; sem `address`, cada uma vai para o primeiro lugar livre |
 | `updateFixture` | `fixture` | Substitui a fixture (nome, cor, modo, universo, endereço) |
-| `removeFixtures` | `ids` | Remove fixtures, e também as referências a elas nos grupos |
+| `removeFixtures` | `ids` | Remove fixtures e as referências a elas (grupos, cenas, sequências, EFX, console, palco) |
 | `autoAddress` | `ids, universe, start` | Endereça em sequência, sem buracos |
 | `saveFixtureGroup` / `removeFixtureGroup` | `group` / `id` | Cria ou substitui um grupo de fixtures (grade 2D); remove |
 | `saveChannelGroup` / `removeChannelGroup` | `group` / `id` | Cria ou substitui um grupo de canais; remove |
-| `saveFixtureDef` | `def` | Cria ou substitui uma definição na biblioteca |
-| `importQxf` | `fileName, content` | Converte `.qxf` e põe na biblioteca. Resposta: `ImportReport` |
-| `addUniverse` / `updateUniverse` / `removeUniverse` | — / `universe` / `id` | Universos e a interface de saída de cada um |
+| `saveFixtureDef` | `def` | Cria ou substitui uma definição na biblioteca (e no projeto, se ele a usa) |
+| `importQxf` | `fileName, content` | Converte `.qxf` e põe na biblioteca. Resposta: `ImportReport`. Simulada até a F4 |
+| `addUniverse` / `updateUniverse` / `removeUniverse` | — / `universe` / `id` | Universos e a interface de saída de cada um. Uma interface manda um universo só: escolhida num, sai do outro. Um universo com fixtures não é removido |
 | `setRemoteAccess` | `enabled, pin?` | Acesso pela rede local e PIN |
-| `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio; remove (e tira dos passos de chaser e das coleções) |
+| `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio; remove (e tira dos passos de chaser, das coleções e do console) |
 | `saveFolder` / `removeFolder` | `folder` / `id` | Pasta do Studio (de um tipo só); remover solta as criações dela. Mover uma criação de pasta é um `saveFunction` com outro `folder` |
-| `setFunctionRunning` | `id, running` | Roda ou para uma criação |
+| `setFunctionRunning` | `id, running` | Roda ou para uma criação (até a F6, não acende nada) |
 | `stopAllFunctions` | — | Para todas as criações rodando ("Parar todas" do Studio e Stop All do console), baixa os sliders de playback e solta os passos escolhidos nas cue lists |
-| `panic` | — | Pânico: o mesmo do `stopAllFunctions` e zera a Mesa simples inteira (dois toques no botão da barra) |
+| `panic` | — | Pânico: o mesmo do `stopAllFunctions`, zera a Mesa simples inteira e desliga o padrão de teste |
 | `setDeskLevel` | `universe, channel, value` | Fader de um canal da Mesa simples (canal de 1 a 512, valor de 0 a 255) |
 | `setDeskGroupLevel` | `group, value` | Fader de um grupo de canais na Mesa simples: grava o nível do grupo e o valor em cada canal dele (os faders de canal acompanham) |
 | `resetDesk` | `universe?` | Zera a Mesa simples: os canais do universo ou, sem ele, os grupos de canais (soltando os canais deles) |
@@ -75,6 +101,7 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `setWidgetValue` | `widget, value` | Valor ao vivo de um elemento (ver `widgetValues` abaixo); `value` vazio solta o valor |
 | `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global |
 | `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
+| `setTestPattern` | `pattern?` | Padrão de teste da saída (`ramp` ou `chase`; sem ele, desliga). Página `/dev/dmx` |
 
 **Console (`Project.console`):** páginas e elementos (`VcWidget`). Cada elemento tem `id`, `page`, `frame` (moldura ou `null`), `caption`, `color`, `inputs` (controle MIDI e tecla por parte do elemento) e `layouts` com a posição em células em cada formato (`phone`, `tablet`, `desktop`; `null` = não aparece nele). O `type` (`button`, `slider`, `cueList`, `xyPad`, `speedDial`, `frame`, `clock`, `animation`, `label`) fica no mesmo nível dos campos do tipo.
 
@@ -90,10 +117,15 @@ Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 - `desk`: níveis da Mesa simples (não são salvos no projeto);
 - `master`: Grand Master, blackout e BPM;
 - `widgetValues`: valores ao vivo dos elementos do console (não são salvos no projeto): slider e animation `[nível]`, XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms, cue list `[passo]` escolhido à mão, botão de apagar fixtures `[1]` quando ligado;
-- `stats`: CPU, memória, duração do tick do motor e tempo ligado, para o Monitoramento.
+- `stats`: CPU e memória do app, duração do último tick do motor e tempo ligado, para o Monitoramento;
+- `interfaces`: as saídas DMX, com quadros por segundo, maior atraso do último segundo e erros. Na rodada 1 da F3, só a Dummy;
+- `testPattern`: o padrão de teste ligado, se houver;
+- `remote.clients`: os aparelhos conectados de verdade (nome pelo sistema do navegador, endereço).
 
-Os **valores de saída** dos universos (512 canais cada) ficam fora do JSON: no `useEngine()` são o `output`, e do servidor (F3) virão em frames binários. Na F2, o `MockClient` os simula a 25 Hz a partir das criações rodando, do console e da mesa, com o Grand Master e os blackouts por cima.
+Os controladores MIDI (`midiDevices`) continuam simulados, vindos do show de exemplo, até a F12.
+
+**Saída do motor na F3:** a Mesa simples (ou o padrão de teste), com o Grand Master (modo reduzir do QLC+) e o blackout por cima, só nos canais de intensidade (dimmer e cores). Canais sem fixture contam como intensidade. As criações do Studio e o console entram na saída a partir da F6.
 
 ## Janelas do mesmo aparelho
 
-As janelas externas (E13) são clientes como os outros. No protótipo, o `MockClient` sincroniza as janelas pelo `BroadcastChannel` do navegador. Com o servidor, a sincronização vem do próprio WebSocket.
+As janelas externas (E13) são clientes como os outros: cada uma tem a sua conexão com o servidor. O `BroadcastChannel` do navegador só serve para a janela principal saber que a externa continua aberta.

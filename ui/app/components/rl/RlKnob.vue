@@ -7,7 +7,9 @@ const props = withDefaults(defineProps<{ default?: number; color?: string; size?
   size: 56,
 })
 
-const value = defineModel<number>({ required: true })
+const model = defineModel<number>({ required: true })
+// Otimista sob o dedo: o gesto não espera a volta do servidor
+const value = useOptimistic(model)
 const drag = useDrag((_, dy) => (value.value = clamp01(value.value - dy / 150)), () => (value.value = props.default))
 
 // Mesma conta do fader: um clique da roda (100 px, ou 3 linhas no Firefox) = 1%

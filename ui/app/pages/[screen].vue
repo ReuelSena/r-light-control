@@ -77,6 +77,7 @@ function go(id: ScreenId) {
       >
         <OctagonX :size="18" />
       </RlButton>
+      <RlLcd v-if="state.testPattern" color="var(--color-flash)" :title="t('shell.testPattern')">{{ t('shell.test') }}</RlLcd>
       <RlLcd class="max-2xl:hidden">{{ state.master.bpm }} BPM</RlLcd>
       <span class="flex items-center gap-1.5 text-xs font-bold" :title="usbOk ? t('shell.usbOk') : t('shell.usbFail')">
         <span class="rl-led" :style="{ '--led': usbOk ? 'var(--color-on)' : 'var(--color-danger)' }" />

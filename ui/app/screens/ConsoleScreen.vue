@@ -22,7 +22,9 @@ const format = computed<ConsoleFormat>(() =>
 const formatIcons = { phone: Smartphone, tablet: Tablet, desktop: Monitor }
 
 const page = ref(project.value.console.pages[0]?.id ?? '')
-const editing = ref(false)
+// Fora da tela (no app.vue), decide se o Ctrl + Z desfaz (edição) ou vai para os elementos (operação)
+const editing = useState('consoleEditing', () => false)
+onBeforeUnmount(() => (editing.value = false))
 const selection = ref<string[]>([])
 const propsOpen = ref(false)
 const renaming = ref(false)

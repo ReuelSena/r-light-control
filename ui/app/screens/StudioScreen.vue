@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, Copy, Play, Plus, Search, Square, Trash2 } from 'lucide-vue-next'
+import { ChevronLeft, Copy, Eye, Play, Plus, Search, Square, Trash2 } from 'lucide-vue-next'
 import type { Chaser } from '~/types/generated/Chaser'
 import type { Function } from '~/types/generated/Function'
 
@@ -19,6 +19,21 @@ watch(selectedId, () => (confirmRemove.value = false))
 const selected = computed(() => project.value.functions.find((f) => f.id === selectedId.value))
 const running = (id: string) => state.value.running.includes(id)
 const toggleRun = (id: string) => send({ op: 'setFunctionRunning', id, running: !running(id) })
+
+// Prévia (o programador, E12): a cena em edição vai para a luz. Desligada ao abrir a cena; este aparelho
+// desliga a prévia que ele ligou ao sair do editor ou trocar de criação
+const previewing = computed(() => !!selected.value && state.value.preview === selected.value.id)
+let mine: string | undefined
+function togglePreview() {
+  mine = previewing.value ? undefined : selected.value!.id
+  send({ op: 'setPreview', function: mine ?? null })
+}
+function stopPreview() {
+  if (mine && state.value.preview === mine) send({ op: 'setPreview', function: null })
+  mine = undefined
+}
+watch(selectedId, stopPreview)
+onBeforeUnmount(stopPreview)
 
 // Conteúdo inicial de cada tipo
 function blank(type: FunctionType): Function {
@@ -110,6 +125,10 @@ function remove() {
           :value="selected.name"
           @change="send({ op: 'saveFunction', function: { ...selected, name: ($event.target as HTMLInputElement).value } })"
         >
+        <RlButton v-if="selected.type === 'scene'" highlight="led" color="var(--color-flash)" :model-value="previewing" @press="togglePreview">
+          <Eye :size="16" />
+          {{ t('studio.preview') }}
+        </RlButton>
         <RlButton highlight="led" color="var(--color-on)" :model-value="running(selected.id)" @press="toggleRun(selected.id)">
           <component :is="running(selected.id) ? Square : Play" :size="16" />
           {{ running(selected.id) ? t('studio.stop') : t('studio.run') }}

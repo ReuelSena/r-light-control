@@ -7,6 +7,8 @@ use rlc_core::FixtureDef;
 use serde::Deserialize;
 use serde_json::json;
 
+use crate::write_atomic;
+
 const FORMAT: &str = "r-light-control/fixture";
 const SCHEMA_VERSION: u32 = 1;
 
@@ -54,20 +56,14 @@ pub fn load(dir: &Path, seed: Vec<FixtureDef>) -> Vec<FixtureDef> {
     library
 }
 
-/// Grava a definição, com escrita atômica: um arquivo temporário que depois toma o lugar do antigo.
+/// Grava a definição (escrita atômica).
 pub fn save(dir: &Path, def: &FixtureDef) {
     let path = dir.join(format!("{}.json", def.id));
-    let temp = path.with_extension("json.tmp");
-    let text = json!({ "format": FORMAT, "schemaVersion": SCHEMA_VERSION, "fixture": def });
-    let saved = std::fs::create_dir_all(dir)
-        .and_then(|_| {
-            std::fs::write(
-                &temp,
-                serde_json::to_string_pretty(&text).unwrap_or_default(),
-            )
-        })
-        .and_then(|_| std::fs::rename(&temp, &path));
-    if let Err(e) = saved {
+    let file = json!({ "format": FORMAT, "schemaVersion": SCHEMA_VERSION, "fixture": def });
+    if let Err(e) = write_atomic(
+        &path,
+        &serde_json::to_string_pretty(&file).unwrap_or_default(),
+    ) {
         tracing::warn!("não foi possível gravar {}: {e}", path.display());
     }
 }

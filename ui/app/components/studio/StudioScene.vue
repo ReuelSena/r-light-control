@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Grid3x3, Plus } from 'lucide-vue-next'
+import { Grid3x3, LocateFixed, Plus } from 'lucide-vue-next'
 import type { Attribute } from '~/types/generated/Attribute'
 import type { Fixture } from '~/types/generated/Fixture'
 import type { Function } from '~/types/generated/Function'
@@ -42,6 +42,7 @@ const selected = computed(() => {
   return list.length ? list : fixtures.value.slice(0, 1)
 })
 const fixture = computed(() => selected.value[0])
+const locating = useLocate(computed(() => selected.value.map((f) => f.id)))
 const channels = computed(() => (fixture.value ? modeChannels(project.value, fixture.value) : []))
 const valueOf = (channel: number) => props.fn.values.find((v) => v.fixture === fixture.value?.id && v.channel === channel)?.value ?? 0
 const channelsWith = (a: Attribute) => channels.value.flatMap((c, i) => (c.attribute === a && !c.fine ? [i] : []))
@@ -151,6 +152,10 @@ function setGroup(id: string, v: number) {
         <RlButton size="sm" @press="editingFixtures = true">
           <Plus :size="14" />
           {{ t('scene.addFixtures') }}
+        </RlButton>
+        <RlButton v-if="fixtures.length" v-model="locating" size="sm" mode="toggle" highlight="led" color="var(--color-flash)">
+          <LocateFixed :size="14" />
+          {{ t('fixtures.locate') }}
         </RlButton>
         <RlButton
           v-for="f in fixtures"

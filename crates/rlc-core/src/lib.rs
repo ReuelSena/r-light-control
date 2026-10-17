@@ -18,7 +18,10 @@ pub struct Snapshot {
     pub project_path: Option<String>,
     /// Há alterações não salvas.
     pub dirty: bool,
-    pub recent_projects: Vec<String>,
+    /// O projeto veio da cópia de recuperação (alterações não salvas da última sessão).
+    pub recovered: bool,
+    /// Projetos da pasta, pelo nome, do mais recente para o mais antigo.
+    pub projects: Vec<String>,
     /// Biblioteca de fixtures do usuário (fica fora do projeto).
     pub library: Vec<FixtureDef>,
     pub interfaces: Vec<DmxInterface>,
@@ -34,6 +37,10 @@ pub struct Snapshot {
     pub stats: Stats,
     /// Padrão de teste da saída (página /dev/dmx); por cima da Mesa simples enquanto estiver ligado.
     pub test_pattern: Option<TestPattern>,
+    /// Cena em prévia: os valores dela vão para a luz enquanto ela é editada (o programador, E12).
+    pub preview: Option<Id>,
+    /// Fixtures acesas pelo "Localizar".
+    pub highlight: Vec<Id>,
 }
 
 /// Padrões de teste gerados pelo motor em todos os canais, para conferir a saída DMX.
@@ -871,13 +878,17 @@ pub struct RemoteClient {
 #[ts(export)]
 pub enum Op {
     NewProject,
+    /// Abre um projeto da pasta, pelo nome.
     OpenProject {
-        path: String,
+        name: String,
     },
-    /// Sem `path`, salva no arquivo atual.
+    /// Sem `name`, salva no arquivo atual; com `name`, é o "Salvar como" (um nome novo na pasta).
     SaveProject {
-        path: Option<String>,
+        name: Option<String>,
     },
+    /// Desfaz a última alteração do projeto ou da biblioteca, de qualquer aparelho.
+    Undo,
+    Redo,
     /// Adiciona `count` fixtures iguais; sem `address`, usa o próximo endereço livre.
     AddFixtures {
         def_id: Id,
@@ -1011,6 +1022,14 @@ pub enum Op {
     SetInterfaceKind {
         interface: Id,
         kind: Option<InterfaceKind>,
+    },
+    /// Liga a prévia de uma cena (no lugar de outra) ou, sem `function`, desliga.
+    SetPreview {
+        function: Option<Id>,
+    },
+    /// Fixtures acesas pelo "Localizar"; vazio apaga.
+    SetHighlight {
+        fixtures: Vec<Id>,
     },
 }
 

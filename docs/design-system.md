@@ -151,11 +151,16 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 - **Sob o dedo, otimista (A2):** fader, knob e pad XY mostram o próprio movimento na hora e o próximo movimento parte dele (`useOptimistic`); 300 ms depois do último movimento, vale de novo o valor do servidor. Os outros controles mostram só o estado do servidor.
 - **Conexão:** sem o servidor, as telas ficam cobertas por um aviso, sem toque, até ele voltar (com o estado completo). Na abertura, a tela "Conectando…" fica até o primeiro estado chegar.
 - **Operação recusada:** o motivo aparece num aviso embaixo, por 4 s. Quem esperava a resposta (`await send(...)`) para ali: um diálogo continua aberto para corrigir.
+- **Desfazer e refazer:** "Desfeito" ou "Refeito" aparece no mesmo lugar, com borda neutra, por 1,5 s, porque a alteração pode estar em outra tela. "Nada para desfazer" vem como recusa.
+- **Estados que mexem na luz por fora das criações:** um LCD amarelo na barra de cima, em todas as telas: "TESTE" (padrão de teste da saída) e "PRÉVIA" (cena em prévia). O pânico desliga os dois.
+- **Liga e desliga que agem na luz** (Prévia, Localizar): `RlButton` com `highlight="led"` em amarelo (`--color-flash`). Ficam ligados só enquanto a tela está aberta: ao sair, o aparelho desliga o que ele ligou.
+- **Confirmação por segundo toque:** ações que descartam algo (remover, "Novo" e abrir outro projeto com alterações não salvas) trocam o texto do botão ou mostram uma linha amarela, e só agem no segundo toque.
 - **Clique fantasma do toque:** depois de um toque, o navegador manda um clique de compatibilidade no mesmo ponto, que cairia no que o botão acabou de abrir ali (ex.: o painel de propriedades no celular). O `RlButton` cancela esse clique quando foi acionado por toque. Por isso, nada deve depender do `click` de um `RlButton` (ex.: `DialogClose as-child`); use `@press`. Mesmo assim, o que aparece por causa de um toque vai numa linha abaixo do botão, não ao lado, para o layout não andar sob o dedo.
 - **Rolagem:** as barras (navegação, bancos, strips) rolam pelo gesto. Faders, knobs, pads e flashes não deixam o gesto virar rolagem.
 - **Barras de rolagem:** um estilo só para o app todo (`main.css`), com trilho afundado e cursor em relevo, como um fader pequeno, e sem setas. Vale com mouse; no toque ficam as barras do aparelho, finas e que somem sozinhas. No Firefox, só as cores.
 - **Atalhos de teclado:**
   - padrão do app: Ctrl + − e Ctrl + + (zoom; o do console quando ele está na frente) e, no teclado numérico, − blackout, + parar tudo e Enter tap do BPM (com etiquetas `rl-key` na seção master); no console, Alt + E (editar) e Alt + I (dicas de atalho), que valem também com o foco num campo;
+  - desfazer (Ctrl + Z) e refazer (Ctrl + Shift + Z) em todas as telas (`app.vue`). Num campo de texto, vale o desfazer do próprio campo; com o console na frente em operação, as duas combinações são dos elementos (não são reservadas), e na edição do console desfazem;
   - os elementos do console usam as outras teclas; a captura recusa as reservadas (`isReservedKey`);
   - o teclado numérico tem nome próprio ("Num 1", "Num -"), separado da fileira de cima das letras (`keyCombo`).
 - **Proibidos na página:** zoom por pinça ou toque duplo, rolagem elástica, seleção de texto (exceto em campos) e menu de contexto do toque longo.

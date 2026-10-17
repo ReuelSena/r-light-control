@@ -4,12 +4,14 @@
 
 use rlc_core::*;
 use rlc_engine::UniversePatch;
+use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
 /// Pedaço do estado levado por um aviso de mudança: o caminho dele no `Snapshot`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Topic {
     Project,
+    ProjectName,
     Universes,
     FixtureDefs,
     Fixtures,
@@ -21,6 +23,8 @@ pub enum Topic {
     Stage,
     ProjectPath,
     Dirty,
+    Recovered,
+    Projects,
     Library,
     Interfaces,
     Remote,
@@ -30,12 +34,15 @@ pub enum Topic {
     WidgetValues,
     Stats,
     TestPattern,
+    Preview,
+    Highlight,
 }
 
 impl Topic {
     pub fn path(self) -> &'static str {
         match self {
             Topic::Project => "project",
+            Topic::ProjectName => "project.name",
             Topic::Universes => "project.universes",
             Topic::FixtureDefs => "project.fixtureDefs",
             Topic::Fixtures => "project.fixtures",
@@ -47,6 +54,8 @@ impl Topic {
             Topic::Stage => "project.stage",
             Topic::ProjectPath => "projectPath",
             Topic::Dirty => "dirty",
+            Topic::Recovered => "recovered",
+            Topic::Projects => "projects",
             Topic::Library => "library",
             Topic::Interfaces => "interfaces",
             Topic::Remote => "remote",
@@ -56,18 +65,50 @@ impl Topic {
             Topic::WidgetValues => "widgetValues",
             Topic::Stats => "stats",
             Topic::TestPattern => "testPattern",
+            Topic::Preview => "preview",
+            Topic::Highlight => "highlight",
         }
     }
 
     /// Faz parte do projeto (e deixa alterações não salvas).
     pub fn is_project(self) -> bool {
-        self.path().starts_with("project") && self != Topic::ProjectPath
+        self.path() == "project" || self.path().starts_with("project.")
+    }
+
+    /// Entra no desfazer: as partes do projeto e a biblioteca. O projeto inteiro só muda no "Novo" e
+    /// no "Abrir", que começam um histórico novo.
+    pub fn undoable(self) -> bool {
+        (self.is_project() && self != Topic::Project) || self == Topic::Library
+    }
+
+    /// Devolve um pedaço guardado pelo desfazer.
+    pub fn restore(self, s: &mut Snapshot, value: Value) -> Result<(), String> {
+        fn set<T: DeserializeOwned>(slot: &mut T, value: Value) -> Result<(), String> {
+            *slot = serde_json::from_value(value).map_err(|e| e.to_string())?;
+            Ok(())
+        }
+        let p = &mut s.project;
+        match self {
+            Topic::ProjectName => set(&mut p.name, value),
+            Topic::Universes => set(&mut p.universes, value),
+            Topic::FixtureDefs => set(&mut p.fixture_defs, value),
+            Topic::Fixtures => set(&mut p.fixtures, value),
+            Topic::FixtureGroups => set(&mut p.fixture_groups, value),
+            Topic::ChannelGroups => set(&mut p.channel_groups, value),
+            Topic::Functions => set(&mut p.functions, value),
+            Topic::Folders => set(&mut p.folders, value),
+            Topic::Console => set(&mut p.console, value),
+            Topic::Stage => set(&mut p.stage, value),
+            Topic::Library => set(&mut s.library, value),
+            _ => Err(format!("{} não se desfaz.", self.path())),
+        }
     }
 
     pub fn data(self, s: &Snapshot) -> Value {
         let p = &s.project;
         match self {
             Topic::Project => json!(p),
+            Topic::ProjectName => json!(p.name),
             Topic::Universes => json!(p.universes),
             Topic::FixtureDefs => json!(p.fixture_defs),
             Topic::Fixtures => json!(p.fixtures),
@@ -79,6 +120,8 @@ impl Topic {
             Topic::Stage => json!(p.stage),
             Topic::ProjectPath => json!(s.project_path),
             Topic::Dirty => json!(s.dirty),
+            Topic::Recovered => json!(s.recovered),
+            Topic::Projects => json!(s.projects),
             Topic::Library => json!(s.library),
             Topic::Interfaces => json!(s.interfaces),
             Topic::Remote => json!(s.remote),
@@ -88,8 +131,32 @@ impl Topic {
             Topic::WidgetValues => json!(s.widget_values),
             Topic::Stats => json!(s.stats),
             Topic::TestPattern => json!(s.test_pattern),
+            Topic::Preview => json!(s.preview),
+            Topic::Highlight => json!(s.highlight),
         }
     }
+}
+
+/// Operação ao vivo: não entra no desfazer (um Ctrl + Z no show não mexe na luz).
+pub fn is_live(op: &Op) -> bool {
+    matches!(
+        op,
+        Op::SetFunctionRunning { .. }
+            | Op::StopAllFunctions
+            | Op::Panic
+            | Op::SetDeskLevel { .. }
+            | Op::SetDeskGroupLevel { .. }
+            | Op::ResetDesk { .. }
+            | Op::SetWidgetValue { .. }
+            | Op::SetGrandMaster { .. }
+            | Op::SetBlackout { .. }
+            | Op::SetBpm { .. }
+            | Op::SetRemoteAccess { .. }
+            | Op::SetTestPattern { .. }
+            | Op::SetInterfaceKind { .. }
+            | Op::SetPreview { .. }
+            | Op::SetHighlight { .. }
+    )
 }
 
 /// Tópicos que mudaram e a resposta da operação (`null` na maioria).
@@ -110,6 +177,8 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 levels: vec![],
                 groups: vec![],
             };
+            s.preview = None;
+            s.highlight.clear();
             vec![
                 T::Project,
                 T::ProjectPath,
@@ -117,10 +186,13 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 T::Running,
                 T::WidgetValues,
                 T::Desk,
+                T::Preview,
+                T::Highlight,
             ]
         }
-        Op::OpenProject { .. } | Op::SaveProject { .. } => {
-            return Err("Abrir e salvar projetos chegam na F5.".into());
+        // Mexem em arquivos e no histórico: ficam no hub
+        Op::OpenProject { .. } | Op::SaveProject { .. } | Op::Undo | Op::Redo => {
+            return Err("Operação do servidor.".into());
         }
         Op::AddFixtures {
             def_id,
@@ -215,6 +287,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             p.stage.fixtures.retain(|x| !gone(&x.fixture));
+            s.highlight.retain(|id| !gone(id));
             vec![
                 T::Fixtures,
                 T::FixtureGroups,
@@ -222,6 +295,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 T::Functions,
                 T::Console,
                 T::Stage,
+                T::Highlight,
             ]
         }
         Op::AutoAddress {
@@ -298,7 +372,10 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             s.running.retain(|r| *r != id);
-            vec![T::Functions, T::Console, T::Running]
+            if s.preview.as_ref() == Some(&id) {
+                s.preview = None;
+            }
+            vec![T::Functions, T::Console, T::Running, T::Preview]
         }
         Op::SaveFolder { folder } => {
             upsert(&mut p.folders, folder, |d| &d.id)?;
@@ -343,9 +420,28 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     groups: vec![],
                 };
                 s.test_pattern = None;
-                topics.extend([T::Desk, T::TestPattern]);
+                s.preview = None;
+                s.highlight.clear();
+                topics.extend([T::Desk, T::TestPattern, T::Preview, T::Highlight]);
             }
             topics
+        }
+        Op::SetPreview { function } => {
+            let scene = |id: &Id| {
+                p.functions
+                    .iter()
+                    .any(|f| &f.id == id && matches!(f.kind, FunctionKind::Scene(_)))
+            };
+            if function.as_ref().is_some_and(|id| !scene(id)) {
+                return Err("A prévia é só de cenas.".into());
+            }
+            s.preview = function;
+            vec![T::Preview]
+        }
+        Op::SetHighlight { mut fixtures } => {
+            fixtures.retain(|id| p.fixtures.iter().any(|f| &f.id == id));
+            s.highlight = fixtures;
+            vec![T::Highlight]
         }
         Op::SetDeskLevel {
             universe,
@@ -635,6 +731,17 @@ fn next_free_address(p: &Project, universe: &str, count: u16) -> Option<u16> {
         .find(|&start| (start..start + count).all(|c| !used[usize::from(c)]))
 }
 
+/// Endereço (universo, canal DMX) de um canal de uma fixture, pela posição no modo.
+fn channel_address(p: &Project, fixture: &str, channel: u16) -> Option<DeskLevel> {
+    let f = p.fixtures.iter().find(|f| f.id == fixture)?;
+    let address = f.address + channel;
+    (address <= 512).then(|| DeskLevel {
+        universe: f.universe.clone(),
+        channel: address,
+        value: 0,
+    })
+}
+
 /// Endereços (universo, canal DMX) dos canais de um grupo de canais.
 fn group_addresses(p: &Project, group: &str) -> Vec<(Id, u16)> {
     let Some(group) = p.channel_groups.iter().find(|g| g.id == group) else {
@@ -643,12 +750,54 @@ fn group_addresses(p: &Project, group: &str) -> Vec<(Id, u16)> {
     group
         .channels
         .iter()
-        .filter_map(|c| {
-            let f = p.fixtures.iter().find(|f| f.id == c.fixture)?;
-            let channel = f.address + c.channel;
-            (channel <= 512).then(|| (f.universe.clone(), channel))
+        .filter_map(|c| channel_address(p, &c.fixture, c.channel))
+        .map(|l| (l.universe, l.channel))
+        .collect()
+}
+
+/// Valores da cena em prévia, nos endereços DMX (o motor não conhece fixtures).
+pub fn preview_levels(s: &Snapshot) -> Vec<DeskLevel> {
+    let p = &s.project;
+    let scene = p
+        .functions
+        .iter()
+        .find(|f| s.preview.as_ref() == Some(&f.id));
+    let Some(FunctionKind::Scene(scene)) = scene.map(|f| &f.kind) else {
+        return vec![];
+    };
+    scene
+        .values
+        .iter()
+        .filter_map(|v| {
+            let level = channel_address(p, &v.fixture, v.channel)?;
+            Some(DeskLevel {
+                value: v.value,
+                ..level
+            })
         })
         .collect()
+}
+
+/// Valores do "Localizar": dimmer e RGBW a 100% e o shutter no padrão (o strobo em "luz ativa");
+/// o resto (pan, tilt, gobo…) fica como está.
+pub fn highlight_levels(s: &Snapshot) -> Vec<DeskLevel> {
+    use Attribute::*;
+    let p = &s.project;
+    let mut levels = Vec::new();
+    for f in p.fixtures.iter().filter(|f| s.highlight.contains(&f.id)) {
+        for (i, channel) in mode_channels(p, f).enumerate() {
+            let value = match channel.attribute {
+                _ if channel.fine => continue,
+                Dimmer | Red | Green | Blue | White => 255,
+                Shutter => channel.default,
+                _ => continue,
+            };
+            if let Some(level) = channel_address(p, &f.id, i as u16) {
+                levels.push(DeskLevel { value, ..level });
+            }
+        }
+    }
+    levels
 }
 
 fn set_desk_level(desk: &mut Desk, universe: Id, channel: u16, value: u8) {
@@ -792,7 +941,7 @@ mod tests {
                 value: 1,
             },
             Op::RemoveUniverse { id: "u1".into() },
-            Op::SaveProject { path: None },
+            Op::SaveProject { name: None },
             Op::SaveWidgets {
                 widgets: vec![
                     s.project.console.widgets[0].clone(),
@@ -906,6 +1055,100 @@ mod tests {
                 .unwrap_err()
                 .starts_with("show.qxw: ")
         );
+    }
+
+    #[test]
+    fn preview_and_highlight_go_to_dmx_addresses() {
+        let mut s = example();
+        // Uma cena do exemplo, com valores nos PARs
+        let scene = s
+            .project
+            .functions
+            .iter()
+            .find(|f| matches!(&f.kind, FunctionKind::Scene(sc) if !sc.values.is_empty()))
+            .unwrap()
+            .clone();
+        apply(
+            &mut s,
+            Op::SetPreview {
+                function: Some(scene.id.clone()),
+            },
+        )
+        .unwrap();
+        let FunctionKind::Scene(values) = &scene.kind else {
+            unreachable!()
+        };
+        assert_eq!(preview_levels(&s).len(), values.values.len());
+        // Uma criação que não é cena não entra na prévia
+        let chaser = s
+            .project
+            .functions
+            .iter()
+            .find(|f| matches!(f.kind, FunctionKind::Chaser(_)))
+            .unwrap()
+            .id
+            .clone();
+        assert!(
+            apply(
+                &mut s,
+                Op::SetPreview {
+                    function: Some(chaser)
+                }
+            )
+            .is_err()
+        );
+        // Localizar o Beam no endereço 1 do Rig RSena: Strobo (2) no padrão e Dimmer (3) a 100%; pan parado
+        let beam = s
+            .project
+            .fixtures
+            .iter()
+            .find(|f| f.universe == "u3" && f.address == 1)
+            .unwrap()
+            .id
+            .clone();
+        apply(
+            &mut s,
+            Op::SetHighlight {
+                fixtures: vec![beam, "nao-existe".into()],
+            },
+        )
+        .unwrap();
+        assert_eq!(s.highlight.len(), 1);
+        let channels: Vec<_> = highlight_levels(&s)
+            .iter()
+            .map(|l| (l.channel, l.value))
+            .collect();
+        assert_eq!(channels, [(2, 255), (3, 255)]);
+        // O pânico desliga os dois
+        apply(&mut s, Op::Panic).unwrap();
+        assert!(s.preview.is_none() && s.highlight.is_empty());
+    }
+
+    #[test]
+    fn undoable_topics_restore_their_part() {
+        let mut s = example();
+        let before = s.clone();
+        apply(
+            &mut s,
+            Op::RemoveFixtures {
+                ids: vec!["mh1".into()],
+            },
+        )
+        .unwrap();
+        for topic in [
+            Topic::Fixtures,
+            Topic::Functions,
+            Topic::Console,
+            Topic::Stage,
+        ] {
+            assert!(topic.undoable());
+            topic.restore(&mut s, topic.data(&before)).unwrap();
+        }
+        assert_eq!(s.project.fixtures, before.project.fixtures);
+        assert!(
+            !Topic::Desk.undoable() && !Topic::Project.undoable() && !Topic::Projects.is_project()
+        );
+        assert!(is_live(&Op::SetGrandMaster { value: 1 }) && !is_live(&Op::NewProject));
     }
 
     #[test]

@@ -156,24 +156,31 @@ Validação:
 - [x] Relatório correto.
 - [x] Conferência manual contra o QLC+.
 
-### F5 — Patch, projeto e programador · ⬜
+### F5 — Patch, projeto e programador · 🟡
 
-- **Projeto:** fixtures embutidas; patch com conflitos e endereçamento automático.
+Mini-plano: [docs/fases/fase-05.md](docs/fases/fase-05.md) (aprovado em 2026-10-17; entregue, aguardando a validação do usuário).
+
+- **Projeto:** fixtures embutidas; patch com conflitos e endereçamento automático (prontos desde a F2 e a F3).
 - **Grupos de canais:** gravados no projeto e usados pelos faders da mesa simples, das cenas (F6) e do console (F10).
-- **Arquivos:** salvar/abrir com escrita atômica, autosave e recuperação após crash.
-- **Programador:** seleção, intensidade, cor, pan/tilt, capabilities, highlight.
-- **Edição:** API por operações tipadas com revisão.
+- **Arquivos:** `.rlc` numa pasta só (`Documentos\R Light Control`), salvar e "Salvar como" pelo nome, abrir pela lista, `.rlc.bak`, cópia de recuperação e o que abre ao iniciar (recuperação, último projeto ou em branco).
+- **Programador (o editor de cena, E12):** as ferramentas de atributo da F2, a **Prévia** (a cena em edição na luz) e o **Localizar** (o highlight do QLC+).
+- **Edição:** API por operações tipadas com revisão (pronta desde a F3).
+- **Desfazer e refazer (2026-10-17, pedido do usuário):** Ctrl + Z e Ctrl + Shift + Z em todas as telas e menus. Com o console na frente em operação, as teclas vão para os elementos; na edição do console, desfazem.
 - **Ref:**
   - `engine/src/{doc,fixture,channelmodifier}.cpp`
   - `qmlui/{fixturemanager,contextmanager}.cpp`
   - `qmlui/tardis/tardis.cpp`
 
-Validação:
+Validação (detalhada em [docs/fases/fase-05.md](docs/fases/fase-05.md)):
 - [ ] 20 fixtures em 2 universos.
 - [ ] Conflito sinalizado.
 - [ ] Salvar → reabrir dá um projeto idêntico.
 - [ ] Recuperação após matar o processo.
-- [ ] Celular e desktop sincronizados.
+- [ ] Prévia: a cena em edição muda a luz na hora; desligada, nada muda.
+- [ ] Localizar acende a fixture certa no palco.
+- [ ] Celular e desktop sincronizados (inclusive a prévia e o Localizar).
+- [ ] Ctrl + Z e Ctrl + Shift + Z desfazem e refazem em todas as telas; com o console em operação, as teclas vão para os elementos.
+- [ ] `pnpm check` passa.
 
 ## Etapa C — Funções
 
@@ -184,6 +191,11 @@ Validação:
 - **Grand Master:** Limit/Reduce × Intensity/All.
 - **Cena:** gravada do programador e editável enquanto roda. Stop All.
 - **Testes:** portados de `engine/test/{universe,genericfader,fadechannel,scene,grandmaster}`.
+- **Ponto de partida (F5):**
+  - Camadas da saída hoje, de baixo para cima: valor padrão, prévia (a cena em edição), Mesa simples, Localizar, Grand Master e blackout (`rlc-engine`).
+  - O mini-plano decide onde as criações rodando entram nessas camadas.
+  - "Rodar" ainda não acende nada (A2).
+  - O programador é o editor de cena com a Prévia (E12).
 - **Ref:** `engine/src/{universe,genericfader,fadechannel,function,scene}.cpp`
 
 Validação:
@@ -330,7 +342,12 @@ Validação:
 - Android como host USB.
 - Art-Net/sACN e OSC.
 - Show/timeline com áudio.
-- Paletas e undo/redo.
+- Paletas.
+- Só se o usuário pedir (explicados a ele na F5):
+  - modificadores de canal (curvas por canal);
+  - HTP/LTP forçado por canal;
+  - fixtures que atravessam universos;
+  - o "dump" do QLC+ (gravar a saída numa cena).
 - RDM e o segundo universo da Enttec Pro Mk2.
 
 ## Pedidos de recursos do Virtual Console (G4)

@@ -21,7 +21,15 @@ projectPath: string | null,
 /**
  * Há alterações não salvas.
  */
-dirty: boolean, recentProjects: Array<string>, 
+dirty: boolean, 
+/**
+ * O projeto veio da cópia de recuperação (alterações não salvas da última sessão).
+ */
+recovered: boolean, 
+/**
+ * Projetos da pasta, pelo nome, do mais recente para o mais antigo.
+ */
+projects: Array<string>, 
 /**
  * Biblioteca de fixtures do usuário (fica fora do projeto).
  */
@@ -41,4 +49,12 @@ widgetValues: Array<WidgetValue>, stats: Stats,
 /**
  * Padrão de teste da saída (página /dev/dmx); por cima da Mesa simples enquanto estiver ligado.
  */
-testPattern: TestPattern | null, };
+testPattern: TestPattern | null, 
+/**
+ * Cena em prévia: os valores dela vão para a luz enquanto ela é editada (o programador, E12).
+ */
+preview: string | null, 
+/**
+ * Fixtures acesas pelo "Localizar".
+ */
+highlight: Array<string>, };

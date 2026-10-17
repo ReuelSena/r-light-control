@@ -30,7 +30,9 @@
     "fullscreen": "Tela cheia",
     "exitFullscreen": "Sair da tela cheia",
     "test": "TESTE",
-    "testPattern": "Padrão de teste da saída ligado (/dev/dmx). O pânico desliga."
+    "testPattern": "Padrão de teste da saída ligado (/dev/dmx). O pânico desliga.",
+    "preview": "PRÉVIA",
+    "previewOf": "Cena em prévia na luz: {name}. O pânico desliga."
   },
   "dock": {
     "popout": "Abrir em janela externa",
@@ -53,7 +55,16 @@
     "notSaved": "Ainda não foi salvo",
     "new": "Novo",
     "discard": "Descartar alterações?",
-    "filesLater": "Salvar e abrir projetos chegam na F5. Até lá, o que se muda vale até fechar o app."
+    "save": "Salvar",
+    "saveAs": "Salvar como",
+    "saveAsButton": "Salvar",
+    "projects": "Projetos",
+    "discardOpen": "Alterações não salvas: toque de novo em {name} para descartá-las e abrir.",
+    "recovered": "Recuperado da última sessão: alterações ainda não salvas."
+  },
+  "undo": {
+    "done": "Desfeito",
+    "redone": "Refeito"
   },
   "fixtures": {
     "project": "No projeto",
@@ -67,7 +78,8 @@
     "channels": "{n} canais",
     "universe": "Universo",
     "address": "Endereço",
-    "selectHint": "Selecione uma fixture para editar."
+    "selectHint": "Selecione uma fixture para editar.",
+    "locate": "Localizar"
   },
   "library": {
     "search": "Buscar fabricante ou modelo",
@@ -324,6 +336,7 @@
     "copyName": "{name} (cópia)",
     "run": "Rodar",
     "stop": "Parar",
+    "preview": "Prévia",
     "duplicate": "Duplicar",
     "back": "Voltar à lista",
     "selectHint": "Crie ou selecione uma criação.",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Trash2, TriangleAlert } from 'lucide-vue-next'
+import { LocateFixed, Plus, Trash2, TriangleAlert } from 'lucide-vue-next'
 import type { Fixture } from '~/types/generated/Fixture'
 
 // Fixtures do projeto: lista e edição (nome, cor, modo, universo e endereço).
@@ -12,6 +12,8 @@ const selectedId = ref<string>()
 const selected = computed(() => project.value.fixtures.find((f) => f.id === selectedId.value))
 const def = computed(() => selected.value && findDef(project.value, selected.value.defId))
 const confirmRemove = ref(false)
+// Localizar acompanha a fixture escolhida (para conferir o patch no palco)
+const locating = useLocate(computed(() => (selectedId.value ? [selectedId.value] : [])))
 
 watch(selectedId, () => (confirmRemove.value = false))
 
@@ -55,9 +57,15 @@ function remove() {
     </section>
 
     <section v-if="selected && def" class="panel overflow-auto">
-      <div>
-        <h2 class="text-lg font-bold">{{ selected.name }}</h2>
-        <p class="text-sm text-fg-muted">{{ def.manufacturer }} {{ def.model }}</p>
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <h2 class="text-lg font-bold">{{ selected.name }}</h2>
+          <p class="text-sm text-fg-muted">{{ def.manufacturer }} {{ def.model }}</p>
+        </div>
+        <RlButton v-model="locating" size="sm" mode="toggle" highlight="led" color="var(--color-flash)">
+          <LocateFixed :size="16" />
+          {{ t('fixtures.locate') }}
+        </RlButton>
       </div>
       <label class="field-label">
         {{ t('fixtures.name') }}

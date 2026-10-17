@@ -1,7 +1,8 @@
 //! Motor (A1): uma thread a 50 Hz com prazo absoluto, dona do estado de execução. Os comandos chegam
 //! por canal e são aplicados no começo de cada tick, e cada tick publica o quadro de cada universo.
-//! Cada universo parte do valor padrão dos canais; por cima vem a Mesa simples (ou o padrão de
-//! teste) e, por fim, o Grand Master e o blackout.
+//! Camadas de cada universo, de baixo para cima: o valor padrão dos canais, a prévia (a cena em
+//! edição), a Mesa simples, o "Localizar" e, por fim, o Grand Master e o blackout. O padrão de teste
+//! substitui as camadas de baixo.
 //! As criações do Studio entram na F6.
 
 use std::sync::Arc;
@@ -50,6 +51,10 @@ pub enum Command {
     Patch(Vec<UniversePatch>),
     /// Níveis da Mesa simples de todos os universos.
     Desk(Vec<DeskLevel>),
+    /// Valores da cena em prévia, já nos endereços DMX.
+    Preview(Vec<DeskLevel>),
+    /// Valores do "Localizar", acima da Mesa simples.
+    Highlight(Vec<DeskLevel>),
     GrandMaster(u8),
     Blackout(bool),
     Test(Option<TestPattern>),
@@ -119,6 +124,8 @@ fn next_deadline(previous: Instant, now: Instant) -> Instant {
 struct State {
     universes: Vec<UniversePatch>,
     desk: Vec<DeskLevel>,
+    preview: Vec<DeskLevel>,
+    highlight: Vec<DeskLevel>,
     grand_master: u8,
     blackout: bool,
     test: Option<(TestPattern, Instant)>,
@@ -129,6 +136,8 @@ impl Default for State {
         Self {
             universes: Vec::new(),
             desk: Vec::new(),
+            preview: Vec::new(),
+            highlight: Vec::new(),
             grand_master: 255,
             blackout: false,
             test: None,
@@ -141,6 +150,8 @@ impl State {
         match command {
             Command::Patch(universes) => self.universes = universes,
             Command::Desk(levels) => self.desk = levels,
+            Command::Preview(levels) => self.preview = levels,
+            Command::Highlight(levels) => self.highlight = levels,
             Command::GrandMaster(value) => self.grand_master = value,
             Command::Blackout(on) => self.blackout = on,
             // Trocar de padrão recomeça a rampa do zero
@@ -167,7 +178,8 @@ impl State {
                         }
                     }
                     None => {
-                        for l in self.desk.iter().filter(|l| l.universe == u.id) {
+                        let layers = self.preview.iter().chain(&self.desk).chain(&self.highlight);
+                        for l in layers.filter(|l| l.universe == u.id) {
                             if let Some(v) = frame.get_mut(usize::from(l.channel).wrapping_sub(1)) {
                                 *v = l.value;
                             }
@@ -258,6 +270,24 @@ mod tests {
         // Solto (o "Zerar" da Mesa simples), volta ao padrão
         s.apply(Command::Desk(vec![]));
         assert_eq!(frame(&s)[..4], [0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn preview_is_under_the_desk_and_highlight_over_it() {
+        let mut s = state();
+        let level = |channel, value| DeskLevel {
+            universe: "u1".into(),
+            channel,
+            value,
+        };
+        // A mesa tem 1, 2 e 3; a prévia fica embaixo dela e só aparece no 5
+        s.apply(Command::Preview(vec![level(1, 50), level(5, 77)]));
+        assert_eq!(frame(&s)[..5], [255, 100, 200, 255, 77]);
+        s.apply(Command::Highlight(vec![level(2, 255)]));
+        assert_eq!(frame(&s)[1], 255);
+        // O blackout vale também para o "Localizar"
+        s.apply(Command::Blackout(true));
+        assert_eq!(frame(&s)[..2], [0, 0]);
     }
 
     #[test]

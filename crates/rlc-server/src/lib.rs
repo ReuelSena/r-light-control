@@ -4,11 +4,12 @@
 mod apply;
 mod hub;
 mod library;
+mod project;
 mod ws;
 
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -43,10 +44,16 @@ pub struct Settings {
     pub pin: Option<String>,
     /// Tipo escolhido à mão para cada interface USB (pelo id, `ftdi-` e o número de série).
     pub interface_kinds: BTreeMap<String, rlc_core::InterfaceKind>,
-    /// Pasta da biblioteca de fixtures. O `load` põe a do usuário
-    /// (`%APPDATA%\r-light-control\fixtures`); sem pasta (nos testes), a biblioteca fica só na memória.
+    /// Último projeto aberto ou salvo (pelo nome), que o app abre ao iniciar.
+    pub last_project: Option<String>,
+    /// Pasta do app (`%APPDATA%\r-light-control`), com a biblioteca de fixtures e a cópia de
+    /// recuperação. O `load` põe as pastas do usuário; sem elas (nos testes), tudo fica na memória e o
+    /// servidor abre o show de exemplo.
     #[serde(skip)]
-    pub library_dir: Option<PathBuf>,
+    pub app_dir: Option<PathBuf>,
+    /// Pasta dos projetos (`Documentos\R Light Control`).
+    #[serde(skip)]
+    pub projects_dir: Option<PathBuf>,
 }
 
 impl Default for Settings {
@@ -57,7 +64,9 @@ impl Default for Settings {
             allow_lan: true,
             pin: None,
             interface_kinds: BTreeMap::new(),
-            library_dir: None,
+            last_project: None,
+            app_dir: None,
+            projects_dir: None,
         }
     }
 }
@@ -85,7 +94,12 @@ impl Settings {
                 settings
             }
         };
-        settings.library_dir = Some(Self::dir().join("fixtures"));
+        settings.app_dir = Some(Self::dir());
+        settings.projects_dir = Some(
+            dirs::document_dir()
+                .unwrap_or_default()
+                .join("R Light Control"),
+        );
         settings
     }
 
@@ -101,6 +115,15 @@ impl Settings {
             tracing::warn!("não foi possível gravar {}: {e}", path.display());
         }
     }
+}
+
+/// Escrita atômica (A5): um arquivo temporário que depois toma o lugar do antigo. Cria a pasta se
+/// faltar.
+pub(crate) fn write_atomic(path: &Path, text: &str) -> std::io::Result<()> {
+    let temp = path.with_extension("tmp");
+    std::fs::create_dir_all(path.parent().unwrap_or(path))?;
+    std::fs::write(&temp, text)?;
+    std::fs::rename(&temp, path)
 }
 
 /// Logs no terminal e em arquivo diário (`%LOCALAPPDATA%\r-light-control\logs`, últimos 7 dias).

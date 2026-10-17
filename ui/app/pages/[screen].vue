@@ -14,6 +14,8 @@ const screen = computed<ScreenId>(() => (isScreen(route.params.screen) ? route.p
 useHead({ title: () => `${t(`screens.${screen.value}`)} · R Light Control` })
 
 const modular = computed(() => prefs.value.modular && wide.value)
+// Cena em prévia na luz (o editor de cena de algum aparelho)
+const previewName = computed(() => state.value.preview && state.value.project.functions.find((f) => f.id === state.value.preview)?.name)
 const moreOpen = ref(false)
 // Configurações num painel lateral sobre a tela atual (não é uma tela navegável)
 const settingsOpen = ref(false)
@@ -78,6 +80,7 @@ function go(id: ScreenId) {
         <OctagonX :size="18" />
       </RlButton>
       <RlLcd v-if="state.testPattern" color="var(--color-flash)" :title="t('shell.testPattern')">{{ t('shell.test') }}</RlLcd>
+      <RlLcd v-if="previewName" color="var(--color-flash)" :title="t('shell.previewOf', { name: previewName })">{{ t('shell.preview') }}</RlLcd>
       <RlLcd class="max-2xl:hidden">{{ state.master.bpm }} BPM</RlLcd>
       <span class="flex items-center gap-1.5 text-xs font-bold" :title="usbOk ? t('shell.usbOk') : t('shell.usbFail')">
         <span class="rl-led" :style="{ '--led': usbOk ? 'var(--color-on)' : 'var(--color-danger)' }" />

@@ -38,10 +38,10 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 - **`clientId`:** é o id do aparelho em `remote.clients`. É assim que ele se reconhece na lista do ⚙.
 
 **Tópicos do `evt`** (o caminho no `Snapshot`, aplicado no lugar pelo cliente):
-- **Projeto:** `project` (projeto inteiro, no "Novo projeto"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`.
-- **Arquivo e biblioteca:** `projectPath`, `dirty` e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
+- **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`.
+- **Arquivo e biblioteca:** `projectPath`, `dirty`, `recovered`, `projects` (os projetos da pasta, relidos a cada segundo) e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
-- **Ao vivo:** `running`, `desk`, `master`, `widgetValues`, `stats` e `testPattern`.
+- **Ao vivo:** `running`, `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (as fixtures do "Localizar").
 
 `stats` e `interfaces` chegam a cada segundo, com os números do Monitoramento.
 
@@ -76,7 +76,9 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | Operação | Campos | Efeito |
 |---|---|---|
 | `newProject` | — | Projeto vazio, com um universo na saída Dummy; zera a Mesa simples e o ao vivo |
-| `openProject` / `saveProject` | `path` / `path?` | Recusadas até a F5 (arquivos de verdade) |
+| `openProject` | `name` | Abre um projeto da pasta pelo nome; solta o ao vivo como o `newProject` e começa um histórico novo. Arquivo inválido ou de versão mais nova é recusado sem mexer no projeto aberto |
+| `saveProject` | `name?` | Sem `name`, salva no arquivo atual (a versão anterior vira `.rlc.bak`); com `name`, é o "Salvar como": um projeto novo na pasta (nome repetido é recusado) |
+| `undo` / `redo` | — | Desfaz e refaz a última alteração do projeto ou da biblioteca, de qualquer aparelho. A operação ao vivo não entra. Sem passo, recusa ("Nada para desfazer") |
 | `addFixtures` | `defId, mode, name, color, count, universe, address?` | Adiciona `count` fixtures; sem `address`, cada uma vai para o primeiro lugar livre |
 | `updateFixture` | `fixture` | Substitui a fixture (nome, cor, modo, universo, endereço) |
 | `removeFixtures` | `ids` | Remove fixtures e as referências a elas (grupos, cenas, sequências, EFX, console, palco) |
@@ -92,7 +94,7 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `saveFolder` / `removeFolder` | `folder` / `id` | Pasta do Studio (de um tipo só); remover solta as criações dela. Mover uma criação de pasta é um `saveFunction` com outro `folder` |
 | `setFunctionRunning` | `id, running` | Roda ou para uma criação (até a F6, não acende nada) |
 | `stopAllFunctions` | — | Para todas as criações rodando ("Parar todas" do Studio e Stop All do console), baixa os sliders de playback e solta os passos escolhidos nas cue lists |
-| `panic` | — | Pânico: o mesmo do `stopAllFunctions`, zera a Mesa simples inteira e desliga o padrão de teste |
+| `panic` | — | Pânico: o mesmo do `stopAllFunctions`, zera a Mesa simples inteira e desliga o padrão de teste, a prévia e o "Localizar" |
 | `setDeskLevel` | `universe, channel, value` | Fader de um canal da Mesa simples (canal de 1 a 512, valor de 0 a 255) |
 | `setDeskGroupLevel` | `group, value` | Fader de um grupo de canais na Mesa simples: grava o nível do grupo e o valor em cada canal dele (os faders de canal acompanham) |
 | `resetDesk` | `universe?` | Zera a Mesa simples: os canais do universo ou, sem ele, os grupos de canais (soltando os canais deles) |
@@ -102,6 +104,8 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `setWidgetValue` | `widget, value` | Valor ao vivo de um elemento (ver `widgetValues` abaixo); `value` vazio solta o valor |
 | `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global |
 | `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
+| `setPreview` | `function?` | Cena em prévia na luz (só cenas); sem `function`, desliga. Uma por vez, abaixo da Mesa simples |
+| `setHighlight` | `fixtures` | Fixtures do "Localizar": dimmer e RGBW a 100%, shutter no padrão, acima da Mesa simples; vazio apaga |
 | `setTestPattern` | `pattern?` | Padrão de teste da saída (`ramp` ou `chase`; sem ele, desliga). Página `/dev/dmx` |
 | `setInterfaceKind` | `interface, kind?` | Tipo de uma interface USB (`enttecPro` ou `openDmx`) escolhido à mão e guardado no `settings.json`; sem `kind`, volta ao automático. A saída reabre no protocolo novo |
 

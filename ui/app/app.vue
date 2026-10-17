@@ -3,7 +3,10 @@ type Tauri = { invoke: (cmd: string, args: object) => Promise<unknown> }
 const prefs = usePrefs()
 const route = useRoute()
 const { t } = useI18n()
-const { connected, error } = useEngine()
+const { connected, error, send } = useEngine()
+const consoleEditing = useState('consoleEditing', () => false)
+// Aviso curto do desfazer, porque a alteração pode estar em outra tela
+const notice = ref('')
 
 // Zoom geral (⚙), sempre um zoom de verdade, que mantém medidas, toques, arrastos e balões coerentes
 // (o `zoom` do CSS desalinha os balões):
@@ -50,6 +53,21 @@ onMounted(() => {
     e.preventDefault()
     prefs.value[target] = stepValue(zoomSteps, prefs.value[target], delta)
   })
+
+  // Desfazer (Ctrl + Z) e refazer (Ctrl + Shift + Z) em todas as telas. Num campo de texto, vale o do
+  // próprio campo; com o console em operação, as teclas são dos elementos (E12).
+  window.addEventListener('keydown', (e) => {
+    if (!e.ctrlKey || e.altKey || e.repeat || e.key.toLowerCase() !== 'z') return
+    if ((e.target as HTMLElement).closest('input, textarea, select')) return
+    if (route.params.screen === 'console' && !consoleEditing.value) return
+    e.preventDefault()
+    // Recusado ("Nada para desfazer"), o aviso das recusas já mostra o motivo
+    send({ op: e.shiftKey ? 'redo' : 'undo' }).then(() => {
+      const text = t(e.shiftKey ? 'undo.redone' : 'undo.done')
+      notice.value = text
+      setTimeout(() => notice.value === text && (notice.value = ''), 1500)
+    }, () => {})
+  })
 })
 </script>
 
@@ -65,5 +83,8 @@ onMounted(() => {
     role="alert"
   >
     {{ error }}
+  </p>
+  <p v-else-if="notice" class="panel fixed inset-x-0 bottom-24 z-[60] mx-auto w-fit max-w-[90vw] text-sm text-fg" role="status">
+    {{ notice }}
   </p>
 </template>

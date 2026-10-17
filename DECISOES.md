@@ -101,7 +101,8 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - Ctrl + − e Ctrl + + mudam o zoom geral; com o console na frente (tela aberta, painel ativo do modular ou janela externa dele), mudam o zoom do console.
     - Seção master, no teclado numérico: − blackout, + parar tudo, Enter tap do BPM. Valem com o console na tela, também na edição.
     - Console: Alt + E liga e desliga a edição; Alt + I mostra ou esconde as dicas de atalho (as etiquetas das teclas nos elementos e na seção master), escolha guardada em cada aparelho. O botão das dicas fica ao lado do "Editar". Funcionam também com o foco num campo, porque não escrevem nada.
-    - Essas teclas e combinações são reservadas: nenhum elemento pode usá-las. O teclado numérico tem nome próprio ("Num 1", "Num -"), então as teclas da fileira de cima das letras (−, + e Enter inclusive) continuam livres para os elementos.
+    - **Desfazer e refazer (2026-10-17):** Ctrl + Z desfaz e Ctrl + Shift + Z refaz qualquer alteração, em todas as telas e menus. Com o console na frente e em operação, as duas combinações vão para os elementos (que podem usá-las); na edição do console, desfazem e refazem.
+    - Essas teclas e combinações são reservadas: nenhum elemento pode usá-las. O Ctrl + Z e o Ctrl + Shift + Z não são reservados. O teclado numérico tem nome próprio ("Num 1", "Num -"), então as teclas da fileira de cima das letras (−, + e Enter inclusive) continuam livres para os elementos.
   - **Entradas externas por elemento:** o controle MIDI (com "aprender") ou a tecla do teclado que aciona um elemento do console é definido na edição do próprio elemento, como no QLC+. Não há tela separada de mapeamento MIDI.
   - **Configurações (2026-10-16):** num painel lateral aberto pelo ⚙, sobre a tela atual, para ajustar algo sem sair de uma criação ou edição. Não são uma tela navegável: não entram nos menus, no modular nem em janela externa.
   - **Onde se programa:** as ferramentas de atributo (intensidade, cor, posição, efeitos) ficam no editor de cena do Studio, como no QLC+ 5. Não há aba "Programador".
@@ -138,6 +139,14 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - **Edição simultânea (2026-10-17):** a última gravação vale, em tudo (inclusive no palco). Não há trava nem mescla.
   - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acende nada: a saída é a Mesa simples, com o Grand Master e o blackout.
   - **Sem salvar até a F5 (2026-10-17):** o servidor abre com o show de exemplo; "Novo projeto" funciona, Abrir e Salvar ficam desligados. O que se muda se perde ao fechar o app.
+  - **Projetos (2026-10-17, F5):**
+    - Arquivos `.rlc` numa pasta só, `Documentos\R Light Control\`, salvos pelo nome e abertos pela lista, também no celular. Salvar guarda a versão anterior em `.rlc.bak`.
+    - Ao iniciar, o app abre a recuperação; senão, o último projeto; senão, um projeto em branco. O show de exemplo fica gravado na pasta na primeira vez.
+    - Com alterações não salvas, uma cópia de recuperação é gravada a cada mudança (no máximo 1 por segundo). Fechar sem salvar não perde nada: não há a pergunta "Salvar antes de sair?".
+  - **Prévia (2026-10-17, F5):** o editor de cena é o programador (E12). O botão "Prévia" manda a cena em edição para a luz; começa desligado ao abrir a cena (como no QLC+ 5) e desliga ao sair do editor. Uma prévia por vez, para todos os aparelhos.
+    - Camadas da saída, de baixo para cima: valor padrão, prévia, Mesa simples, localizar, Grand Master e blackout.
+  - **Localizar (2026-10-17, F5):** acende as fixtures escolhidas (dimmer e RGBW a 100%, shutter no padrão, pan e tilt parados), sem gravar na cena.
+  - **Desfazer (2026-10-17, F5):** um histórico só, no servidor, para todos os aparelhos (100 passos). Entram o projeto e a biblioteca; a operação ao vivo, as preferências de cada aparelho, a rede local, o PIN e o tipo da interface ficam de fora. "Novo" e "Abrir" começam um histórico novo. Só pelo teclado por enquanto.
   - **Blackout (2026-10-17):** como no QLC+, zera só os canais de intensidade (dimmer e cores) e mantém o resto (pan, tilt, gobo), para os moving heads não se mexerem. Canais sem fixture contam como intensidade.
   - **Valor padrão do canal (2026-10-17):** cada universo parte dos valores padrão das fixtures patchadas (ex.: o Strobo do Beam 7R em 255). A Mesa simples fica por cima, e o canal solto (inclusive pelo "Zerar") volta ao padrão.
   - **Estado ao vivo não é salvo (2026-10-17):** criações rodando, Mesa simples, valores dos elementos do console e seção master ficam fora do projeto. Ao reabrir, tudo começa parado e zerado, como no QLC+.
@@ -212,3 +221,6 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-17 | Mini-plano da F4 aprovado: a biblioteca do QLC+ nunca é embutida (fixtures só importadas ou criadas à mão); biblioteca do usuário gravada no PC; valor padrão do canal aplicado na saída; cor da faixa pelo nome; Excluir e importar vários `.qxf` de uma vez na Biblioteca (E3, A2). |
 | 2026-10-17 | F4 entregue: importador `rlc-qxf`, biblioteca gravada no PC, valor padrão na saída. As 1.781 fixtures do QLC+ 5.3.0 importam sem recusa (E3). |
 | 2026-10-17 | F4 validada pelo usuário e concluída. |
+| 2026-10-17 | Pedido do usuário: desfazer e refazer (Ctrl + Z e Ctrl + Shift + Z) em todas as telas, na F5, menos com o console em operação (E12). Sai do backlog da v2. |
+| 2026-10-17 | Mini-plano da F5 aprovado: projetos numa pasta só, recuperação automática, prévia desligada ao abrir a cena, Mesa simples acima da prévia, localizar e desfazer com histórico único (A2, E12). Sem projeto anterior, o app abre em branco. |
+| 2026-10-17 | F5 entregue: projetos em arquivo, recuperação, prévia, localizar e desfazer. A recuperação é gravada no segundo seguinte à mudança, e a lista de projetos é relida a cada segundo (A2, A5). |

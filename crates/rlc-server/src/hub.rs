@@ -1,12 +1,14 @@
 //! Estado do servidor (A2): um único escritor, atrás de uma trava. Cada operação aplicada aumenta a
 //! revisão e vira avisos `evt` difundidos a todos os clientes, na ordem; o motor e as saídas recebem
-//! o que mudou para eles.
+//! o que mudou para eles. Também é aqui que ficam os arquivos (projetos, recuperação e biblioteca) e o
+//! histórico do desfazer.
 
+use std::mem::{Discriminant, discriminant};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::extract::ws::Utf8Bytes;
 use rlc_core::*;
@@ -18,11 +20,22 @@ use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
-use crate::apply::{Topic, apply, new_id, universe_patch};
-use crate::library;
+use crate::apply::{
+    Topic, apply, empty_project, highlight_levels, is_live, new_id, preview_levels, universe_patch,
+};
+use crate::{library, project};
 
-/// Show de exemplo com que o servidor abre até a F5 (salvar e abrir). A biblioteca dele é a da
-/// primeira vez (as genéricas). Os controladores MIDI são simulados até a F12.
+/// Passos guardados no histórico do desfazer.
+const HISTORY: usize = 100;
+/// Alterações seguidas com menos que isso entre elas (um arrasto de fader) viram um passo só.
+const MERGE: Duration = Duration::from_millis(500);
+
+/// Um passo do desfazer: como estavam os pedaços do estado que a alteração mudou.
+type Step = Vec<(Topic, Value)>;
+
+/// Show de exemplo: gravado na pasta dos projetos na primeira vez (e aberto nos testes, que não têm
+/// pastas). A biblioteca dele é a da primeira vez (as genéricas). Os controladores MIDI são simulados
+/// até a F12.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Example {
@@ -38,7 +51,8 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
         project: example.project,
         project_path: None,
         dirty: false,
-        recent_projects: vec![],
+        recovered: false,
+        projects: vec![],
         library: example.library,
         interfaces: vec![DmxInterface {
             id: "dummy".into(),
@@ -76,6 +90,8 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
             uptime_s: 0,
         },
         test_pattern: None,
+        preview: None,
+        highlight: vec![],
     }
 }
 
@@ -93,7 +109,15 @@ pub struct Hub {
     events: broadcast::Sender<Utf8Bytes>,
     engine: Engine,
     outputs: Vec<Slot>,
-    library_dir: Option<PathBuf>,
+    /// Pasta do app (biblioteca e recuperação) e dos projetos; sem elas (nos testes), nada vai ao disco.
+    app_dir: Option<PathBuf>,
+    projects_dir: Option<PathBuf>,
+    undo: Vec<Step>,
+    redo: Vec<Step>,
+    /// Última alteração que entrou no histórico, para juntar as seguidas.
+    last_edit: Option<(Discriminant<Op>, Vec<Topic>, Instant)>,
+    /// Alteração ainda fora da cópia de recuperação.
+    recovery_pending: bool,
     /// Acesso pela rede local, acompanhado pelos clientes de fora (que caem quando ele é desligado).
     pub allow_lan: watch::Sender<bool>,
     started: Instant,
@@ -109,8 +133,8 @@ impl Hub {
         let mut snapshot = example_snapshot(lan_url);
         snapshot.remote.enabled = settings.allow_lan;
         snapshot.remote.pin = settings.pin.clone();
-        if let Some(dir) = &settings.library_dir {
-            snapshot.library = library::load(dir, snapshot.library);
+        if let Some(dir) = &settings.app_dir {
+            snapshot.library = library::load(&dir.join("fixtures"), snapshot.library);
         }
 
         let engine = Engine::spawn();
@@ -122,13 +146,41 @@ impl Hub {
             events: broadcast::channel(1024).0,
             engine,
             outputs: vec![dummy],
-            library_dir: settings.library_dir.clone(),
+            app_dir: settings.app_dir.clone(),
+            projects_dir: settings.projects_dir.clone(),
+            undo: vec![],
+            redo: vec![],
+            last_edit: None,
+            recovery_pending: false,
             started: Instant::now(),
             last_stats: Instant::now(),
             system: System::new(),
         };
+        hub.start_project(settings.last_project.as_deref());
         hub.sync_engine(&[Topic::Project, Topic::Desk, Topic::Master]);
         hub
+    }
+
+    /// O que abre ao iniciar: a recuperação; senão, o último projeto; senão, um projeto em branco.
+    fn start_project(&mut self, last: Option<&str>) {
+        let Some(dir) = self.projects_dir.clone() else {
+            return;
+        };
+        // Primeira vez: a pasta nasce com o show de exemplo, para abrir pela lista
+        if !dir.exists()
+            && let Err(e) = project::save(&dir.join("Show de exemplo.rlc"), &self.snapshot.project)
+        {
+            tracing::warn!("não foi possível criar {}: {e}", dir.display());
+        }
+        let recovered = self.recovery_file().and_then(|f| project::read(&f).ok());
+        if let Some((project, origin)) = recovered {
+            tracing::info!("projeto recuperado da última sessão");
+            let s = &mut self.snapshot;
+            (s.project, s.project_path, s.dirty, s.recovered) = (project, origin, true, true);
+        } else if last.is_none_or(|name| self.open(name).is_err()) {
+            self.snapshot.project = empty_project();
+        }
+        self.snapshot.projects = project::list(&dir);
     }
 
     pub fn frames(&self) -> Published {
@@ -137,26 +189,32 @@ impl Hub {
 
     /// Aplica uma operação de um cliente. Recusada, nada muda e ninguém é avisado.
     pub fn command(&mut self, op: Op) -> Result<Value, String> {
+        let (topics, reply) = match op {
+            Op::OpenProject { name } => (self.open(&name)?, Value::Null),
+            Op::SaveProject { name } => (self.save(name)?, Value::Null),
+            Op::Undo => (self.step_back(true)?, Value::Null),
+            Op::Redo => (self.step_back(false)?, Value::Null),
+            op => self.edit(op)?,
+        };
+        self.publish(&topics);
+        self.sync_engine(&topics);
+        Ok(reply)
+    }
+
+    /// Operações do contrato (`apply`), com o histórico do desfazer e o que vai para o disco.
+    fn edit(&mut self, op: Op) -> Result<(Vec<Topic>, Value), String> {
         let new_project = op == Op::NewProject;
         let kind_change = match &op {
             Op::SetInterfaceKind { interface, kind } => Some((interface.clone(), *kind)),
             _ => None,
         };
-        let mut def_change = match &op {
-            Op::SaveFixtureDef { def } => Some(def.id.clone()),
-            Op::RemoveFixtureDef { id } => Some(id.clone()),
-            _ => None,
-        };
-        let import = matches!(op, Op::ImportQxf { .. });
+        let before = (!is_live(&op) && !new_project).then(|| self.snapshot.clone());
+        let kind = discriminant(&op);
         let (mut topics, reply) = apply(&mut self.snapshot, op)?;
-        if import {
-            def_change = reply["defId"].as_str().map(Into::into);
-        }
-        // Biblioteca gravada no PC: a definição salva, importada ou excluída
-        if let (Some(dir), Some(id)) = (&self.library_dir, def_change) {
-            match self.snapshot.library.iter().find(|d| d.id == id) {
-                Some(def) => library::save(dir, def),
-                None => library::remove(dir, &id),
+        if let Some(before) = &before {
+            self.record(kind, &topics, before);
+            if topics.contains(&Topic::Library) {
+                self.sync_library(&before.library);
             }
         }
         // Tipo escolhido à mão: guardado pelo id da interface e com a saída reaberta no protocolo novo
@@ -173,9 +231,12 @@ impl Hub {
                 self.outputs.push(slot);
             }
         }
-        if !new_project && !self.snapshot.dirty && topics.iter().any(|t| t.is_project()) {
-            self.snapshot.dirty = true;
-            topics.push(Topic::Dirty);
+        if new_project {
+            self.undo.clear();
+            self.redo.clear();
+            self.clean(&mut topics);
+        } else {
+            self.changed(&mut topics);
         }
         if topics.contains(&Topic::Remote) {
             let remote = &self.snapshot.remote;
@@ -185,9 +246,165 @@ impl Hub {
             settings.pin = remote.pin.clone();
             settings.save();
         }
-        self.publish(&topics);
-        self.sync_engine(&topics);
-        Ok(reply)
+        Ok((topics, reply))
+    }
+
+    /// Guarda no histórico como estavam os pedaços que a alteração mudou. Alterações seguidas da mesma
+    /// operação nos mesmos pedaços (um arrasto de fader) viram um passo só.
+    fn record(&mut self, kind: Discriminant<Op>, topics: &[Topic], before: &Snapshot) {
+        let topics: Vec<Topic> = topics.iter().copied().filter(|t| t.undoable()).collect();
+        if topics.is_empty() {
+            return;
+        }
+        self.redo.clear();
+        let now = Instant::now();
+        let same = self
+            .last_edit
+            .as_ref()
+            .is_some_and(|(k, t, at)| *k == kind && *t == topics && now - *at < MERGE);
+        if !same || self.undo.is_empty() {
+            self.undo
+                .push(topics.iter().map(|t| (*t, t.data(before))).collect());
+            if self.undo.len() > HISTORY {
+                self.undo.remove(0);
+            }
+        }
+        self.last_edit = Some((kind, topics, now));
+    }
+
+    /// Desfaz (ou refaz) um passo: devolve os pedaços guardados e guarda os de agora para o caminho
+    /// de volta.
+    fn step_back(&mut self, undo: bool) -> Result<Vec<Topic>, String> {
+        let (from, to) = match undo {
+            true => (&mut self.undo, &mut self.redo),
+            false => (&mut self.redo, &mut self.undo),
+        };
+        let step = from.pop().ok_or(match undo {
+            true => "Nada para desfazer.",
+            false => "Nada para refazer.",
+        })?;
+        let library = self.snapshot.library.clone();
+        let mut back = Vec::new();
+        for (topic, value) in step {
+            back.push((topic, topic.data(&self.snapshot)));
+            topic.restore(&mut self.snapshot, value)?;
+        }
+        let mut topics: Vec<Topic> = back.iter().map(|(t, _)| *t).collect();
+        to.push(back);
+        self.last_edit = None;
+        if topics.contains(&Topic::Library) {
+            self.sync_library(&library);
+        }
+        self.changed(&mut topics);
+        Ok(topics)
+    }
+
+    /// Alteração no projeto: fica marcada como não salva e vai para a cópia de recuperação.
+    fn changed(&mut self, topics: &mut Vec<Topic>) {
+        if !topics.iter().any(|t| t.is_project()) {
+            return;
+        }
+        self.recovery_pending = true;
+        if !self.snapshot.dirty {
+            self.snapshot.dirty = true;
+            topics.push(Topic::Dirty);
+        }
+    }
+
+    /// Projeto novo, aberto ou salvo: a cópia de recuperação não vale mais.
+    fn clean(&mut self, topics: &mut Vec<Topic>) {
+        self.recovery_pending = false;
+        self.snapshot.recovered = false;
+        topics.push(Topic::Recovered);
+        if let Some(file) = self.recovery_file().filter(|f| f.exists())
+            && let Err(e) = std::fs::remove_file(&file)
+        {
+            tracing::warn!("não foi possível apagar {}: {e}", file.display());
+        }
+    }
+
+    fn recovery_file(&self) -> Option<PathBuf> {
+        self.app_dir.as_ref().map(|d| d.join("recuperacao.rlc"))
+    }
+
+    /// Último projeto aberto ou salvo, que o app abre ao iniciar (só com as pastas do usuário).
+    fn remember(&self, name: &str) {
+        if self.app_dir.is_some() {
+            let mut settings = Settings::load();
+            settings.last_project = Some(name.into());
+            settings.save();
+        }
+    }
+
+    /// Abre um projeto da pasta. Um arquivo inválido é recusado, e o projeto aberto continua como está.
+    fn open(&mut self, name: &str) -> Result<Vec<Topic>, String> {
+        let dir = self.projects_dir.clone().ok_or("Sem pasta de projetos.")?;
+        let path = project::path(&dir, name)?;
+        let (mut project, _) = project::read(&path)?;
+        project.name = project::name(&path);
+        // O "Novo" solta o que é ao vivo (mesa, criações rodando, prévia); depois entra o projeto lido
+        let (mut topics, _) = apply(&mut self.snapshot, Op::NewProject)?;
+        self.remember(&project.name);
+        self.snapshot.project = project;
+        self.snapshot.project_path = Some(path.display().to_string());
+        self.undo.clear();
+        self.redo.clear();
+        self.clean(&mut topics);
+        Ok(topics)
+    }
+
+    /// Salva no arquivo atual ou, com nome, como um projeto novo na pasta (o "Salvar como").
+    fn save(&mut self, name: Option<String>) -> Result<Vec<Topic>, String> {
+        let dir = self.projects_dir.clone().ok_or("Sem pasta de projetos.")?;
+        let mut topics = vec![
+            Topic::ProjectName,
+            Topic::ProjectPath,
+            Topic::Dirty,
+            Topic::Projects,
+        ];
+        let path = match name {
+            Some(name) => {
+                let path = project::path(&dir, &name)?;
+                if path.exists() {
+                    return Err(format!(
+                        "Já existe um projeto chamado \"{}\".",
+                        project::name(&path)
+                    ));
+                }
+                path
+            }
+            None => self
+                .snapshot
+                .project_path
+                .as_ref()
+                .map(PathBuf::from)
+                .ok_or("O projeto ainda não tem nome: use \"Salvar como\".")?,
+        };
+        let mut project = self.snapshot.project.clone();
+        project.name = project::name(&path);
+        project::save(&path, &project).map_err(|e| format!("Não foi possível salvar: {e}"))?;
+        self.remember(&project.name);
+        let s = &mut self.snapshot;
+        s.project.name = project.name;
+        s.project_path = Some(path.display().to_string());
+        s.dirty = false;
+        s.projects = project::list(&dir);
+        self.clean(&mut topics);
+        Ok(topics)
+    }
+
+    /// Leva ao disco o que mudou na biblioteca (salvar, importar, remover ou desfazer).
+    fn sync_library(&self, before: &[FixtureDef]) {
+        let Some(dir) = self.app_dir.as_ref().map(|d| d.join("fixtures")) else {
+            return;
+        };
+        let now = &self.snapshot.library;
+        for def in now.iter().filter(|d| !before.contains(d)) {
+            library::save(&dir, def);
+        }
+        for def in before.iter().filter(|d| !now.iter().any(|x| x.id == d.id)) {
+            library::remove(&dir, &def.id);
+        }
     }
 
     /// Avisa todos os clientes do que mudou, numa revisão nova.
@@ -254,10 +471,25 @@ impl Hub {
         if any(&[Topic::TestPattern]) {
             self.engine.send(Command::Test(self.snapshot.test_pattern));
         }
+        // A prévia acompanha cada mudança da cena em edição
+        if any(&[
+            Topic::Project,
+            Topic::Universes,
+            Topic::Fixtures,
+            Topic::FixtureDefs,
+            Topic::Functions,
+            Topic::Preview,
+            Topic::Highlight,
+        ]) {
+            self.engine
+                .send(Command::Preview(preview_levels(&self.snapshot)));
+            self.engine
+                .send(Command::Highlight(highlight_levels(&self.snapshot)));
+        }
     }
 
-    /// A cada segundo: as interfaces USB ligadas agora (as novas ganham a sua saída) e os números do
-    /// Monitoramento (o app, o motor e cada interface).
+    /// A cada segundo: as interfaces USB ligadas agora (as novas ganham a sua saída), os números do
+    /// Monitoramento (o app, o motor e cada interface), a lista dos projetos e a cópia de recuperação.
     pub fn refresh(&mut self, devices: &[FtdiInfo]) {
         for device in devices {
             let id = format!("ftdi-{}", device.serial);
@@ -336,7 +568,24 @@ impl Hub {
             }
             slot.frames_seen = frames;
         }
-        self.publish(&[Topic::Stats, Topic::Interfaces]);
+        let mut topics = vec![Topic::Stats, Topic::Interfaces];
+        // Projetos copiados para a pasta (ou apagados dela) aparecem na lista sem reiniciar o app
+        if let Some(dir) = &self.projects_dir {
+            let projects = project::list(dir);
+            if projects != self.snapshot.projects {
+                self.snapshot.projects = projects;
+                topics.push(Topic::Projects);
+            }
+        }
+        self.publish(&topics);
+        // Cópia de recuperação das alterações não salvas (no máximo uma vez por segundo)
+        if std::mem::take(&mut self.recovery_pending)
+            && self.snapshot.dirty
+            && let Some(file) = self.recovery_file()
+        {
+            let s = &self.snapshot;
+            project::save_recovery(&file, &s.project, s.project_path.as_deref());
+        }
     }
 }
 
@@ -404,4 +653,98 @@ fn device_name(address: SocketAddr, user_agent: &str) -> &'static str {
     .into_iter()
     .find(|(key, _)| user_agent.contains(key))
     .map_or("Navegador", |(_, name)| name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Hub com uma pasta de projetos temporária (sem a pasta do app: nada vai para o settings.json).
+    fn hub() -> (Hub, PathBuf) {
+        let dir = std::env::temp_dir().join(format!("rlc-hub-{}", new_id()));
+        let settings = Settings {
+            projects_dir: Some(dir.clone()),
+            ..Default::default()
+        };
+        (Hub::new(&settings, 0), dir)
+    }
+
+    #[test]
+    fn first_start_is_blank_with_the_example_in_the_folder() {
+        let (hub, dir) = hub();
+        assert_eq!(hub.snapshot.project.name, "Novo projeto");
+        assert_eq!(hub.snapshot.projects, ["Show de exemplo"]);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn save_as_and_open_round_trip() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        let example = hub.snapshot.project.clone();
+        assert!(!example.fixtures.is_empty());
+        hub.command(Op::AddUniverse).unwrap();
+        assert!(hub.snapshot.dirty);
+        hub.command(Op::SaveProject {
+            name: Some("Culto".into()),
+        })
+        .unwrap();
+        assert!(!hub.snapshot.dirty);
+        assert_eq!(hub.snapshot.project.name, "Culto");
+        assert_eq!(hub.snapshot.projects[0], "Culto");
+        let saved = hub.snapshot.project.clone();
+        // Nome repetido é recusado; um arquivo inválido também, sem mexer no projeto aberto
+        assert!(
+            hub.command(Op::SaveProject {
+                name: Some("Culto".into())
+            })
+            .is_err()
+        );
+        std::fs::write(dir.join("Ruim.rlc"), "{").unwrap();
+        assert!(
+            hub.command(Op::OpenProject {
+                name: "Ruim".into()
+            })
+            .is_err()
+        );
+        assert_eq!(hub.snapshot.project, saved);
+        // Abrir de novo dá o mesmo projeto, e o histórico começa vazio
+        hub.command(Op::NewProject).unwrap();
+        hub.command(Op::OpenProject {
+            name: "Culto".into(),
+        })
+        .unwrap();
+        assert_eq!(hub.snapshot.project, saved);
+        assert!(hub.command(Op::Undo).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn undo_and_redo_restore_the_state_and_skip_live_operations() {
+        let (mut hub, dir) = hub();
+        let blank = hub.snapshot.project.clone();
+        hub.command(Op::AddUniverse).unwrap();
+        let with_two = hub.snapshot.project.clone();
+        hub.command(Op::SetGrandMaster { value: 10 }).unwrap();
+        // Um arrasto: palcos seguidos viram um passo só
+        for width in [11.0, 12.0, 13.0] {
+            let mut stage = hub.snapshot.project.stage.clone();
+            stage.width = width;
+            hub.command(Op::SaveStage { stage }).unwrap();
+        }
+        hub.command(Op::Undo).unwrap();
+        assert_eq!(hub.snapshot.project, with_two);
+        hub.command(Op::Undo).unwrap();
+        assert_eq!(hub.snapshot.project, blank);
+        assert_eq!(hub.snapshot.master.grand_master, 10);
+        assert_eq!(hub.command(Op::Undo).unwrap_err(), "Nada para desfazer.");
+        hub.command(Op::Redo).unwrap();
+        hub.command(Op::Redo).unwrap();
+        assert_eq!(hub.snapshot.project.stage.width, 13.0);
+        assert!(hub.command(Op::Redo).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 }

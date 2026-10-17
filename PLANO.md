@@ -111,9 +111,9 @@ Validação:
 
 ## Etapa B — Núcleo
 
-### F3 — Motor base + saída USB DMX · 🟡
+### F3 — Motor base + saída USB DMX · ✅
 
-Mini-plano: [docs/fases/fase-03.md](docs/fases/fase-03.md) (aprovado em 2026-10-17; rodada 1 validada; rodada 2 entregue, aguardando a validação com o hardware).
+Mini-plano: [docs/fases/fase-03.md](docs/fases/fase-03.md) (aprovado em 2026-10-17). Concluída e validada pelo usuário em 2026-10-17, com a Numbstar e os ParLed. O teste do instalador num PC limpo foi para a F16.
 
 - **Motor:** tick, N universos, camada de mesa, Grand Master, blackout e pânico.
 - **`rlc-dmx`:**
@@ -129,12 +129,12 @@ Mini-plano: [docs/fases/fase-03.md](docs/fases/fase-03.md) (aprovado em 2026-10-
 
 Validação (detalhada em [docs/fases/fase-03.md](docs/fases/fase-03.md)):
 - [x] Rodada 1: servidor de verdade, aparelhos sincronizados, Monitoramento real.
-- [ ] A Open DMX do usuário (Numbstar) controla fixtures reais. A Pro fica nos testes automáticos até o usuário ter uma.
-- [ ] 10 min de varredura sem flicker.
-- [ ] A saída volta em até 3 s depois de replugar.
-- [ ] Blackout instantâneo.
-- [ ] O Dummy funciona sem hardware.
-- [ ] O instalador funciona num PC limpo.
+- [x] A Open DMX do usuário (Numbstar) controla fixtures reais. A Pro fica nos testes automáticos até o usuário ter uma.
+- [x] 10 min sem flicker.
+- [x] A saída volta em até 3 s depois de replugar.
+- [x] Blackout instantâneo.
+- [x] O Dummy funciona sem hardware.
+- [ ] O instalador funciona num PC limpo. _Adiado para a F16 (pedido do usuário)._
 
 ### F4 — Fixtures: formato e importador .qxf · ⬜
 
@@ -320,7 +320,7 @@ Validação:
 - **Documentação:** licenças e manual em pt-BR.
 
 Validação:
-- [ ] Instalação limpa.
+- [ ] Instalação limpa (inclui o teste do instalador num PC limpo, adiado da F3).
 - [ ] Show de 2 h sem falhas.
 - [ ] Desinstalação limpa.
 

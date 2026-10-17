@@ -123,6 +123,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - Os comandos chegam por canal e são drenados a cada tick.
   - Cada universo publica o frame mais recente. Cada interface DMX tem sua própria thread, que lê esse frame no próprio ritmo: Enttec Pro a 44 Hz; Open DMX a 30 Hz com break de 110 µs e MAB de 16 µs.
   - Se o motor falhar, as saídas repetem o último frame.
+  - **Interface desplugada (2026-10-17):** a interface perde a alimentação e a linha DMX fica sem sinal. O que cada aparelho faz (apagar ou manter o último estado) é configuração dele, não do app. Ao replugar, a saída volta com o estado atual.
 - **A2. Estado.**
   - O projeto tem um único escritor. Cada operação tipada é validada, incrementa a revisão e é difundida a todos os clientes.
   - O servidor é a autoridade. A UI só é otimista no controle que está sob o dedo.
@@ -198,3 +199,4 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-17 | Rodada 1 da F3 validada pelo usuário. |
 | 2026-10-17 | Rodada 2 da F3: tipo da interface pelo nome, pela pergunta da Pro e à mão no In/Out (guardado por interface); D2XX carregada do driver instalado. Show de exemplo com o rig do usuário (12 ParLed 18x15w e 4 Beam 7R) num universo na Numbstar (E4). |
 | 2026-10-17 | Importação de `.qxf`: continua simulada até a F4 (sem recusa nem conversão à mão). O usuário vai importar o Strobo 1000w ele mesmo, pelo app, na F4. |
+| 2026-10-17 | F3 validada e concluída com a Numbstar e os ParLed. O teste do instalador num PC limpo fica para a F16. Sem sinal (interface desplugada), apagar ou manter o último estado é configuração de cada aparelho (A1). |

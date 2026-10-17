@@ -1,6 +1,6 @@
 # F3 — Motor base e saída USB DMX
 
-**Status:** mini-plano aprovado em 2026-10-17 (decisões 1 a 4 como recomendado). Rodada 1 validada em 2026-10-17. Rodada 2 entregue em 2026-10-17, aguardando a validação com o hardware.
+**Status:** mini-plano aprovado em 2026-10-17 (decisões 1 a 4 como recomendado). Rodada 1 validada em 2026-10-17. Rodada 2 validada com o hardware em 2026-10-17; o teste do instalador num PC limpo fica para a F16, a pedido do usuário.
 
 **Rodada 2 entregue**
 - **Saídas USB (`rlc-dmx/src/ftdi.rs`):** Enttec Pro (rótulo 6, 44 quadros por segundo) e Open DMX (break, MAB e 513 bytes, 30 quadros por segundo), pelo D2XX carregado do driver instalado. Cada interface na sua thread, com prioridade de tempo crítico e prazo absoluto.
@@ -161,11 +161,12 @@ Antes de começar:
 - **Instalador:** `target\release\bundle\nsis\R Light Control_0.1.0_x64-setup.exe` (`pnpm build`). Ele baixa o WebView2 se faltar; o driver da FTDI o Windows instala ao ligar a interface (ou `R:\Light\CDM212364_Setup.exe`).
 - **Importar .qxf continua simulado até a F4:** o resultado é uma cópia do PAR genérico, com avisos fixos.
 
-- [ ] A Numbstar aparece no In/Out como Open DMX, e a Mesa simples acende os ParLed (dimmer e uma cor de um deles: canais 63 e 64).
-- [ ] A Pro, sem uma Enttec Pro de verdade: só pelos testes automáticos do pacote. Com a interface nova, o tipo certo aparece sozinho ou é escolhido à mão.
-- [ ] 10 min do teste de saída sem tremulação.
-- [ ] A saída volta em até 3 s depois de replugar.
-- [ ] Blackout instantâneo.
-- [ ] A saída Dummy funciona sem hardware.
-- [ ] O instalador funciona num PC limpo.
-- [ ] `pnpm check` passa.
+- [x] A Numbstar aparece no In/Out como Open DMX, e a Mesa simples acende os ParLed (dimmer e uma cor de um deles: canais 63 e 64).
+- [x] A Pro, sem uma Enttec Pro de verdade: só pelos testes automáticos do pacote. Com a interface nova, o tipo certo aparece sozinho ou é escolhido à mão.
+- [x] 10 min sem tremulação. _Feito com um ParLed numa cor parada, no lugar da rampa._
+- [x] A saída volta em até 3 s depois de replugar, sem reiniciar o app.
+  - Desplugada, a interface perde a alimentação e a linha fica sem sinal: o ParLed apaga. Manter o último estado nesse caso é configuração do próprio aparelho (perda de sinal), não do app.
+- [x] Blackout instantâneo.
+- [x] A saída Dummy funciona sem hardware (universo "Palco").
+- [ ] O instalador funciona num PC limpo. _Fica para a F16, a pedido do usuário._
+- [x] `pnpm check` passa.

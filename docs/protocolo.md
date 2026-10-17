@@ -1,6 +1,6 @@
-# Protocolo UI ↔ motor (rascunho v0)
+# Protocolo UI ↔ motor (v0)
 
-Rascunho montado a partir do que as telas da F2 precisam. É fechado na F3, quando o servidor Rust passa a falar com a UI de verdade.
+Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026-10-17. Os detalhes (tópicos do `evt` e frames binários) são fechados na F3, quando o servidor Rust passa a falar com a UI de verdade.
 
 - **Fonte da verdade:** os tipos ficam em [`crates/rlc-core/src/lib.rs`](../crates/rlc-core/src/lib.rs). A UI usa os mesmos tipos em TypeScript, gerados pelo ts-rs em `ui/app/types/generated/` ao rodar `cargo test -p rlc-core`. Nunca se editam os tipos gerados à mão.
 - **Porta única das telas:** [`useEngine()`](../ui/app/composables/useEngine.ts) devolve `{ state, send }`. Na F2 é o `MockClient` ([`ui/app/engine/mock.ts`](../ui/app/engine/mock.ts)); na F3 passa a ser o cliente WebSocket, sem mudar as telas.
@@ -30,7 +30,17 @@ Rascunho montado a partir do que as telas da F2 precisam. É fechado na F3, quan
 { "t": "evt", "topic": "patch", "rev": 43, "data": { /* parte do estado que mudou */ } }
 ```
 
-`rev` é a revisão do projeto. Um cliente que perde uma revisão pede um novo `snapshot`. O formato de `evt` (estado parcial ou operação aplicada) é decidido na F3.
+`rev` é a revisão do projeto. Um cliente que perde uma revisão pede um novo `snapshot`.
+
+O `evt` leva **o pedaço do estado que mudou** (ex.: `topic: "fixtures"` com a lista nova), e o cliente o põe no lugar. A UI não repete as regras do motor. Os tópicos exatos são definidos na F3.
+
+## Regras (revisão de 2026-10-17)
+
+- **Edição simultânea:** a última gravação vale, sem trava nem mescla.
+- **IDs:** UUIDv7 gerados pela UI (gerador próprio, porque `crypto.randomUUID` não existe no celular em HTTP), para a tela já escolher o que acabou de criar. O servidor recusa um ID repetido.
+- **Estado ao vivo** (criações rodando, Mesa simples, valores do console, seção master) não é salvo no projeto: ao reabrir, começa parado e zerado.
+- **Preferências de cada aparelho** (zoom, formato do console, dicas de atalho, qualidade e fumaça do 3D) ficam no navegador, fora do contrato.
+- **Acesso:** a conexão só exige PIN na F11 (PIN → token, papéis).
 
 ## Operações v0 (`Op`)
 

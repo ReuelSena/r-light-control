@@ -120,6 +120,7 @@ Validação:
   - Dummy.
 - **Dispositivos:** descoberta por VID/PID, hot-plug, estatísticas (fps, jitter, erros).
 - **UI:** telas Dispositivos, Mesa e Monitor DMX ligadas ao motor. Primeiro instalador.
+- **Protocolo:** cliente WebSocket no lugar do `MockClient`; `evt` com o pedaço do estado que mudou; frames binários dos universos; IDs UUIDv7 gerados pela UI (A2–A4).
 - **Ref:**
   - `plugins/dmxusb/src/{dmxusbwidget,enttecdmxusbpro,enttecdmxusbopen,ftd2xx-interface,qtserial-interface}.cpp`
   - `engine/src/{outputpatch,inputoutputmap,grandmaster,mastertimer-win32}.cpp`

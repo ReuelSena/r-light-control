@@ -47,7 +47,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - No desktop, a roda do mouse ajusta fader e knob: 1% por clique, 0,1% com FINO.
 - **E10. Exibição de valores.** Em % (0–100) por padrão, com opção de DMX (0–255) nas configurações.
   - **Zoom (2026-10-16):** cada aparelho escolhe o zoom geral da interface no ⚙ e o zoom do console ao lado do "Editar".
-    - O zoom geral é sempre um zoom de verdade, que mantém medidas, toques, arrastos e balões coerentes: no app desktop, o zoom nativo da janela; no celular e no tablet, a largura do viewport, que o navegador encaixa na tela na escala escolhida. No navegador do computador, vale o zoom do próprio navegador. O `zoom` do CSS foi descartado porque desalinha os balões e os arrastos.
+    - O zoom geral é sempre um zoom de verdade, que mantém medidas, toques, arrastos e balões coerentes: no app desktop, o zoom nativo da janela; no celular e no tablet, a largura do viewport, que o navegador encaixa na tela na escala escolhida. No celular (2026-10-17), o 100% equivale a 75% da escala do navegador, que deixava a interface grande demais. No navegador do computador, vale o zoom do próprio navegador. O `zoom` do CSS foi descartado porque desalinha os balões e os arrastos.
     - O zoom do console aumenta ou diminui as células da grade; se passar da tela, a grade rola.
 - **E11. Virtual Console montado pelo usuário.** Como no QLC+, o usuário posiciona e configura cada elemento.
   - Aparência e comportamento dos botões são propriedades de cada elemento: destaque (aceso ou LED), cor, modo (liga/desliga ou flash), ação (função, blackout geral, blackout de fixtures ou grupos, stop all) e ícone.
@@ -119,13 +119,18 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 - **A2. Estado.**
   - O projeto tem um único escritor. Cada operação tipada é validada, incrementa a revisão e é difundida a todos os clientes.
   - O servidor é a autoridade. A UI só é otimista no controle que está sob o dedo.
+  - **Edição simultânea (2026-10-17):** a última gravação vale, em tudo (inclusive no palco). Não há trava nem mescla.
+  - **Estado ao vivo não é salvo (2026-10-17):** criações rodando, Mesa simples, valores dos elementos do console e seção master ficam fora do projeto. Ao reabrir, tudo começa parado e zerado, como no QLC+.
+  - **Preferências de cada aparelho (2026-10-17):** zoom, formato do console, dicas de atalho, qualidade e fumaça do 3D ficam no navegador de cada aparelho, fora do projeto e do contrato.
 - **A3. Protocolo WebSocket.**
   - Endpoint único `/ws`, com envelope JSON para comandos e eventos.
   - Frames binários para dados de alta taxa (universos, preview).
   - Snapshot completo ao (re)conectar.
+  - **Avisos de mudança (2026-10-17):** o `evt` leva o pedaço do estado que mudou, não a operação aplicada. Assim a UI não repete as regras do motor.
+  - A conexão só passa a exigir PIN na F11 (PIN → token).
   - Detalhes em `docs/protocolo.md` (a partir da F2).
 - **A4. IDs.**
-  - UUIDv7 nas entidades salvas.
+  - UUIDv7 nas entidades salvas. **Quem gera (2026-10-17):** a UI, para já escolher o que acabou de criar; o servidor confere se é único. A UI tem gerador próprio, porque `crypto.randomUUID` não existe no celular em HTTP.
   - Definições de fixture embutidas no projeto (slug + hash), para que um projeto nunca quebre por falta de definição.
 - **A5. Arquivos.**
   - JSON com `{format, schemaVersion}`. Ao carregar, uma cadeia de migrações converte versões antigas.
@@ -174,4 +179,6 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-16 | Configurações num painel lateral aberto pelo ⚙, sobre a tela atual, no lugar da tela navegável (E12). |
 | 2026-10-16 | Console: botão de dicas de atalho ao lado do "Editar", que mostra ou esconde as etiquetas das teclas; atalhos Alt + E (editar) e Alt + I (dicas), reservados (E12). |
 | 2026-10-16 | Rodada 3 da F2 aprovada e commitada. |
+| 2026-10-17 | Revisão do contrato v0 e do protocolo: a última gravação vale; IDs UUIDv7 gerados pela UI e conferidos pelo servidor; `evt` com o pedaço do estado que mudou; estado ao vivo não é salvo; preferências por aparelho fora do contrato; PIN só na F11 (A2–A4). |
+| 2026-10-17 | Celular: o zoom de 100% passa a ser 75% da escala do navegador; os outros degraus seguem a mesma proporção (E10). |
 | 2026-10-16 | Celular e tablet: botão de tela cheia na barra de cima e zoom da interface no ⚙ (pela largura do viewport) (E10, E12). |

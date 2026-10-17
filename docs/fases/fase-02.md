@@ -33,6 +33,7 @@
 **Pedidos depois da aprovação da rodada 3 (2026-10-16)**
 
 - Celular e tablet: botão de tela cheia na barra de cima (onde o navegador permite) e zoom da interface no ⚙, pela largura do viewport.
+- Celular (2026-10-17): o 100% do zoom passa a ser 75% da escala do navegador.
 
 **Decisões do início da rodada 3 (2026-10-16)**
 - **VC-2:** elementos compartilhados entre os formatos; cada formato guarda só a posição. Três formatos fixos pela largura da tela, com troca no ⚙.
@@ -249,5 +250,5 @@ Motor, USB, arquivos de verdade (abrir e salvar são simulados) e MIDI de verdad
 - [x] Rodada 2 aprovada (Studio, editores, Mesa simples, Monitoramento).
 - [x] Rodada 3 aprovada (Console em operação e edição, VC-1, VC-2, 3D View).
 - [ ] Todos os fluxos percorridos no desktop, no tablet e no celular.
-- [ ] Contrato v0 e rascunho do `docs/protocolo.md` revisados.
+- [x] Contrato v0 e rascunho do `docs/protocolo.md` revisados (2026-10-17).
 - [ ] Telas congeladas, com prints em `docs/telas/`.

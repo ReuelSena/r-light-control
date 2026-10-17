@@ -23,7 +23,7 @@ const pickingGroup = ref(false)
 
 // Atributos de cada ferramenta: knobs para níveis, botões para as faixas (gobo, roda de cores…)
 const panels: Record<'color' | 'effects', { knobs: Attribute[]; caps: Attribute[] }> = {
-  color: { knobs: ['white', 'amber', 'uv'], caps: ['colorWheel', 'colorMacro'] },
+  color: { knobs: ['white', 'amber', 'uv', 'lime', 'indigo', 'colorTemperature'], caps: ['colorWheel', 'colorMacro'] },
   effects: { knobs: ['zoom', 'focus', 'iris', 'goboRotation'], caps: ['shutter', 'gobo', 'prism'] },
 }
 // A aba aparece só se a fixture tem algum destes atributos

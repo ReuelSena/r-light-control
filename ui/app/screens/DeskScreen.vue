@@ -5,6 +5,7 @@ import type { Fixture } from '~/types/generated/Fixture'
 // Mesa simples (E12): um fader por canal DMX, os 512 do universo numa faixa só, e um por grupo de
 // canais. Em tela larga, como no QLC+, os grupos ficam numa faixa embaixo dos canais; no celular,
 // numa aba. A mesa fica por cima das criações rodando (o último a mexer vence); o medidor mostra a saída.
+// O fader do canal solto fica no valor padrão da fixture, que é o que sai nele.
 const STRIP = 88 // largura de uma RlChannelStrip
 const { t } = useI18n()
 const { state, output, send } = useEngine()
@@ -48,7 +49,7 @@ const strips = computed(() =>
     return { address, fixture, channel: fixture && modeChannels(project.value, fixture)[address - fixture.address] }
   }),
 )
-const level = (address: number) => state.value.desk.levels.find((l) => l.universe === tab.value && l.channel === address)?.value ?? 0
+const level = (address: number) => state.value.desk.levels.find((l) => l.universe === tab.value && l.channel === address)?.value
 const groupLevel = (id: string) => state.value.desk.groups.find((g) => g.group === id)?.value ?? 0
 
 // Ctrl + roda do mouse rola a faixa; sem Ctrl, a roda mexe no fader sob o ponteiro (E9)
@@ -79,7 +80,7 @@ function ctrlScroll(e: WheelEvent) {
             :label="s.fixture ? `${s.address} · ${s.fixture.name} · ${s.channel?.name}` : String(s.address)"
             :color="s.fixture?.color"
             :meter="(output[tab]?.[s.address - 1] ?? 0) / 255"
-            :model-value="level(s.address) / 255"
+            :model-value="(level(s.address) ?? s.channel?.default ?? 0) / 255"
             @update:model-value="(v) => send({ op: 'setDeskLevel', universe: tab, channel: s.address, value: Math.round(v * 255) })"
           >
             <template #label>

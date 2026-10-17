@@ -3,6 +3,7 @@
 
 mod apply;
 mod hub;
+mod library;
 mod ws;
 
 use std::collections::BTreeMap;
@@ -42,6 +43,10 @@ pub struct Settings {
     pub pin: Option<String>,
     /// Tipo escolhido à mão para cada interface USB (pelo id, `ftdi-` e o número de série).
     pub interface_kinds: BTreeMap<String, rlc_core::InterfaceKind>,
+    /// Pasta da biblioteca de fixtures. O `load` põe a do usuário
+    /// (`%APPDATA%\r-light-control\fixtures`); sem pasta (nos testes), a biblioteca fica só na memória.
+    #[serde(skip)]
+    pub library_dir: Option<PathBuf>,
 }
 
 impl Default for Settings {
@@ -52,37 +57,40 @@ impl Default for Settings {
             allow_lan: true,
             pin: None,
             interface_kinds: BTreeMap::new(),
+            library_dir: None,
         }
     }
 }
 
 impl Settings {
-    fn path() -> PathBuf {
-        dirs::config_dir()
-            .unwrap_or_default()
-            .join(APP_DIR)
-            .join("settings.json")
+    /// Pasta do app nas configurações do usuário (`%APPDATA%\r-light-control`).
+    fn dir() -> PathBuf {
+        dirs::config_dir().unwrap_or_default().join(APP_DIR)
     }
 
     /// Lê o arquivo. Se ele não existir, cria com os valores padrão para o usuário poder editar.
     pub fn load() -> Self {
-        let path = Self::path();
-        if let Ok(text) = std::fs::read_to_string(&path) {
-            return serde_json::from_str(&text).unwrap_or_else(|e| {
+        let path = Self::dir().join("settings.json");
+        let mut settings = match std::fs::read_to_string(&path) {
+            Ok(text) => serde_json::from_str(&text).unwrap_or_else(|e| {
                 tracing::warn!(
                     "{} inválido ({e}); usando os valores padrão",
                     path.display()
                 );
                 Self::default()
-            });
-        }
-        let settings = Self::default();
-        settings.save();
+            }),
+            Err(_) => {
+                let settings = Self::default();
+                settings.save();
+                settings
+            }
+        };
+        settings.library_dir = Some(Self::dir().join("fixtures"));
         settings
     }
 
     pub fn save(&self) {
-        let path = Self::path();
+        let path = Self::dir().join("settings.json");
         let saved = std::fs::create_dir_all(path.parent().unwrap_or(&path)).and_then(|_| {
             std::fs::write(
                 &path,

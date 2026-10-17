@@ -3,6 +3,7 @@
 //! o que mudou para eles.
 
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -17,10 +18,11 @@ use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
-use crate::apply::{Topic, apply, intensity_patch, new_id};
+use crate::apply::{Topic, apply, new_id, universe_patch};
+use crate::library;
 
-/// Show de exemplo com que o servidor abre até a F5 (salvar e abrir). Os controladores MIDI dele são
-/// simulados até a F12.
+/// Show de exemplo com que o servidor abre até a F5 (salvar e abrir). A biblioteca dele é a da
+/// primeira vez (as genéricas). Os controladores MIDI são simulados até a F12.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Example {
@@ -91,6 +93,7 @@ pub struct Hub {
     events: broadcast::Sender<Utf8Bytes>,
     engine: Engine,
     outputs: Vec<Slot>,
+    library_dir: Option<PathBuf>,
     /// Acesso pela rede local, acompanhado pelos clientes de fora (que caem quando ele é desligado).
     pub allow_lan: watch::Sender<bool>,
     started: Instant,
@@ -106,6 +109,9 @@ impl Hub {
         let mut snapshot = example_snapshot(lan_url);
         snapshot.remote.enabled = settings.allow_lan;
         snapshot.remote.pin = settings.pin.clone();
+        if let Some(dir) = &settings.library_dir {
+            snapshot.library = library::load(dir, snapshot.library);
+        }
 
         let engine = Engine::spawn();
         let dummy = start_output(&engine, &snapshot.project, &snapshot.interfaces[0]);
@@ -116,6 +122,7 @@ impl Hub {
             events: broadcast::channel(1024).0,
             engine,
             outputs: vec![dummy],
+            library_dir: settings.library_dir.clone(),
             started: Instant::now(),
             last_stats: Instant::now(),
             system: System::new(),
@@ -135,7 +142,23 @@ impl Hub {
             Op::SetInterfaceKind { interface, kind } => Some((interface.clone(), *kind)),
             _ => None,
         };
+        let mut def_change = match &op {
+            Op::SaveFixtureDef { def } => Some(def.id.clone()),
+            Op::RemoveFixtureDef { id } => Some(id.clone()),
+            _ => None,
+        };
+        let import = matches!(op, Op::ImportQxf { .. });
         let (mut topics, reply) = apply(&mut self.snapshot, op)?;
+        if import {
+            def_change = reply["defId"].as_str().map(Into::into);
+        }
+        // Biblioteca gravada no PC: a definição salva, importada ou excluída
+        if let (Some(dir), Some(id)) = (&self.library_dir, def_change) {
+            match self.snapshot.library.iter().find(|d| d.id == id) {
+                Some(def) => library::save(dir, def),
+                None => library::remove(dir, &id),
+            }
+        }
         // Tipo escolhido à mão: guardado pelo id da interface e com a saída reaberta no protocolo novo
         if let Some((id, kind)) = kind_change {
             let mut settings = Settings::load();
@@ -211,7 +234,7 @@ impl Hub {
             Topic::Fixtures,
             Topic::FixtureDefs,
         ]) {
-            self.engine.send(Command::Patch(intensity_patch(p)));
+            self.engine.send(Command::Patch(universe_patch(p)));
             for slot in &self.outputs {
                 if let Ok(mut patched) = slot.universe.lock() {
                     *patched = patched_universe(p, &slot.interface);

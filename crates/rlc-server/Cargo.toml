@@ -12,6 +12,7 @@ local-ip-address = "0.6.13"
 rlc-core = { version = "0.1.0", path = "../rlc-core" }
 rlc-dmx = { version = "0.1.0", path = "../rlc-dmx" }
 rlc-engine = { version = "0.1.0", path = "../rlc-engine" }
+rlc-qxf = { version = "0.1.0", path = "../rlc-qxf" }
 rust-embed = { version = "8.13.0", features = ["mime-guess"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"

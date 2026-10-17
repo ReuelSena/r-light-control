@@ -20,3 +20,9 @@ forem adicionadas:
   crates/rlc-dmx/src/ftdi.rs; Grand Master no modo "reduzir" e blackout só
   nos canais de intensidade, como em engine/src/universe.cpp, para
   crates/rlc-engine/src/lib.rs.
+
+- Importador de fixtures .qxf: leitura do formato e regras de conversão
+  (presets e grupos dos canais, faixas de valores, modos, cabeças, canais
+  finos e valor padrão) seguindo o carregador de engine/src/qlcfixturedef.cpp,
+  qlcfixturemode.cpp, qlcchannel.cpp, qlccapability.cpp e qlcphysical.cpp,
+  para crates/rlc-qxf/src/lib.rs.

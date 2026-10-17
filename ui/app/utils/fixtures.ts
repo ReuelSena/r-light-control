@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Aperture, CircleDot, Disc, Focus, Gauge, Move, Palette, SlidersVertical, Sparkles, Sun, Triangle, Wrench, Zap, ZoomIn } from 'lucide-vue-next'
+import { Aperture, CircleDot, Disc, Focus, Gauge, Move, Palette, SlidersVertical, Sparkles, Sun, Thermometer, Triangle, Wrench, Zap, ZoomIn } from 'lucide-vue-next'
 import type { Attribute } from '~/types/generated/Attribute'
 import type { ChannelGroup } from '~/types/generated/ChannelGroup'
 import type { Fixture } from '~/types/generated/Fixture'
@@ -18,11 +18,14 @@ export const attributeLook: Record<Attribute, { icon: Component; color: string }
   white: { icon: Palette, color: '#ffffff' },
   amber: { icon: Palette, color: '#ffbf00' },
   uv: { icon: Palette, color: '#8000ff' },
+  lime: { icon: Palette, color: '#80ff00' },
+  indigo: { icon: Palette, color: '#4000ff' },
   cyan: { icon: Palette, color: '#00ffff' },
   magenta: { icon: Palette, color: '#ff00ff' },
   yellow: { icon: Palette, color: '#ffff00' },
   colorWheel: { icon: Palette, color: 'var(--color-fg)' },
   colorMacro: { icon: Palette, color: 'var(--color-fg)' },
+  colorTemperature: { icon: Thermometer, color: 'var(--color-fg)' },
   pan: { icon: Move, color: 'var(--color-position)' },
   tilt: { icon: Move, color: 'var(--color-position)' },
   speed: { icon: Gauge, color: 'var(--color-speed)' },

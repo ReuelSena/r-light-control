@@ -1,0 +1,11 @@
+[package]
+name = "rlc-qxf"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rlc-core = { path = "../rlc-core" }
+roxmltree = "0.21.1"
+
+[dev-dependencies]
+serde_json = "1.0.154"

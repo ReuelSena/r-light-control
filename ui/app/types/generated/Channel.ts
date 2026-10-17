@@ -6,4 +6,8 @@ export type Channel = { name: string, attribute: Attribute,
 /**
  * Byte menos significativo de um valor de 16 bits (ex.: Pan fino).
  */
-fine: boolean, capabilities: Array<Capability>, };
+fine: boolean, 
+/**
+ * Valor do canal quando nada o controla (o `Default` do .qxf; ex.: strobo em "luz ativa").
+ */
+default: number, capabilities: Array<Capability>, };

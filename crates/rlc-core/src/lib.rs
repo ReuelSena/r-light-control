@@ -97,10 +97,12 @@ pub enum FixtureKind {
     Hazer,
     Smoke,
     Laser,
+    /// Efeitos de festa (no QLC+, Effect e Flower).
+    Effect,
     Other,
 }
 
-/// O que o canal controla. Taxonomia própria, revisada no importador .qxf (F4).
+/// O que o canal controla. Taxonomia própria; o importador .qxf converte os grupos e presets do QLC+.
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum Attribute {
@@ -111,11 +113,15 @@ pub enum Attribute {
     White,
     Amber,
     Uv,
+    Lime,
+    Indigo,
     Cyan,
     Magenta,
     Yellow,
     ColorWheel,
     ColorMacro,
+    /// Correção de temperatura de cor (CTO, CTC, CTB).
+    ColorTemperature,
     Pan,
     Tilt,
     Speed,
@@ -138,6 +144,8 @@ pub struct Channel {
     pub attribute: Attribute,
     /// Byte menos significativo de um valor de 16 bits (ex.: Pan fino).
     pub fine: bool,
+    /// Valor do canal quando nada o controla (o `Default` do .qxf; ex.: strobo em "luz ativa").
+    pub default: u8,
     pub capabilities: Vec<Capability>,
 }
 
@@ -162,7 +170,7 @@ pub struct Mode {
     pub heads: Vec<Vec<u16>>,
 }
 
-#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Physical {
     pub width_mm: u32,
@@ -974,8 +982,12 @@ pub enum Op {
     SaveFixtureDef {
         def: FixtureDef,
     },
-    /// Converte um `.qxf` do QLC+ para o formato próprio e o põe na biblioteca (F4).
-    /// Resposta: [`ImportReport`].
+    /// Tira a definição da biblioteca; o projeto continua com a cópia dele (A4).
+    RemoveFixtureDef {
+        id: Id,
+    },
+    /// Converte um `.qxf` do QLC+ para o formato próprio e o põe na biblioteca, no lugar de uma
+    /// definição com o mesmo fabricante e modelo. Resposta: [`ImportReport`].
     ImportQxf {
         file_name: String,
         content: String,

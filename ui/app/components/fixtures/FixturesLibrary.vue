@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { FilePlus, Pencil, Plus, Search, Upload } from 'lucide-vue-next'
+import { FilePlus, Pencil, Plus, Search, Trash2, Upload } from 'lucide-vue-next'
 import type { FixtureDef } from '~/types/generated/FixtureDef'
 import type { ImportReport } from '~/types/generated/ImportReport'
 
-// Biblioteca de fixtures: busca, detalhes, adicionar ao projeto, importar .qxf (E3) e editar.
+// Biblioteca de fixtures (E3): busca, detalhes, adicionar ao projeto, importar .qxf, editar e excluir.
 const emit = defineEmits<{ added: [] }>()
 const { t } = useI18n()
 const { state, send } = useEngine()
@@ -15,12 +15,16 @@ const mode = computed(() => selected.value?.modes.find((m) => m.name === modeNam
 const items = computed(() =>
   state.value.library
     .filter((d) => `${d.manufacturer} ${d.model}`.toLowerCase().includes(search.value.toLowerCase()))
-    .map((d) => ({ id: d.id, label: `${d.manufacturer} ${d.model}`, detail: t(`kind.${d.kind}`) })),
+    .map((d) => ({ id: d.id, label: `${d.manufacturer} ${d.model}`, detail: t(`kind.${d.kind}`) }))
+    .sort((a, b) => a.label.localeCompare(b.label)),
 )
 // Cópia em edição (nova ou existente); só vai para a biblioteca ao salvar
 const editing = ref<FixtureDef>()
 
-watch(selectedId, () => (modeName.value = selected.value?.modes[0]?.name ?? ''))
+watch(selectedId, () => {
+  modeName.value = selected.value?.modes[0]?.name ?? ''
+  confirmRemove.value = false
+})
 
 // ---------- Adicionar ao projeto ----------
 const adding = ref(false)
@@ -37,17 +41,35 @@ async function confirmAdd() {
   emit('added')
 }
 
-// ---------- Importar .qxf ----------
+// ---------- Importar .qxf (vários de uma vez) ----------
 const fileInput = ref<HTMLInputElement>()
-const report = ref<ImportReport>()
+// Um resultado por arquivo: o relatório da conversão ou o motivo da recusa
+const reports = ref<{ file: string; report?: ImportReport; error?: string }[]>([])
 
-async function importFile(e: Event) {
+async function importFiles(e: Event) {
   const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  report.value = (await send({ op: 'importQxf', fileName: file.name, content: await file.text() })) as ImportReport
-  selectedId.value = report.value.defId
+  const results: typeof reports.value = []
+  for (const file of input.files ?? []) {
+    try {
+      const report = (await send({ op: 'importQxf', fileName: file.name, content: await file.text() })) as ImportReport
+      results.push({ file: file.name, report })
+      selectedId.value = report.defId
+    } catch (error) {
+      // Recusado: os outros arquivos seguem, e o motivo vai para o relatório
+      results.push({ file: file.name, error: (error as Error).message })
+    }
+  }
+  reports.value = results
   input.value = ''
+}
+
+// ---------- Excluir (o projeto continua com a cópia dele) ----------
+const confirmRemove = ref(false)
+
+function remove() {
+  if (!confirmRemove.value) return (confirmRemove.value = true)
+  send({ op: 'removeFixtureDef', id: selected.value!.id })
+  selectedId.value = undefined
 }
 
 // ---------- Editor ----------
@@ -82,7 +104,7 @@ async function save(def: FixtureDef) {
           <Upload :size="16" />
           {{ t('library.import') }}
         </RlButton>
-        <input ref="fileInput" type="file" accept=".qxf" class="hidden" @change="importFile">
+        <input ref="fileInput" type="file" accept=".qxf" multiple class="hidden" @change="importFiles">
       </div>
       <RlList v-model="selectedId" class="min-h-0 flex-1" :items="items" />
     </section>
@@ -103,6 +125,10 @@ async function save(def: FixtureDef) {
           <RlButton size="sm" @press="startAdd">
             <Plus :size="16" />
             {{ t('library.addToProject') }}
+          </RlButton>
+          <RlButton size="sm" :model-value="confirmRemove" color="var(--color-danger)" @press="remove">
+            <Trash2 :size="16" />
+            {{ confirmRemove ? t('common.confirmRemove') : t('common.remove') }}
           </RlButton>
         </div>
       </header>
@@ -180,13 +206,18 @@ async function save(def: FixtureDef) {
       </div>
     </RlDialog>
 
-    <RlDialog :open="!!report" :title="t('library.importReport')" @update:open="report = undefined">
-      <div v-if="report" class="flex flex-col gap-3">
-        <p>{{ t('library.imported', { channels: report.channels, modes: report.modes }) }}</p>
-        <h3 class="heading">{{ t('library.warnings', { n: report.warnings.length }) }}</h3>
-        <ul class="flex flex-col gap-2 text-sm text-flash">
-          <li v-for="warning in report.warnings" :key="warning">⚠ {{ warning }}</li>
-        </ul>
+    <RlDialog :open="reports.length > 0" :title="t('library.importReport')" @update:open="reports = []">
+      <div class="flex flex-col gap-4">
+        <section v-for="r in reports" :key="r.file" class="flex flex-col gap-2">
+          <h3 class="heading">{{ r.file }}</h3>
+          <p v-if="r.error" class="text-sm text-danger">⚠ {{ r.error }}</p>
+          <template v-else-if="r.report">
+            <p>{{ t('library.imported', { channels: r.report.channels }, r.report.modes) }}</p>
+            <ul v-if="r.report.warnings.length" class="flex flex-col gap-2 text-sm text-flash">
+              <li v-for="warning in r.report.warnings" :key="warning">⚠ {{ warning }}</li>
+            </ul>
+          </template>
+        </section>
       </div>
     </RlDialog>
   </div>

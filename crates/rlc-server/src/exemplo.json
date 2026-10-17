@@ -29,6 +29,7 @@
       "name": "Dimmer",
       "attribute": "dimmer",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -42,6 +43,7 @@
       "name": "Vermelho",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -55,6 +57,7 @@
       "name": "Verde",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -68,6 +71,7 @@
       "name": "Azul",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -81,6 +85,7 @@
       "name": "Branco",
       "attribute": "white",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -94,6 +99,7 @@
       "name": "Strobe",
       "attribute": "shutter",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -113,6 +119,7 @@
       "name": "Macro de cor",
       "attribute": "colorMacro",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -200,6 +207,7 @@
       "name": "Vermelho",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -213,6 +221,7 @@
       "name": "Verde",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -226,6 +235,7 @@
       "name": "Azul",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -269,6 +279,7 @@
       "name": "Pan",
       "attribute": "pan",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -282,6 +293,7 @@
       "name": "Pan fino",
       "attribute": "pan",
       "fine": true,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -295,6 +307,7 @@
       "name": "Tilt",
       "attribute": "tilt",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -308,6 +321,7 @@
       "name": "Tilt fino",
       "attribute": "tilt",
       "fine": true,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -321,6 +335,7 @@
       "name": "Velocidade P/T",
       "attribute": "speed",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -334,6 +349,7 @@
       "name": "Dimmer",
       "attribute": "dimmer",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -347,6 +363,7 @@
       "name": "Shutter",
       "attribute": "shutter",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -372,6 +389,7 @@
       "name": "Roda de cores",
       "attribute": "colorWheel",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -427,6 +445,7 @@
       "name": "Gobo",
       "attribute": "gobo",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -488,6 +507,7 @@
       "name": "Rotação do gobo",
       "attribute": "goboRotation",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -501,6 +521,7 @@
       "name": "Prisma",
       "attribute": "prism",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -520,6 +541,7 @@
       "name": "Foco",
       "attribute": "focus",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -533,6 +555,7 @@
       "name": "Zoom",
       "attribute": "zoom",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -546,6 +569,7 @@
       "name": "Reset",
       "attribute": "maintenance",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -621,6 +645,7 @@
       "name": "Vermelho 1",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -634,6 +659,7 @@
       "name": "Verde 1",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -647,6 +673,7 @@
       "name": "Azul 1",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -660,6 +687,7 @@
       "name": "Vermelho 2",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -673,6 +701,7 @@
       "name": "Verde 2",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -686,6 +715,7 @@
       "name": "Azul 2",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -699,6 +729,7 @@
       "name": "Vermelho 3",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -712,6 +743,7 @@
       "name": "Verde 3",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -725,6 +757,7 @@
       "name": "Azul 3",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -738,6 +771,7 @@
       "name": "Vermelho 4",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -751,6 +785,7 @@
       "name": "Verde 4",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -764,6 +799,7 @@
       "name": "Azul 4",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -777,6 +813,7 @@
       "name": "Vermelho 5",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -790,6 +827,7 @@
       "name": "Verde 5",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -803,6 +841,7 @@
       "name": "Azul 5",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -816,6 +855,7 @@
       "name": "Vermelho 6",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -829,6 +869,7 @@
       "name": "Verde 6",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -842,6 +883,7 @@
       "name": "Azul 6",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -855,6 +897,7 @@
       "name": "Vermelho 7",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -868,6 +911,7 @@
       "name": "Verde 7",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -881,6 +925,7 @@
       "name": "Azul 7",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -894,6 +939,7 @@
       "name": "Vermelho 8",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -907,6 +953,7 @@
       "name": "Verde 8",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -920,6 +967,7 @@
       "name": "Azul 8",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1040,6 +1088,7 @@
       "name": "Dimmer",
       "attribute": "dimmer",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1053,6 +1102,7 @@
       "name": "Velocidade",
       "attribute": "shutter",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1095,6 +1145,7 @@
       "name": "Saída",
       "attribute": "effect",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1114,6 +1165,7 @@
       "name": "Ventilador",
       "attribute": "speed",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1156,6 +1208,7 @@
       "name": "Dimmer",
       "attribute": "dimmer",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1169,6 +1222,7 @@
       "name": "Red",
       "attribute": "red",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1182,6 +1236,7 @@
       "name": "Green",
       "attribute": "green",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1195,6 +1250,7 @@
       "name": "Blue",
       "attribute": "blue",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1208,6 +1264,7 @@
       "name": "White",
       "attribute": "white",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1221,6 +1278,7 @@
       "name": "Ambar",
       "attribute": "amber",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1234,6 +1292,7 @@
       "name": "UV",
       "attribute": "uv",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1247,6 +1306,7 @@
       "name": "Strobo",
       "attribute": "shutter",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1260,6 +1320,7 @@
       "name": "Effects",
       "attribute": "colorMacro",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1309,6 +1370,7 @@
       "name": "Color Wheel",
       "attribute": "colorWheel",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1508,6 +1570,7 @@
       "name": "Strobo",
       "attribute": "shutter",
       "fine": false,
+      "default": 255,
       "capabilities": [
        {
         "min": 0,
@@ -1527,6 +1590,7 @@
       "name": "Dimmer",
       "attribute": "dimmer",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1540,6 +1604,7 @@
       "name": "Gobo Wheel",
       "attribute": "gobo",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1775,6 +1840,7 @@
       "name": "Prism",
       "attribute": "prism",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1794,6 +1860,7 @@
       "name": "Prism Rotation",
       "attribute": "prism",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1819,6 +1886,7 @@
       "name": "No function",
       "attribute": "other",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1832,6 +1900,7 @@
       "name": "Frost",
       "attribute": "effect",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1851,6 +1920,7 @@
       "name": "Zoom",
       "attribute": "zoom",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1864,6 +1934,7 @@
       "name": "Pan",
       "attribute": "pan",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1877,6 +1948,7 @@
       "name": "Pan fine",
       "attribute": "pan",
       "fine": true,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1890,6 +1962,7 @@
       "name": "Tilt",
       "attribute": "tilt",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1903,6 +1976,7 @@
       "name": "Tilt fine",
       "attribute": "tilt",
       "fine": true,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1916,6 +1990,7 @@
       "name": "Reset",
       "attribute": "maintenance",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1929,6 +2004,7 @@
       "name": "Lamp Control",
       "attribute": "maintenance",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1954,6 +2030,7 @@
       "name": "Speed Moviment",
       "attribute": "speed",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1967,6 +2044,7 @@
       "name": "Color Time",
       "attribute": "speed",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1980,6 +2058,7 @@
       "name": "Prism Frost Time",
       "attribute": "speed",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -1993,6 +2072,7 @@
       "name": "Gobo Time",
       "attribute": "speed",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -2006,6 +2086,7 @@
       "name": "Marco Function",
       "attribute": "other",
       "fine": false,
+      "default": 0,
       "capabilities": [
        {
         "min": 0,
@@ -5028,6 +5109,7 @@
      "name": "Dimmer",
      "attribute": "dimmer",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5041,6 +5123,7 @@
      "name": "Vermelho",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5054,6 +5137,7 @@
      "name": "Verde",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5067,6 +5151,7 @@
      "name": "Azul",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5080,6 +5165,7 @@
      "name": "Branco",
      "attribute": "white",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5093,6 +5179,7 @@
      "name": "Strobe",
      "attribute": "shutter",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5112,6 +5199,7 @@
      "name": "Macro de cor",
      "attribute": "colorMacro",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5199,6 +5287,7 @@
      "name": "Vermelho",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5212,6 +5301,7 @@
      "name": "Verde",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5225,6 +5315,7 @@
      "name": "Azul",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5268,6 +5359,7 @@
      "name": "Pan",
      "attribute": "pan",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5281,6 +5373,7 @@
      "name": "Pan fino",
      "attribute": "pan",
      "fine": true,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5294,6 +5387,7 @@
      "name": "Tilt",
      "attribute": "tilt",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5307,6 +5401,7 @@
      "name": "Tilt fino",
      "attribute": "tilt",
      "fine": true,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5320,6 +5415,7 @@
      "name": "Velocidade P/T",
      "attribute": "speed",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5333,6 +5429,7 @@
      "name": "Dimmer",
      "attribute": "dimmer",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5346,6 +5443,7 @@
      "name": "Shutter",
      "attribute": "shutter",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5371,6 +5469,7 @@
      "name": "Roda de cores",
      "attribute": "colorWheel",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5426,6 +5525,7 @@
      "name": "Gobo",
      "attribute": "gobo",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5487,6 +5587,7 @@
      "name": "Rotação do gobo",
      "attribute": "goboRotation",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5500,6 +5601,7 @@
      "name": "Prisma",
      "attribute": "prism",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5519,6 +5621,7 @@
      "name": "Foco",
      "attribute": "focus",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5532,6 +5635,7 @@
      "name": "Zoom",
      "attribute": "zoom",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5545,6 +5649,7 @@
      "name": "Reset",
      "attribute": "maintenance",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5620,6 +5725,7 @@
      "name": "Vermelho 1",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5633,6 +5739,7 @@
      "name": "Verde 1",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5646,6 +5753,7 @@
      "name": "Azul 1",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5659,6 +5767,7 @@
      "name": "Vermelho 2",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5672,6 +5781,7 @@
      "name": "Verde 2",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5685,6 +5795,7 @@
      "name": "Azul 2",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5698,6 +5809,7 @@
      "name": "Vermelho 3",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5711,6 +5823,7 @@
      "name": "Verde 3",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5724,6 +5837,7 @@
      "name": "Azul 3",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5737,6 +5851,7 @@
      "name": "Vermelho 4",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5750,6 +5865,7 @@
      "name": "Verde 4",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5763,6 +5879,7 @@
      "name": "Azul 4",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5776,6 +5893,7 @@
      "name": "Vermelho 5",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5789,6 +5907,7 @@
      "name": "Verde 5",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5802,6 +5921,7 @@
      "name": "Azul 5",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5815,6 +5935,7 @@
      "name": "Vermelho 6",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5828,6 +5949,7 @@
      "name": "Verde 6",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5841,6 +5963,7 @@
      "name": "Azul 6",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5854,6 +5977,7 @@
      "name": "Vermelho 7",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5867,6 +5991,7 @@
      "name": "Verde 7",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5880,6 +6005,7 @@
      "name": "Azul 7",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5893,6 +6019,7 @@
      "name": "Vermelho 8",
      "attribute": "red",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5906,6 +6033,7 @@
      "name": "Verde 8",
      "attribute": "green",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -5919,6 +6047,7 @@
      "name": "Azul 8",
      "attribute": "blue",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -6039,6 +6168,7 @@
      "name": "Dimmer",
      "attribute": "dimmer",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -6052,6 +6182,7 @@
      "name": "Velocidade",
      "attribute": "shutter",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -6094,6 +6225,7 @@
      "name": "Saída",
      "attribute": "effect",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -6113,6 +6245,7 @@
      "name": "Ventilador",
      "attribute": "speed",
      "fine": false,
+     "default": 0,
      "capabilities": [
       {
        "min": 0,
@@ -6143,938 +6276,6 @@
     "lensMaxDeg": 25,
     "panMaxDeg": 0,
     "tiltMaxDeg": 0
-   }
-  },
-  {
-   "id": "rsena-parled-18x15w",
-   "manufacturer": "RSena",
-   "model": "ParLed 18x15w",
-   "kind": "colorChanger",
-   "channels": [
-    {
-     "name": "Dimmer",
-     "attribute": "dimmer",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Dimmer",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Red",
-     "attribute": "red",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Red",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Green",
-     "attribute": "green",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Green",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Blue",
-     "attribute": "blue",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Blue",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "White",
-     "attribute": "white",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "White",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Ambar",
-     "attribute": "amber",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Ambar",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "UV",
-     "attribute": "uv",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "UV",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Strobo",
-     "attribute": "shutter",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Strobo",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Effects",
-     "attribute": "colorMacro",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Effects",
-       "color": null
-      }
-     ]
-    }
-   ],
-   "modes": [
-    {
-     "name": "10CH",
-     "channels": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8
-     ],
-     "heads": []
-    }
-   ],
-   "physical": {
-    "widthMm": 0,
-    "heightMm": 0,
-    "depthMm": 0,
-    "weightKg": 0,
-    "powerW": 1000,
-    "lensMinDeg": 0,
-    "lensMaxDeg": 0,
-    "panMaxDeg": 0,
-    "tiltMaxDeg": 0
-   }
-  },
-  {
-   "id": "rsena-beam-7r",
-   "manufacturer": "RSena",
-   "model": "Beam 7r",
-   "kind": "movingHead",
-   "channels": [
-    {
-     "name": "Color Wheel",
-     "attribute": "colorWheel",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 4,
-       "name": "White",
-       "color": "#ffffff"
-      },
-      {
-       "min": 5,
-       "max": 9,
-       "name": "White / Red",
-       "color": null
-      },
-      {
-       "min": 10,
-       "max": 14,
-       "name": "Red",
-       "color": "#ff0000"
-      },
-      {
-       "min": 15,
-       "max": 19,
-       "name": "Red / Orange",
-       "color": null
-      },
-      {
-       "min": 20,
-       "max": 24,
-       "name": "Orange",
-       "color": "#ff8000"
-      },
-      {
-       "min": 25,
-       "max": 29,
-       "name": "Orange / Cyan",
-       "color": null
-      },
-      {
-       "min": 30,
-       "max": 34,
-       "name": "Cyan",
-       "color": "#00ffff"
-      },
-      {
-       "min": 35,
-       "max": 39,
-       "name": "Cyan / Beige",
-       "color": null
-      },
-      {
-       "min": 40,
-       "max": 44,
-       "name": "Beige",
-       "color": "#f5deb3"
-      },
-      {
-       "min": 45,
-       "max": 49,
-       "name": "Beige / White 2",
-       "color": null
-      },
-      {
-       "min": 50,
-       "max": 54,
-       "name": "White 2",
-       "color": "#ffffff"
-      },
-      {
-       "min": 55,
-       "max": 59,
-       "name": "White 2 / Pink",
-       "color": null
-      },
-      {
-       "min": 60,
-       "max": 64,
-       "name": "Pink",
-       "color": "#ff66cc"
-      },
-      {
-       "min": 65,
-       "max": 69,
-       "name": "Pink / Green 2",
-       "color": null
-      },
-      {
-       "min": 70,
-       "max": 74,
-       "name": "Green 2",
-       "color": "#00ff00"
-      },
-      {
-       "min": 75,
-       "max": 79,
-       "name": "Green 2 / Blue 2",
-       "color": null
-      },
-      {
-       "min": 80,
-       "max": 84,
-       "name": "Blue 2",
-       "color": "#0000ff"
-      },
-      {
-       "min": 85,
-       "max": 89,
-       "name": "Blue 2 / Blue",
-       "color": null
-      },
-      {
-       "min": 90,
-       "max": 94,
-       "name": "Blue",
-       "color": "#0000ff"
-      },
-      {
-       "min": 95,
-       "max": 99,
-       "name": "Blue / Yellow",
-       "color": null
-      },
-      {
-       "min": 100,
-       "max": 104,
-       "name": "Yellow",
-       "color": "#ffff00"
-      },
-      {
-       "min": 105,
-       "max": 109,
-       "name": "Yellow / Green 3",
-       "color": null
-      },
-      {
-       "min": 110,
-       "max": 114,
-       "name": "Green 3",
-       "color": "#00ff00"
-      },
-      {
-       "min": 115,
-       "max": 119,
-       "name": "Green 3 / White 3",
-       "color": null
-      },
-      {
-       "min": 120,
-       "max": 124,
-       "name": "White 3",
-       "color": "#ffffff"
-      },
-      {
-       "min": 125,
-       "max": 129,
-       "name": "White 3 / Ambar",
-       "color": null
-      },
-      {
-       "min": 130,
-       "max": 134,
-       "name": "Ambar",
-       "color": "#ffbf00"
-      },
-      {
-       "min": 135,
-       "max": 139,
-       "name": "Ambar / Pink 2",
-       "color": null
-      },
-      {
-       "min": 140,
-       "max": 144,
-       "name": "Pink 2",
-       "color": "#ff66cc"
-      },
-      {
-       "min": 145,
-       "max": 149,
-       "name": "Pink 2 / White 4",
-       "color": null
-      },
-      {
-       "min": 150,
-       "max": 190,
-       "name": "Wheel Speed Left",
-       "color": null
-      },
-      {
-       "min": 191,
-       "max": 255,
-       "name": "Wheel Speed Right",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Strobo",
-     "attribute": "shutter",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 251,
-       "name": "Strobo",
-       "color": null
-      },
-      {
-       "min": 252,
-       "max": 255,
-       "name": "Light Active",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Dimmer",
-     "attribute": "dimmer",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Dimmer",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Gobo Wheel",
-     "attribute": "gobo",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 4,
-       "name": "Default",
-       "color": null
-      },
-      {
-       "min": 5,
-       "max": 9,
-       "name": "Circle Small",
-       "color": null
-      },
-      {
-       "min": 10,
-       "max": 14,
-       "name": "Red Sun",
-       "color": null
-      },
-      {
-       "min": 15,
-       "max": 19,
-       "name": "Purple Spiral",
-       "color": null
-      },
-      {
-       "min": 20,
-       "max": 24,
-       "name": "Blue Sparkles",
-       "color": null
-      },
-      {
-       "min": 25,
-       "max": 29,
-       "name": "Yellow Sparkles",
-       "color": null
-      },
-      {
-       "min": 30,
-       "max": 34,
-       "name": "Green Infinity",
-       "color": null
-      },
-      {
-       "min": 35,
-       "max": 39,
-       "name": "Fragments",
-       "color": null
-      },
-      {
-       "min": 40,
-       "max": 44,
-       "name": "Triangle",
-       "color": null
-      },
-      {
-       "min": 45,
-       "max": 49,
-       "name": "Star 4",
-       "color": null
-      },
-      {
-       "min": 50,
-       "max": 54,
-       "name": "Circles",
-       "color": null
-      },
-      {
-       "min": 55,
-       "max": 59,
-       "name": "Geometry",
-       "color": null
-      },
-      {
-       "min": 60,
-       "max": 64,
-       "name": "Star 13",
-       "color": null
-      },
-      {
-       "min": 65,
-       "max": 69,
-       "name": "Star 8",
-       "color": null
-      },
-      {
-       "min": 70,
-       "max": 74,
-       "name": "Dots",
-       "color": null
-      },
-      {
-       "min": 75,
-       "max": 79,
-       "name": "Sigles Dots",
-       "color": null
-      },
-      {
-       "min": 80,
-       "max": 84,
-       "name": "Line H",
-       "color": null
-      },
-      {
-       "min": 85,
-       "max": 89,
-       "name": "Line V",
-       "color": null
-      },
-      {
-       "min": 90,
-       "max": 129,
-       "name": "Wheel Right",
-       "color": null
-      },
-      {
-       "min": 130,
-       "max": 134,
-       "name": "Default",
-       "color": null
-      },
-      {
-       "min": 135,
-       "max": 170,
-       "name": "Wheel Left",
-       "color": null
-      },
-      {
-       "min": 171,
-       "max": 175,
-       "name": "Shake Circle Small",
-       "color": null
-      },
-      {
-       "min": 176,
-       "max": 180,
-       "name": "Shake Red Sun",
-       "color": null
-      },
-      {
-       "min": 181,
-       "max": 185,
-       "name": "Shake Purple Spiral",
-       "color": null
-      },
-      {
-       "min": 186,
-       "max": 190,
-       "name": "Shake Blue Sparkles",
-       "color": null
-      },
-      {
-       "min": 191,
-       "max": 195,
-       "name": "Shake Yellow Sparkles",
-       "color": null
-      },
-      {
-       "min": 196,
-       "max": 200,
-       "name": "Shake Green Infinity",
-       "color": null
-      },
-      {
-       "min": 201,
-       "max": 205,
-       "name": "Shake Fragments",
-       "color": null
-      },
-      {
-       "min": 206,
-       "max": 210,
-       "name": "Shake Triangle",
-       "color": null
-      },
-      {
-       "min": 211,
-       "max": 215,
-       "name": "Shake Star 4",
-       "color": null
-      },
-      {
-       "min": 216,
-       "max": 220,
-       "name": "Shake Circles",
-       "color": null
-      },
-      {
-       "min": 221,
-       "max": 225,
-       "name": "Shake Geometry",
-       "color": null
-      },
-      {
-       "min": 226,
-       "max": 230,
-       "name": "Shake Star 13",
-       "color": null
-      },
-      {
-       "min": 231,
-       "max": 235,
-       "name": "Shake Star 8",
-       "color": null
-      },
-      {
-       "min": 236,
-       "max": 240,
-       "name": "Shake Dots",
-       "color": null
-      },
-      {
-       "min": 241,
-       "max": 245,
-       "name": "Shake Sigles Dots",
-       "color": null
-      },
-      {
-       "min": 246,
-       "max": 250,
-       "name": "Shake Line H",
-       "color": null
-      },
-      {
-       "min": 251,
-       "max": 255,
-       "name": "Shake Line V",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Prism",
-     "attribute": "prism",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 127,
-       "name": "Default",
-       "color": null
-      },
-      {
-       "min": 128,
-       "max": 255,
-       "name": "Prisma",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Prism Rotation",
-     "attribute": "prism",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 127,
-       "name": "Position",
-       "color": null
-      },
-      {
-       "min": 128,
-       "max": 190,
-       "name": "Auto Rotation Left",
-       "color": null
-      },
-      {
-       "min": 193,
-       "max": 255,
-       "name": "Auto Rotation Right",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "No function",
-     "attribute": "other",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "No function",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Frost",
-     "attribute": "effect",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 127,
-       "name": "Default",
-       "color": null
-      },
-      {
-       "min": 128,
-       "max": 255,
-       "name": "Wash",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Zoom",
-     "attribute": "zoom",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Zoom",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Pan",
-     "attribute": "pan",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Pan",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Pan fine",
-     "attribute": "pan",
-     "fine": true,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Pan fine",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Tilt",
-     "attribute": "tilt",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Tilt",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Tilt fine",
-     "attribute": "tilt",
-     "fine": true,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Tilt fine",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Reset",
-     "attribute": "maintenance",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Reset",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Lamp Control",
-     "attribute": "maintenance",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 9,
-       "name": "Vazio",
-       "color": null
-      },
-      {
-       "min": 26,
-       "max": 100,
-       "name": "Lamp Off",
-       "color": null
-      },
-      {
-       "min": 128,
-       "max": 255,
-       "name": "Lamp On",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Speed Moviment",
-     "attribute": "speed",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Speed Moviment",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Color Time",
-     "attribute": "speed",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Time",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Prism Frost Time",
-     "attribute": "speed",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Time",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Gobo Time",
-     "attribute": "speed",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Time",
-       "color": null
-      }
-     ]
-    },
-    {
-     "name": "Marco Function",
-     "attribute": "other",
-     "fine": false,
-     "capabilities": [
-      {
-       "min": 0,
-       "max": 255,
-       "name": "Marco Function",
-       "color": null
-      }
-     ]
-    }
-   ],
-   "modes": [
-    {
-     "name": "16CH",
-     "channels": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      19,
-      13,
-      14
-     ],
-     "heads": []
-    },
-    {
-     "name": "20CH",
-     "channels": [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      19,
-      13,
-      14,
-      15,
-      16,
-      17,
-      18
-     ],
-     "heads": []
-    }
-   ],
-   "physical": {
-    "widthMm": 0,
-    "heightMm": 0,
-    "depthMm": 0,
-    "weightKg": 17.5,
-    "powerW": 230,
-    "lensMinDeg": 0,
-    "lensMaxDeg": 0,
-    "panMaxDeg": 540,
-    "tiltMaxDeg": 280
    }
   }
  ],

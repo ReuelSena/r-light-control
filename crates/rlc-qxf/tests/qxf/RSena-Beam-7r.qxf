@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE FixtureDefinition>
+<FixtureDefinition xmlns="http://www.qlcplus.org/FixtureDefinition">
+ <Creator>
+  <Name>Q Light Controller Plus</Name>
+  <Version>4.13.1</Version>
+  <Author>Reuel</Author>
+ </Creator>
+ <Manufacturer>RSena</Manufacturer>
+ <Model>Beam 7r</Model>
+ <Type>Moving Head</Type>
+ <Channel Name="Color Wheel">
+  <Group Byte="0">Colour</Group>
+  <Capability Min="0" Max="4" Preset="SlowToFast">White</Capability>
+  <Capability Min="5" Max="9" Preset="FastToSlow">White / Red</Capability>
+  <Capability Min="10" Max="14">Red</Capability>
+  <Capability Min="15" Max="19">Red / Orange</Capability>
+  <Capability Min="20" Max="24">Orange</Capability>
+  <Capability Min="25" Max="29">Orange / Cyan</Capability>
+  <Capability Min="30" Max="34">Cyan</Capability>
+  <Capability Min="35" Max="39">Cyan / Beige</Capability>
+  <Capability Min="40" Max="44">Beige</Capability>
+  <Capability Min="45" Max="49">Beige / White 2</Capability>
+  <Capability Min="50" Max="54">White 2</Capability>
+  <Capability Min="55" Max="59">White 2 / Pink</Capability>
+  <Capability Min="60" Max="64">Pink</Capability>
+  <Capability Min="65" Max="69">Pink / Green 2</Capability>
+  <Capability Min="70" Max="74">Green 2</Capability>
+  <Capability Min="75" Max="79">Green 2 / Blue 2</Capability>
+  <Capability Min="80" Max="84">Blue 2</Capability>
+  <Capability Min="85" Max="89">Blue 2 / Blue</Capability>
+  <Capability Min="90" Max="94">Blue</Capability>
+  <Capability Min="95" Max="99">Blue / Yellow</Capability>
+  <Capability Min="100" Max="104">Yellow</Capability>
+  <Capability Min="105" Max="109">Yellow / Green 3</Capability>
+  <Capability Min="110" Max="114">Green 3</Capability>
+  <Capability Min="115" Max="119">Green 3 / White 3</Capability>
+  <Capability Min="120" Max="124">White 3</Capability>
+  <Capability Min="125" Max="129">White 3 / Ambar</Capability>
+  <Capability Min="130" Max="134">Ambar</Capability>
+  <Capability Min="135" Max="139">Ambar / Pink 2</Capability>
+  <Capability Min="140" Max="144">Pink 2</Capability>
+  <Capability Min="145" Max="149">Pink 2 / White 4</Capability>
+  <Capability Min="150" Max="190" Preset="FastToSlow">Wheel Speed Left</Capability>
+  <Capability Min="191" Max="255" Preset="SlowToFast">Wheel Speed Right</Capability>
+ </Channel>
+ <Channel Name="Strobo" Default="255">
+  <Group Byte="0">Shutter</Group>
+  <Capability Min="0" Max="251" Preset="SlowToFast">Strobo</Capability>
+  <Capability Min="252" Max="255">Light Active</Capability>
+ </Channel>
+ <Channel Name="Dimmer" Preset="IntensityMasterDimmer"/>
+ <Channel Name="Gobo Wheel">
+  <Group Byte="1">Gobo</Group>
+  <Capability Min="0" Max="4">Default</Capability>
+  <Capability Min="5" Max="9">Circle Small</Capability>
+  <Capability Min="10" Max="14">Red Sun</Capability>
+  <Capability Min="15" Max="19">Purple Spiral</Capability>
+  <Capability Min="20" Max="24">Blue Sparkles</Capability>
+  <Capability Min="25" Max="29">Yellow Sparkles</Capability>
+  <Capability Min="30" Max="34">Green Infinity</Capability>
+  <Capability Min="35" Max="39">Fragments</Capability>
+  <Capability Min="40" Max="44">Triangle</Capability>
+  <Capability Min="45" Max="49">Star 4</Capability>
+  <Capability Min="50" Max="54">Circles</Capability>
+  <Capability Min="55" Max="59">Geometry</Capability>
+  <Capability Min="60" Max="64">Star 13</Capability>
+  <Capability Min="65" Max="69">Star 8</Capability>
+  <Capability Min="70" Max="74">Dots</Capability>
+  <Capability Min="75" Max="79">Sigles Dots</Capability>
+  <Capability Min="80" Max="84">Line H</Capability>
+  <Capability Min="85" Max="89">Line V</Capability>
+  <Capability Min="90" Max="129" Preset="FastToSlow">Wheel Right</Capability>
+  <Capability Min="130" Max="134">Default</Capability>
+  <Capability Min="135" Max="170">Wheel Left</Capability>
+  <Capability Min="171" Max="175" Preset="SlowToFast">Shake Circle Small</Capability>
+  <Capability Min="176" Max="180" Preset="SlowToFast">Shake Red Sun</Capability>
+  <Capability Min="181" Max="185" Preset="SlowToFast">Shake Purple Spiral</Capability>
+  <Capability Min="186" Max="190" Preset="SlowToFast">Shake Blue Sparkles</Capability>
+  <Capability Min="191" Max="195" Preset="SlowToFast">Shake Yellow Sparkles</Capability>
+  <Capability Min="196" Max="200" Preset="SlowToFast">Shake Green Infinity</Capability>
+  <Capability Min="201" Max="205" Preset="SlowToFast">Shake Fragments</Capability>
+  <Capability Min="206" Max="210" Preset="SlowToFast">Shake Triangle</Capability>
+  <Capability Min="211" Max="215" Preset="SlowToFast">Shake Star 4</Capability>
+  <Capability Min="216" Max="220" Preset="SlowToFast">Shake Circles</Capability>
+  <Capability Min="221" Max="225" Preset="SlowToFast">Shake Geometry</Capability>
+  <Capability Min="226" Max="230" Preset="SlowToFast">Shake Star 13</Capability>
+  <Capability Min="231" Max="235" Preset="SlowToFast">Shake Star 8</Capability>
+  <Capability Min="236" Max="240" Preset="SlowToFast">Shake Dots</Capability>
+  <Capability Min="241" Max="245" Preset="SlowToFast">Shake Sigles Dots</Capability>
+  <Capability Min="246" Max="250" Preset="SlowToFast">Shake Line H</Capability>
+  <Capability Min="251" Max="255" Preset="SlowToFast">Shake Line V</Capability>
+ </Channel>
+ <Channel Name="Prism">
+  <Group Byte="0">Prism</Group>
+  <Capability Min="0" Max="127">Default</Capability>
+  <Capability Min="128" Max="255">Prisma</Capability>
+ </Channel>
+ <Channel Name="Prism Rotation">
+  <Group Byte="0">Prism</Group>
+  <Capability Min="0" Max="127">Position</Capability>
+  <Capability Min="128" Max="190" Preset="FastToSlow">Auto Rotation Left</Capability>
+  <Capability Min="193" Max="255" Preset="SlowToFast">Auto Rotation Right</Capability>
+ </Channel>
+ <Channel Name="No function" Preset="NoFunction"/>
+ <Channel Name="Frost">
+  <Group Byte="0">Effect</Group>
+  <Capability Min="0" Max="127">Default</Capability>
+  <Capability Min="128" Max="255">Wash</Capability>
+ </Channel>
+ <Channel Name="Zoom" Preset="BeamZoomSmallBig"/>
+ <Channel Name="Pan" Preset="PositionPan"/>
+ <Channel Name="Pan fine" Preset="PositionPanFine"/>
+ <Channel Name="Tilt" Preset="PositionTilt"/>
+ <Channel Name="Tilt fine" Preset="PositionTiltFine"/>
+ <Channel Name="Reset">
+  <Group Byte="0">Maintenance</Group>
+ </Channel>
+ <Channel Name="Lamp Control">
+  <Group Byte="0">Maintenance</Group>
+  <Capability Min="0" Max="9">Vazio</Capability>
+  <Capability Min="26" Max="100">Lamp Off</Capability>
+  <Capability Min="128" Max="255">Lamp On</Capability>
+ </Channel>
+ <Channel Name="Speed Moviment" Preset="SpeedPanTiltFastSlow"/>
+ <Channel Name="Color Time">
+  <Group Byte="0">Speed</Group>
+  <Capability Min="0" Max="255" Preset="FastToSlow">Time</Capability>
+ </Channel>
+ <Channel Name="Prism Frost Time">
+  <Group Byte="0">Speed</Group>
+  <Capability Min="0" Max="255" Preset="FastToSlow">Time</Capability>
+ </Channel>
+ <Channel Name="Gobo Time">
+  <Group Byte="0">Speed</Group>
+  <Capability Min="0" Max="255" Preset="FastToSlow">Time</Capability>
+ </Channel>
+ <Channel Name="Marco Function" Preset="NoFunction"/>
+ <Mode Name="16CH">
+  <Channel Number="0" ActsOn="0">Color Wheel</Channel>
+  <Channel Number="1" ActsOn="1">Strobo</Channel>
+  <Channel Number="2" ActsOn="2">Dimmer</Channel>
+  <Channel Number="3" ActsOn="3">Gobo Wheel</Channel>
+  <Channel Number="4" ActsOn="4">Prism</Channel>
+  <Channel Number="5" ActsOn="5">Prism Rotation</Channel>
+  <Channel Number="6" ActsOn="6">No function</Channel>
+  <Channel Number="7" ActsOn="7">Frost</Channel>
+  <Channel Number="8" ActsOn="8">Zoom</Channel>
+  <Channel Number="9" ActsOn="9">Pan</Channel>
+  <Channel Number="10" ActsOn="10">Pan fine</Channel>
+  <Channel Number="11" ActsOn="11">Tilt</Channel>
+  <Channel Number="12" ActsOn="12">Tilt fine</Channel>
+  <Channel Number="13" ActsOn="13">Marco Function</Channel>
+  <Channel Number="14" ActsOn="14">Reset</Channel>
+  <Channel Number="15" ActsOn="15">Lamp Control</Channel>
+ </Mode>
+ <Mode Name="20CH">
+  <Channel Number="0" ActsOn="0">Color Wheel</Channel>
+  <Channel Number="1" ActsOn="1">Strobo</Channel>
+  <Channel Number="2" ActsOn="2">Dimmer</Channel>
+  <Channel Number="3" ActsOn="3">Gobo Wheel</Channel>
+  <Channel Number="4" ActsOn="4">Prism</Channel>
+  <Channel Number="5" ActsOn="5">Prism Rotation</Channel>
+  <Channel Number="6" ActsOn="6">No function</Channel>
+  <Channel Number="7" ActsOn="7">Frost</Channel>
+  <Channel Number="8" ActsOn="8">Zoom</Channel>
+  <Channel Number="9" ActsOn="9">Pan</Channel>
+  <Channel Number="10" ActsOn="10">Pan fine</Channel>
+  <Channel Number="11" ActsOn="11">Tilt</Channel>
+  <Channel Number="12" ActsOn="12">Tilt fine</Channel>
+  <Channel Number="13" ActsOn="13">Marco Function</Channel>
+  <Channel Number="14" ActsOn="14">Reset</Channel>
+  <Channel Number="15" ActsOn="15">Lamp Control</Channel>
+  <Channel Number="16" ActsOn="16">Speed Moviment</Channel>
+  <Channel Number="17" ActsOn="17">Color Time</Channel>
+  <Channel Number="18" ActsOn="18">Prism Frost Time</Channel>
+  <Channel Number="19" ActsOn="19">Gobo Time</Channel>
+ </Mode>
+ <Physical>
+  <Bulb Type="LED" Lumens="100000" ColourTemperature="8700"/>
+  <Dimensions Weight="17.5" Width="0" Height="0" Depth="0"/>
+  <Lens Name="Other" DegreesMin="0" DegreesMax="0"/>
+  <Focus Type="Head" PanMax="540" TiltMax="280"/>
+  <Technical PowerConsumption="230" DmxConnector="3-pin"/>
+ </Physical>
+</FixtureDefinition>

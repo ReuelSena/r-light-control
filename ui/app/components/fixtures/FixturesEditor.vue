@@ -13,9 +13,10 @@ const { t } = useI18n()
 const draft = ref<FixtureDef>(JSON.parse(JSON.stringify(props.def)))
 const tab = ref('general')
 
-const kinds: FixtureKind[] = ['colorChanger', 'dimmer', 'movingHead', 'scanner', 'ledBar', 'strobe', 'hazer', 'smoke', 'laser', 'other']
+const kinds: FixtureKind[] = ['colorChanger', 'dimmer', 'movingHead', 'scanner', 'ledBar', 'strobe', 'hazer', 'smoke', 'laser', 'effect', 'other']
 const attributes: Attribute[] = [
-  'dimmer', 'red', 'green', 'blue', 'white', 'amber', 'uv', 'cyan', 'magenta', 'yellow', 'colorWheel', 'colorMacro',
+  'dimmer', 'red', 'green', 'blue', 'white', 'amber', 'uv', 'lime', 'indigo', 'cyan', 'magenta', 'yellow',
+  'colorWheel', 'colorMacro', 'colorTemperature',
   'pan', 'tilt', 'speed', 'shutter', 'gobo', 'goboRotation', 'prism', 'focus', 'zoom', 'iris', 'effect', 'maintenance', 'other',
 ]
 const physicalFields: [keyof Physical, string][] = [
@@ -31,7 +32,7 @@ const channelItems = computed(() =>
 )
 
 function addChannel() {
-  draft.value.channels.push({ name: t('editor.newChannel'), attribute: 'dimmer', fine: false, capabilities: [{ min: 0, max: 255, name: '', color: null }] })
+  draft.value.channels.push({ name: t('editor.newChannel'), attribute: 'dimmer', fine: false, default: 0, capabilities: [{ min: 0, max: 255, name: '', color: null }] })
   channelId.value = String(draft.value.channels.length - 1)
 }
 

@@ -32,6 +32,14 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 - **E3. Formato próprio** (JSON versionado) para projeto e fixture.
   - Importação apenas de fixtures `.qxf` do QLC+, convertidas para o formato próprio.
   - Não há importação de `.qxw`.
+  - **Biblioteca de fixtures (2026-10-17):**
+    - As fixtures entram só pela importação de `.qxf` feita pelo usuário ou criadas à mão. A biblioteca do QLC+ não é embutida nem lida automaticamente.
+    - A biblioteca do usuário fica gravada no PC, um arquivo por definição, em `%APPDATA%\r-light-control\fixtures\`. Na primeira vez, ela começa com as genéricas do exemplo.
+    - Excluir da biblioteca não mexe no projeto, que tem a sua cópia (A4).
+  - **Conversão do `.qxf` (2026-10-17):**
+    - Alias e imagens de gobo ficam de fora, com aviso no relatório.
+    - Nas rodas e macros de cor sem cor no arquivo, a cor da faixa vem do nome dela ("Red", "Vermelho"…).
+    - O canal fino só vale depois de um canal grosso do mesmo tipo no modo (logo depois ou mais à frente, como em "Pan, Tilt, Pan fino, Tilt fino"), como o QLC+ junta os 16 bits.
 - **E4. Interfaces da v1:** Enttec DMX USB Pro e compatíveis, e Open DMX (FTDI sem microcontrolador). Mais uma saída "Dummy" para desenvolver sem hardware.
   - **Driver (2026-10-17):** só o D2XX da FTDI, que vem no driver oficial (o Windows instala sozinho). Sem reserva pela porta COM, como no QLC+. A biblioteca (`ftd2xx.dll`) é carregada do driver instalado, não vai embutida no app.
   - **Tipo da interface (2026-10-17):**
@@ -131,6 +139,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acende nada: a saída é a Mesa simples, com o Grand Master e o blackout.
   - **Sem salvar até a F5 (2026-10-17):** o servidor abre com o show de exemplo; "Novo projeto" funciona, Abrir e Salvar ficam desligados. O que se muda se perde ao fechar o app.
   - **Blackout (2026-10-17):** como no QLC+, zera só os canais de intensidade (dimmer e cores) e mantém o resto (pan, tilt, gobo), para os moving heads não se mexerem. Canais sem fixture contam como intensidade.
+  - **Valor padrão do canal (2026-10-17):** cada universo parte dos valores padrão das fixtures patchadas (ex.: o Strobo do Beam 7R em 255). A Mesa simples fica por cima, e o canal solto (inclusive pelo "Zerar") volta ao padrão.
   - **Estado ao vivo não é salvo (2026-10-17):** criações rodando, Mesa simples, valores dos elementos do console e seção master ficam fora do projeto. Ao reabrir, tudo começa parado e zerado, como no QLC+.
   - **Preferências de cada aparelho (2026-10-17):** zoom, formato do console, dicas de atalho, qualidade e fumaça do 3D ficam no navegador de cada aparelho, fora do projeto e do contrato.
 - **A3. Protocolo WebSocket.**
@@ -200,3 +209,6 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-17 | Rodada 2 da F3: tipo da interface pelo nome, pela pergunta da Pro e à mão no In/Out (guardado por interface); D2XX carregada do driver instalado. Show de exemplo com o rig do usuário (12 ParLed 18x15w e 4 Beam 7R) num universo na Numbstar (E4). |
 | 2026-10-17 | Importação de `.qxf`: continua simulada até a F4 (sem recusa nem conversão à mão). O usuário vai importar o Strobo 1000w ele mesmo, pelo app, na F4. |
 | 2026-10-17 | F3 validada e concluída com a Numbstar e os ParLed. O teste do instalador num PC limpo fica para a F16. Sem sinal (interface desplugada), apagar ou manter o último estado é configuração de cada aparelho (A1). |
+| 2026-10-17 | Mini-plano da F4 aprovado: a biblioteca do QLC+ nunca é embutida (fixtures só importadas ou criadas à mão); biblioteca do usuário gravada no PC; valor padrão do canal aplicado na saída; cor da faixa pelo nome; Excluir e importar vários `.qxf` de uma vez na Biblioteca (E3, A2). |
+| 2026-10-17 | F4 entregue: importador `rlc-qxf`, biblioteca gravada no PC, valor padrão na saída. As 1.781 fixtures do QLC+ 5.3.0 importam sem recusa (E3). |
+| 2026-10-17 | F4 validada pelo usuário e concluída. |

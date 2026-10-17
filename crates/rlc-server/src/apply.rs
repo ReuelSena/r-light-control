@@ -3,6 +3,7 @@
 //! Uma operação recusada não muda nada.
 
 use rlc_core::*;
+use rlc_engine::UniversePatch;
 use serde_json::{Value, json};
 
 /// Pedaço do estado levado por um aviso de mudança: o caminho dele no `Snapshot`.
@@ -435,6 +436,15 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Stage]
         }
         Op::SaveFixtureDef { def } => {
+            // O id vira o nome do arquivo na biblioteca
+            if def.id.is_empty()
+                || !def
+                    .id
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            {
+                return Err(format!("Id de definição inválido: \"{}\".", def.id));
+            }
             let in_project = p.fixture_defs.iter().any(|d| d.id == def.id);
             upsert(&mut s.library, def.clone(), |d| &d.id)?;
             if !in_project {
@@ -443,27 +453,36 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             upsert(&mut p.fixture_defs, def, |d| &d.id)?;
             vec![T::Library, T::FixtureDefs]
         }
-        Op::ImportQxf { file_name, .. } => {
-            // A conversão de verdade é da F4; até lá o resultado é simulado, como no protótipo
-            let mut def = s
-                .library
-                .first()
-                .cloned()
-                .ok_or("A biblioteca está vazia.")?;
-            def.id = format!("importado-{}", new_id());
-            def.manufacturer = "Importado do QLC+".into();
-            def.model = file_name.trim_end_matches(".qxf").to_string();
+        Op::RemoveFixtureDef { id } => {
+            let count = s.library.len();
+            s.library.retain(|d| d.id != id);
+            if s.library.len() == count {
+                return Err(format!("Definição {id} não encontrada."));
+            }
+            vec![T::Library]
+        }
+        Op::ImportQxf { file_name, content } => {
+            let (def, mut warnings) =
+                rlc_qxf::import(&content).map_err(|e| format!("{file_name}: {e}"))?;
+            // A mesma fixture importada de novo substitui a anterior, como o "Salvar" do editor
+            if s.library
+                .iter()
+                .chain(&p.fixture_defs)
+                .any(|d| d.id == def.id)
+            {
+                warnings.insert(
+                    0,
+                    "Substituiu a definição que já existia (na biblioteca ou no projeto).".into(),
+                );
+            }
             let report = ImportReport {
                 def_id: def.id.clone(),
                 channels: def.channels.len() as u16,
                 modes: def.modes.len() as u16,
-                warnings: vec![
-                    "Capability \"Strobe aleatório\" sem equivalente: guardada como texto.".into(),
-                    "Canal \"Função especial\" sem grupo conhecido: marcado como \"outro\".".into(),
-                ],
+                warnings,
             };
-            s.library.push(def);
-            return Ok((vec![T::Library], json!(report)));
+            let (topics, _) = apply(s, Op::SaveFixtureDef { def })?;
+            return Ok((topics, json!(report)));
         }
         Op::AddUniverse => {
             p.universes.push(Universe {
@@ -558,22 +577,28 @@ pub fn empty_project() -> Project {
     }
 }
 
-/// Canais de intensidade de cada universo, na ordem do projeto: o Grand Master e o blackout só
-/// agem neles. Canal sem fixture também conta, para o blackout apagar a luz ligada só pela Mesa simples.
-pub fn intensity_patch(p: &Project) -> Vec<(Id, Box<[bool; 512]>)> {
+/// Os universos para o motor, na ordem do projeto: os canais de intensidade (o Grand Master e o
+/// blackout só agem neles) e o valor padrão de cada canal. Canal sem fixture conta como intensidade,
+/// para o blackout apagar a luz ligada só pela Mesa simples.
+pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
     p.universes
         .iter()
         .map(|u| {
-            let mut intensity = Box::new([true; 512]);
+            let mut patch = UniversePatch {
+                id: u.id.clone(),
+                intensity: Box::new([true; 512]),
+                defaults: Box::new([0; 512]),
+            };
             for f in p.fixtures.iter().filter(|f| f.universe == u.id) {
                 for (i, channel) in mode_channels(p, f).enumerate() {
                     let index = (usize::from(f.address) + i).checked_sub(1);
-                    if let Some(slot) = index.and_then(|c| intensity.get_mut(c)) {
-                        *slot = is_intensity(channel.attribute);
+                    if let Some(c) = index.filter(|&c| c < 512) {
+                        patch.intensity[c] = is_intensity(channel.attribute);
+                        patch.defaults[c] = channel.default;
                     }
                 }
             }
-            (u.id.clone(), intensity)
+            patch
         })
         .collect()
 }
@@ -582,7 +607,7 @@ fn is_intensity(attribute: Attribute) -> bool {
     use Attribute::*;
     matches!(
         attribute,
-        Dimmer | Red | Green | Blue | White | Amber | Uv | Cyan | Magenta | Yellow
+        Dimmer | Red | Green | Blue | White | Amber | Uv | Lime | Indigo | Cyan | Magenta | Yellow
     )
 }
 
@@ -829,17 +854,71 @@ mod tests {
     }
 
     #[test]
-    fn intensity_patch_marks_dimmer_and_colors_but_not_position() {
+    fn universe_patch_marks_intensity_and_takes_the_defaults() {
         let s = example();
-        let patch = intensity_patch(&s.project);
-        let (id, palco) = &patch[0];
-        assert_eq!(id, "u1");
+        let patch = universe_patch(&s.project);
+        let palco = &patch[0];
+        assert_eq!(palco.id, "u1");
         // Moving head no 101: o primeiro canal dele é pan
         let mh = s.project.fixtures.iter().find(|f| f.id == "mh1").unwrap();
         let first = mode_channels(&s.project, mh).next().unwrap();
-        assert_eq!(palco[100], is_intensity(first.attribute));
-        assert!(!palco.iter().all(|i| *i));
+        assert_eq!(palco.intensity[100], is_intensity(first.attribute));
+        assert!(!palco.intensity.iter().all(|i| *i));
         // Canal sem fixture conta como intensidade
-        assert!(palco[511]);
+        assert!(palco.intensity[511]);
+        // Rig RSena: o Beam 7R no endereço 1 tem o Strobo (canal 2) em 255, "luz ativa"
+        let rig = &patch[2];
+        assert_eq!((rig.defaults[1], rig.intensity[1]), (255, false));
+    }
+
+    #[test]
+    fn import_replaces_the_same_fixture_and_reports_it() {
+        let mut s = example();
+        let import = |name: &str, content: &str| Op::ImportQxf {
+            file_name: name.into(),
+            content: content.into(),
+        };
+        let strobe = include_str!("../../rlc-qxf/tests/qxf/RSena-Strobo-1000w.qxf");
+        let (topics, report) = apply(&mut s, import("Strobo.qxf", strobe)).unwrap();
+        assert_eq!(topics, vec![Topic::Library]);
+        assert_eq!(report["defId"], "rsena-strobo-1000w");
+        assert_eq!(report["warnings"], json!([]));
+        // O projeto já usa o Beam: a cópia dele é substituída, com aviso
+        let count = s.library.len();
+        s.project.fixture_defs[7].model = "Velho".into();
+        let beam = include_str!("../../rlc-qxf/tests/qxf/RSena-Beam-7r.qxf");
+        let (topics, report) = apply(&mut s, import("Beam.qxf", beam)).unwrap();
+        assert_eq!(s.library.len(), count + 1);
+        assert!(
+            report["warnings"][0]
+                .as_str()
+                .unwrap()
+                .starts_with("Substituiu")
+        );
+        assert_eq!(topics, vec![Topic::Library, Topic::FixtureDefs]);
+        assert_eq!(s.project.fixture_defs[7].model, "Beam 7r");
+        let refused = Op::ImportQxf {
+            file_name: "show.qxw".into(),
+            content: "<Workspace/>".into(),
+        };
+        assert!(
+            apply(&mut s, refused)
+                .unwrap_err()
+                .starts_with("show.qxw: ")
+        );
+    }
+
+    #[test]
+    fn removing_a_definition_keeps_the_project_copy() {
+        let mut s = example();
+        let id = "generico-par-rgbw";
+        apply(&mut s, Op::RemoveFixtureDef { id: id.into() }).unwrap();
+        assert!(!s.library.iter().any(|d| d.id == id));
+        assert!(s.project.fixture_defs.iter().any(|d| d.id == id));
+        assert!(apply(&mut s, Op::RemoveFixtureDef { id: id.into() }).is_err());
+        // O id vira nome de arquivo: só minúsculas, números e hífens
+        let mut def = s.project.fixture_defs[0].clone();
+        def.id = "../fora".into();
+        assert!(apply(&mut s, Op::SaveFixtureDef { def }).is_err());
     }
 }

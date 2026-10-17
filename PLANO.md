@@ -136,24 +136,25 @@ Validação (detalhada em [docs/fases/fase-03.md](docs/fases/fase-03.md)):
 - [x] O Dummy funciona sem hardware.
 - [ ] O instalador funciona num PC limpo. _Adiado para a F16 (pedido do usuário)._
 
-### F4 — Fixtures: formato e importador .qxf · ⬜
+### F4 — Fixtures: formato e importador .qxf · ✅
+
+Mini-plano: [docs/fases/fase-04.md](docs/fases/fase-04.md) (aprovado em 2026-10-17). Concluída e validada pelo usuário em 2026-10-17.
 
 - **Formato:** schema JSON de fixture (`schemaVersion`) com taxonomia própria de atributos e o valor padrão de cada canal (o `Default` do `.qxf`; ex.: o Strobo do Beam 7R em 255, "luz ativa").
 - **Importador:** `rlc-qxf`, com relatório de conversão.
 - **Biblioteca:** do usuário, com busca e upload também pelo celular.
-- **Decisão desta fase:** embutir ou não a biblioteca do QLC+ já convertida.
+- **Decisão desta fase (2026-10-17):** a biblioteca do QLC+ não é embutida. As fixtures entram só importadas pelo usuário ou criadas à mão.
 - **Ref:**
   - `engine/src/{qlcfixturedef,qlcfixturemode,qlcchannel,qlccapability,qlcphysical,qlcfixturehead}.cpp`
   - `resources/schemas/fixture.xsd`
 
-- **Até a F4,** o "Importar .qxf" da biblioteca é simulado, como no protótipo: o resultado é uma cópia do PAR genérico com o nome do arquivo, e os avisos do relatório são textos fixos. O usuário decidiu esperar a F4 (sem recusar a importação nem converter à mão).
-- **Fixtures do usuário:** o ParLed 18x15w e o Beam 7R já foram convertidos à mão para o show de exemplo (`crates/rlc-server/src/exemplo.json`). O Strobo 1000w (`R:\Light\QLC+\Fixtures\RSena\RSena-Strobo-1000w.qxf`) fica de fora: o usuário quer importá-lo ele mesmo, pelo app, quando o importador estiver pronto.
+- **Fixtures do usuário:** o ParLed 18x15w e o Beam 7R estão convertidos à mão no show de exemplo (`crates/rlc-server/src/exemplo.json`), e o importador dá o mesmo resultado (teste automático). Os três `.qxf` (`R:\Light\QLC+\Fixtures\RSena\`) o usuário importa pelo app.
 
 Validação:
-- [ ] Os .qxf das fixtures reais importam sem erro: o usuário importa o Strobo 1000w pelo app.
-- [ ] A importação do ParLed 18x15w e do Beam 7R bate com a conversão feita à mão no exemplo (incluindo o valor padrão do Strobo do Beam).
-- [ ] Relatório correto.
-- [ ] Conferência manual contra o QLC+.
+- [x] Os .qxf das fixtures reais importam sem erro: o usuário importa o Strobo 1000w pelo app.
+- [x] A importação do ParLed 18x15w e do Beam 7R bate com a conversão feita à mão no exemplo (incluindo o valor padrão do Strobo do Beam).
+- [x] Relatório correto.
+- [x] Conferência manual contra o QLC+.
 
 ### F5 — Patch, projeto e programador · ⬜
 

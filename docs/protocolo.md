@@ -39,7 +39,7 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 
 **Tópicos do `evt`** (o caminho no `Snapshot`, aplicado no lugar pelo cliente):
 - **Projeto:** `project` (projeto inteiro, no "Novo projeto"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`.
-- **Arquivo e biblioteca:** `projectPath`, `dirty` e `library`.
+- **Arquivo e biblioteca:** `projectPath`, `dirty` e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
 - **Ao vivo:** `running`, `desk`, `master`, `widgetValues`, `stats` e `testPattern`.
 
@@ -83,8 +83,9 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `autoAddress` | `ids, universe, start` | Endereça em sequência, sem buracos |
 | `saveFixtureGroup` / `removeFixtureGroup` | `group` / `id` | Cria ou substitui um grupo de fixtures (grade 2D); remove |
 | `saveChannelGroup` / `removeChannelGroup` | `group` / `id` | Cria ou substitui um grupo de canais; remove |
-| `saveFixtureDef` | `def` | Cria ou substitui uma definição na biblioteca (e no projeto, se ele a usa) |
-| `importQxf` | `fileName, content` | Converte `.qxf` e põe na biblioteca. Resposta: `ImportReport`. Simulada até a F4 |
+| `saveFixtureDef` | `def` | Cria ou substitui uma definição na biblioteca (e no projeto, se ele a usa). O id só tem minúsculas, números e hífens (vira o nome do arquivo) |
+| `removeFixtureDef` | `id` | Tira a definição da biblioteca; o projeto continua com a cópia dele |
+| `importQxf` | `fileName, content` | Converte o `.qxf` (crate `rlc-qxf`) e põe na biblioteca, como um `saveFixtureDef`: a mesma fixture (fabricante e modelo) substitui a anterior. Resposta: `ImportReport`, com os avisos da conversão. Um arquivo que não é fixture é recusado |
 | `addUniverse` / `updateUniverse` / `removeUniverse` | — / `universe` / `id` | Universos e a interface de saída de cada um. Uma interface manda um universo só: escolhida num, sai do outro. Um universo com fixtures não é removido |
 | `setRemoteAccess` | `enabled, pin?` | Acesso pela rede local e PIN |
 | `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio; remove (e tira dos passos de chaser, das coleções e do console) |

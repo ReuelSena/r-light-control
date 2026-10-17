@@ -81,7 +81,7 @@
     "automatic": "automático",
     "addConfirm": "Adicionar {n} ao projeto",
     "importReport": "Importação do .qxf",
-    "imported": "Convertido para o formato próprio: {channels} canais e {modes} modos.",
+    "imported": "Convertido para o formato próprio: {channels} canais e 1 modo. | Convertido para o formato próprio: {channels} canais e {n} modos.",
     "warnings": "Avisos ({n})"
   },
   "editor": {
@@ -207,6 +207,7 @@
     "hazer": "Máquina de haze",
     "smoke": "Máquina de fumaça",
     "laser": "Laser",
+    "effect": "Efeito",
     "other": "Outro"
   },
   "attribute": {
@@ -217,11 +218,14 @@
     "white": "Branco",
     "amber": "Âmbar",
     "uv": "UV",
+    "lime": "Lima",
+    "indigo": "Índigo",
     "cyan": "Ciano",
     "magenta": "Magenta",
     "yellow": "Amarelo",
     "colorWheel": "Roda de cores",
     "colorMacro": "Macro de cor",
+    "colorTemperature": "Temperatura de cor",
     "pan": "Pan",
     "tilt": "Tilt",
     "speed": "Velocidade",

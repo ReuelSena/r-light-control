@@ -1,6 +1,7 @@
 //! Motor (A1): uma thread a 50 Hz com prazo absoluto, dona do estado de execução. Os comandos chegam
 //! por canal e são aplicados no começo de cada tick, e cada tick publica o quadro de cada universo.
-//! Na F3 a saída é a Mesa simples (ou o padrão de teste), com o Grand Master e o blackout por cima.
+//! Cada universo parte do valor padrão dos canais; por cima vem a Mesa simples (ou o padrão de
+//! teste) e, por fim, o Grand Master e o blackout.
 //! As criações do Studio entram na F6.
 
 use std::sync::Arc;
@@ -35,10 +36,18 @@ impl Frames {
     }
 }
 
+/// Um universo do projeto, do jeito que o motor precisa dele.
+pub struct UniversePatch {
+    pub id: Id,
+    /// Canais de intensidade: o Grand Master e o blackout só agem neles.
+    pub intensity: Box<[bool; 512]>,
+    /// Valor de cada canal quando nada o controla: a base do quadro.
+    pub defaults: Box<Frame>,
+}
+
 pub enum Command {
-    /// Universos do projeto, na ordem, com os canais de intensidade de cada um
-    /// (o Grand Master e o blackout só agem neles).
-    Patch(Vec<(Id, Box<[bool; 512]>)>),
+    /// Universos do projeto, na ordem.
+    Patch(Vec<UniversePatch>),
     /// Níveis da Mesa simples de todos os universos.
     Desk(Vec<DeskLevel>),
     GrandMaster(u8),
@@ -108,7 +117,7 @@ fn next_deadline(previous: Instant, now: Instant) -> Instant {
 }
 
 struct State {
-    universes: Vec<(Id, Box<[bool; 512]>)>,
+    universes: Vec<UniversePatch>,
     desk: Vec<DeskLevel>,
     grand_master: u8,
     blackout: bool,
@@ -142,8 +151,8 @@ impl State {
     fn render(&self, now: Instant) -> Vec<(Id, Frame)> {
         self.universes
             .iter()
-            .map(|(id, intensity)| {
-                let mut frame = [0; 512];
+            .map(|u| {
+                let mut frame = *u.defaults;
                 match self.test {
                     Some((pattern, since)) => {
                         let ms = now.duration_since(since).as_millis() as u64;
@@ -158,21 +167,25 @@ impl State {
                         }
                     }
                     None => {
-                        for l in self.desk.iter().filter(|l| &l.universe == id) {
+                        for l in self.desk.iter().filter(|l| l.universe == u.id) {
                             if let Some(v) = frame.get_mut(usize::from(l.channel).wrapping_sub(1)) {
                                 *v = l.value;
                             }
                         }
                     }
                 }
-                for (v, _) in frame.iter_mut().zip(intensity.iter()).filter(|(_, i)| **i) {
+                for (v, _) in frame
+                    .iter_mut()
+                    .zip(u.intensity.iter())
+                    .filter(|(_, i)| **i)
+                {
                     *v = if self.blackout {
                         0
                     } else {
                         reduce(*v, self.grand_master)
                     };
                 }
-                (id.clone(), frame)
+                (u.id.clone(), frame)
             })
             .collect()
     }
@@ -201,11 +214,18 @@ mod tests {
     use super::*;
 
     fn state() -> State {
-        // Canais 1 e 2 de intensidade (dimmer, vermelho); o 3 é pan
+        // Canais 1 e 2 de intensidade (dimmer, vermelho); o 3 é pan e o 4, um strobo com padrão 255
         let mut intensity = Box::new([true; 512]);
         intensity[2] = false;
+        intensity[3] = false;
+        let mut defaults = Box::new([0; 512]);
+        defaults[3] = 255;
         let mut s = State::default();
-        s.apply(Command::Patch(vec![("u1".into(), intensity)]));
+        s.apply(Command::Patch(vec![UniversePatch {
+            id: "u1".into(),
+            intensity,
+            defaults,
+        }]));
         let level = |channel, value| DeskLevel {
             universe: "u1".into(),
             channel,
@@ -224,9 +244,20 @@ mod tests {
     }
 
     #[test]
-    fn desk_goes_to_the_frame() {
-        let f = frame(&state());
-        assert_eq!(f[..4], [255, 100, 200, 0]);
+    fn desk_goes_over_the_defaults() {
+        let mut s = state();
+        assert_eq!(frame(&s)[..5], [255, 100, 200, 255, 0]);
+        let mut levels = s.desk.clone();
+        levels.push(DeskLevel {
+            universe: "u1".into(),
+            channel: 4,
+            value: 10,
+        });
+        s.apply(Command::Desk(levels));
+        assert_eq!(frame(&s)[3], 10);
+        // Solto (o "Zerar" da Mesa simples), volta ao padrão
+        s.apply(Command::Desk(vec![]));
+        assert_eq!(frame(&s)[..4], [0, 0, 0, 255]);
     }
 
     #[test]
@@ -245,7 +276,7 @@ mod tests {
     fn blackout_zeroes_intensity_and_keeps_position() {
         let mut s = state();
         s.apply(Command::Blackout(true));
-        assert_eq!(frame(&s)[..3], [0, 0, 200]);
+        assert_eq!(frame(&s)[..4], [0, 0, 200, 255]);
         s.apply(Command::Blackout(false));
         assert_eq!(frame(&s)[..3], [255, 100, 200]);
     }

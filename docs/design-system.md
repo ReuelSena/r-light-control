@@ -50,6 +50,7 @@ Para montar telas:
 | `field-label` | `<label>` com o texto em cima e o campo embaixo |
 | `rl-table` | Tabelas (canais, faixas, mapeamentos) |
 | `rl-led` | LED de status; a cor vem de `--led` (padrão verde) |
+| `rl-key` | Etiqueta de tecla (atalho de teclado), em texto de display; legível sobre botão aceso |
 
 ## Componentes (`ui/app/components/rl/`)
 
@@ -64,9 +65,10 @@ Para montar telas:
 | `RlMeter` | Nível de saída | Segmentos de LED; `level` de 0 a 1. |
 | `RlChannelStrip` | Canal ou fixture na mesa | Display (tocar emite `edit`), FLASH, SEL, fader com FINO, etiqueta colorida (laranja quando selecionada). Com `plain`, sem os botões (Mesa simples, faders de cena). O slot `label` troca o texto da etiqueta (ex.: ícone + nome). |
 | `RlNumpad` | Digitar um valor exato | Respeita % ou DMX; emite o valor normalizado (0–1). |
-| `RlDialog` | Confirmações, edição pontual | Com `sheet`, vira painel: sobe de baixo no celular e entra pela direita em telas maiores. `info` põe o "i" ao lado do título. |
+| `RlDialog` | Confirmações, edição pontual | Com `sheet`, vira painel: sobe de baixo no celular e entra pela direita em telas maiores (ex.: as Configurações, abertas pelo ⚙ sobre qualquer tela). `info` põe o "i" ao lado do título. |
 | `RlTabs` | Alternar visões dentro de um painel | Abas agrupadas num trilho afundado (controle segmentado); a ativa é a tecla acesa em laranja. Ocupam a largura toda em espaços estreitos (o texto quebra em duas linhas se precisar) e, a partir de `@3xl`, só o necessário, com abas de largura igual. Conteúdo em slots com o nome do `value`, ou no slot padrão quando todas as abas mostram a mesma tela com dados diferentes (ex.: universos no Patch). O slot `actions` põe botões ao lado do trilho (ex.: **+** novo universo). Use sempre que botões trocam a visão do painel, em vez de botões soltos. |
-| `RlSegmented` | Escolher uma entre poucas opções (ordem, sentido, propagação) | Mesmo trilho das abas, sem conteúdo embaixo. Sempre há uma opção escolhida. |
+| `RlSegmented` | Escolher uma entre poucas opções (ordem, sentido, propagação) | Mesmo trilho das abas, sem conteúdo embaixo. Sempre há uma opção escolhida. Com `size="sm"`, fica da altura de um botão pequeno (36 px), para barras ao lado de botões `sm` (ex.: vistas e "Editar posição" da 3D View). |
+| `RlStepper` | Valor numa escala fixa (zoom) | − e + andam pelos degraus (`steps`); toque duplo no display volta ao padrão. |
 | `RlTimeField` | Tempos (fade, hold, duração) | Mostra segundos (ou batidas, com `beats`) e guarda milissegundos. |
 | `RlList` | Listas selecionáveis (bibliotecas, funções) | Linhas de 48 px; `v-model` é o id selecionado. O slot `item` personaliza a linha. |
 | `RlSwatches` | Escolher uma cor de uma paleta curta (etiqueta de fixture) | `v-model` com a cor; `colors` com as opções. |
@@ -78,7 +80,7 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 
 ## Ícones dos tipos de criação
 
-`functionIcons` ([`utils/functions.ts`](../ui/app/utils/functions.ts)) é o ícone de cada tipo do Studio (E12), usado em todo lugar onde uma criação aparece: lista, passos de chaser, coleções e, na rodada 3, os botões do console.
+`functionIcons` ([`utils/functions.ts`](../ui/app/utils/functions.ts)) é o ícone de cada tipo do Studio (E12), usado em todo lugar onde uma criação aparece: lista, passos de chaser e coleções. No console, é o ícone inicial quando o usuário liga o ícone de um botão.
 
 | Tipo | Ícone (lucide) | Ideia |
 |---|---|---|
@@ -99,6 +101,31 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 - Os de intensidade, posição, beam e velocidade usam o token do atributo (`intensity`, `position`, `beam`, `speed`).
 - **Grupo de canais** (`channelGroupLook`): mostra o ícone dos canais quando todos dividem o mesmo; se as cores diferem (ex.: R, G e B), o ícone fica neutro. Canais misturados mostram o ícone genérico de faders.
 
+## Console (Virtual Console)
+
+`widgetKinds` ([`utils/console.ts`](../ui/app/utils/console.ts)) dá o ícone (da paleta de edição), o tamanho inicial e as entradas externas de cada tipo de elemento.
+
+**Ícone dos botões:** por padrão o botão mostra só o texto. Com "Mostrar ícone", ele começa com o ícone do tipo da criação (ou o da ação: apagar → `LightbulbOff`, parar tudo → `OctagonX`), e "Trocar" abre a biblioteca inteira do lucide (`ConsoleIcons`), com busca pelo nome em inglês e uma seleção sugerida. A biblioteca (~1.700 ícones) fica num pedaço separado do app ([`useIconLibrary`](../ui/app/composables/useIconLibrary.ts)), baixado só quando algum botão usa ícone.
+
+| Elemento | Ícone (lucide) | Tamanho inicial (células) |
+|---|---|---|
+| Botão | `RectangleHorizontal` | 4 × 4 |
+| Slider | `SlidersVertical` | 4 × 12 |
+| Cue list | `ListOrdered` | 16 × 12 |
+| XY pad | `Move` | 8 × 12 |
+| Tempos (VC-3) | `Timer` | 12 × 8 |
+| Moldura | `SquareDashed` | 16 × 12 |
+| Relógio | `Clock` | 8 × 4 |
+| Animation | `Sparkles` | 12 × 12 |
+| Texto | `Type` | 8 × 2 |
+
+- **Grade (VC-2):** 16 colunas no celular, 32 no tablet e 48 no desktop, para ajuste fino. A célula é quadrada e acompanha a largura; o elemento ocupa o retângulo dele com 3 px de folga e tem no mínimo 2 × 2 células (o Texto pode ter 1 de altura). Na moldura, a primeira linha é do cabeçalho.
+- **Cores (`widgetColors`):** cada cor viva com a versão escura dela (25% do brilho, para fundo de texto na cor viva) e sete cinzas do branco ao preto. O campo de cor (`ConsoleColor`) mostra a cor escolhida e abre a paleta; com `none`, oferece "Sem cor" (fundo e borda do Texto).
+- **Edição:** a grade aparece, e o painel de propriedades fica sempre no lugar em telas largas (vazio, com um aviso, quando nada está escolhido), para escolher um elemento não mexer no layout. A célula guarda o tamanho da operação (o painel de propriedades faz a grade rolar para o lado, sem apertar os elementos). Elementos com controle MIDI mostram um ícone de teclado musical no canto.
+- **Etiqueta de tecla:** o elemento acionado por tecla mostra a tecla (ou a combinação) numa etiqueta no canto superior direito, na operação e na edição. O botão de dicas de atalho (teclado, ao lado do "Editar", ou Alt + I) mostra ou esconde as etiquetas do console, inclusive as da seção master. Setas e espaço viram símbolos (← → ↑ ↓ ␣).
+- **Zoom do console:** `RlStepper` ao lado do "Editar", com os degraus do navegador (50% a 200%). Multiplica a célula da grade, guardado por aparelho.
+- **Seção master:** coluna à direita, com o GM num fader de cap vermelho; em espaço estreito, faixa em cima com o GM num knob.
+
 ## Regras de interação
 
 - **Arrasto relativo** ([`useDrag`](../ui/app/composables/useDrag.ts)):
@@ -116,12 +143,18 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 - **Botões disparam ao soltar o dedo (`pointerup`)**, não no `click`. O navegador não gera `click` para um toque feito enquanto outro dedo está na tela. Pelo teclado, Enter/Espaço continuam funcionando.
 - **Flash** acende ao tocar e apaga ao soltar, ao cancelar o toque ou ao perder a captura. Ele usa `touch-action: none`, para um dedo que escorrega não virar rolagem.
 - **Multisseleção:** o toque escolhe um item; Ctrl + clique (desktop) ou toque longo (celular) soma ou tira outros. Ex.: fixtures do mesmo tipo no editor de cena.
-- **Arrastar para posicionar** (Patch; depois, a edição do console):
-  - com o mouse, qualquer item é arrastado direto;
+- **Arrastar para posicionar** (Patch, edição do console e 3D View com "Editar posição"):
+  - com o mouse, qualquer item é arrastado direto (na 3D View, com o botão esquerdo; a câmera fica no botão do meio e no direito, e o zoom na roda);
   - no toque, o primeiro toque seleciona e o arrasto vale só para o item selecionado (ele recebe `touch-action: none`), para o gesto sobre o resto continuar rolando;
   - o ponto agarrado fica sob o dedo, e o destino aparece antes de soltar: verde se livre, vermelho se houver conflito.
   - em listas que rolam (ex.: a do Studio), no toque o arrasto só começa depois de segurar 400 ms; antes disso, o gesto rola a lista. Com o mouse, começa ao mover 6 px.
+- **Clique fantasma do toque:** depois de um toque, o navegador manda um clique de compatibilidade no mesmo ponto, que cairia no que o botão acabou de abrir ali (ex.: o painel de propriedades no celular). O `RlButton` cancela esse clique quando foi acionado por toque. Por isso, nada deve depender do `click` de um `RlButton` (ex.: `DialogClose as-child`); use `@press`. Mesmo assim, o que aparece por causa de um toque vai numa linha abaixo do botão, não ao lado, para o layout não andar sob o dedo.
 - **Rolagem:** as barras (navegação, bancos, strips) rolam pelo gesto. Faders, knobs, pads e flashes não deixam o gesto virar rolagem.
+- **Barras de rolagem:** um estilo só para o app todo (`main.css`), com trilho afundado e cursor em relevo, como um fader pequeno, e sem setas. Vale com mouse; no toque ficam as barras do aparelho, finas e que somem sozinhas. No Firefox, só as cores.
+- **Atalhos de teclado:**
+  - padrão do app: Ctrl + − e Ctrl + + (zoom; o do console quando ele está na frente) e, no teclado numérico, − blackout, + parar tudo e Enter tap do BPM (com etiquetas `rl-key` na seção master); no console, Alt + E (editar) e Alt + I (dicas de atalho), que valem também com o foco num campo;
+  - os elementos do console usam as outras teclas; a captura recusa as reservadas (`isReservedKey`);
+  - o teclado numérico tem nome próprio ("Num 1", "Num -"), separado da fileira de cima das letras (`keyCombo`).
 - **Proibidos na página:** zoom por pinça ou toque duplo, rolagem elástica, seleção de texto (exceto em campos) e menu de contexto do toque longo.
 
 ## Layout
@@ -135,6 +168,8 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 A seção master fica só no Console (E12). As strips rolam na horizontal.
 
 **Dentro das telas, use container queries** (`@3xl:grid-cols-2`, e não `md:`). A mesma tela pode ocupar a janela inteira, um painel estreito do modo modular ou uma janela externa. Por isso ela se adapta à largura do espaço que ocupa, e não à da janela. Equivalências usadas: `sm` → `@xl`, `md` → `@3xl`, `lg` → `@5xl`, `xl` → `@7xl`. O shell e os diálogos continuam com breakpoints de janela.
+
+**Zoom:** o zoom geral da interface (⚙) é o zoom nativo da janela do app desktop: as medidas em px continuam valendo, e a tela se reorganiza como no zoom do navegador. Não use `zoom` do CSS na página: ele desalinha os balões (Reka/floating-ui) e os arrastos, que misturam coordenadas da tela e do elemento.
 
 **Classes do Tailwind sobre componentes `Rl*`:** o estilo do próprio componente vence as utilidades que mexem nas mesmas propriedades (`hidden`, `justify-start`, `normal-case`…). Nesses casos use o `!` no fim (`@3xl:hidden!`).
 

@@ -28,6 +28,9 @@ pub struct Snapshot {
     pub running: Vec<Id>,
     /// Mesa simples (não é salva no projeto).
     pub desk: Desk,
+    pub master: Master,
+    /// Valores ao vivo dos elementos do console (não são salvos no projeto).
+    pub widget_values: Vec<WidgetValue>,
     pub stats: Stats,
 }
 
@@ -43,6 +46,8 @@ pub struct Project {
     pub channel_groups: Vec<ChannelGroup>,
     pub functions: Vec<Function>,
     pub folders: Vec<Folder>,
+    pub console: Console,
+    pub stage: Stage,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -428,6 +433,304 @@ pub struct RgbMatrix {
     pub timing: Timing,
 }
 
+// ---------- Virtual Console (E11) ----------
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Console {
+    pub pages: Vec<VcPage>,
+    pub widgets: Vec<VcWidget>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcPage {
+    pub id: Id,
+    pub name: String,
+}
+
+/// Elemento do console. É um só para os três formatos de tela (VC-2): função, cor e entradas
+/// valem em todos, e cada formato guarda só onde ele fica.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcWidget {
+    pub id: Id,
+    pub page: Id,
+    /// Moldura onde está; a posição passa a contar a partir do canto da moldura.
+    pub frame: Option<Id>,
+    pub caption: String,
+    /// Cor do destaque (#rrggbb).
+    pub color: String,
+    pub layouts: VcLayouts,
+    /// Controles MIDI e teclas que acionam o elemento (VC-1).
+    pub inputs: Vec<WidgetInput>,
+    #[serde(flatten)]
+    pub kind: VcWidgetKind,
+}
+
+/// Posição em cada formato de tela; `None` = o elemento não aparece nesse formato.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcLayouts {
+    pub phone: Option<Rect>,
+    pub tablet: Option<Rect>,
+    pub desktop: Option<Rect>,
+}
+
+/// Retângulo em células da grade do formato.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Rect {
+    pub x: u16,
+    pub y: u16,
+    pub w: u16,
+    pub h: u16,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetInput {
+    pub control: InputControl,
+    pub midi: Option<MidiControl>,
+    /// Tecla ou combinação (ex.: "F1", "Shift+A").
+    pub key: Option<String>,
+}
+
+/// Qual parte do elemento a entrada aciona.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum InputControl {
+    /// O botão, o fader ou o play da lista.
+    Main,
+    Previous,
+    Next,
+    Stop,
+    Tap,
+    X,
+    Y,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MidiControl {
+    pub device: Id,
+    /// Canal MIDI, de 1 a 16.
+    pub channel: u8,
+    pub message: MidiMessage,
+    /// Nota ou número do controle.
+    pub number: u8,
+    /// Devolve o estado ao controlador (LED, fader motorizado).
+    pub feedback: bool,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum MidiMessage {
+    Note,
+    ControlChange,
+    ProgramChange,
+    PitchBend,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum VcWidgetKind {
+    Button(VcButton),
+    Slider(VcSlider),
+    CueList(VcCueList),
+    XyPad(VcXyPad),
+    /// Tempos ao vivo (VC-3): ajusta fade in, fade out e duração das criações da lista.
+    SpeedDial(VcSpeedDial),
+    Frame(VcFrame),
+    Clock(VcClock),
+    /// Controle de um RGB Matrix: cores, algoritmo e intensidade.
+    Animation(VcAnimation),
+    /// Texto na cor do elemento.
+    Label(VcLabel),
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcButton {
+    pub action: ButtonAction,
+    /// Criação disparada (ação `function`).
+    pub function: Option<Id>,
+    /// Fixtures e grupos de fixtures apagados (ação `blackoutFixtures`).
+    pub fixtures: Vec<Id>,
+    pub groups: Vec<Id>,
+    pub mode: ButtonMode,
+    pub highlight: Highlight,
+    /// Ícone da biblioteca (lucide, ex.: "Camera"); `None` = só o texto.
+    pub icon: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ButtonAction {
+    Function,
+    Blackout,
+    BlackoutFixtures,
+    StopAll,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ButtonMode {
+    Toggle,
+    Flash,
+}
+
+/// Aceso: o botão inteiro (`face`) ou só o filete de LED.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Highlight {
+    Face,
+    Led,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcSlider {
+    pub mode: SliderMode,
+    /// Nível: grupos de canais controlados.
+    pub channel_groups: Vec<Id>,
+    /// Playback: criação que roda com a intensidade do slider.
+    pub function: Option<Id>,
+    /// Aparência de knob em vez de fader.
+    pub knob: bool,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum SliderMode {
+    Level,
+    Playback,
+    /// Escala as criações dos botões da mesma moldura.
+    Submaster,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcCueList {
+    /// Chaser ou sequência.
+    pub chaser: Option<Id>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcXyPad {
+    pub fixtures: Vec<Id>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcSpeedDial {
+    pub functions: Vec<Id>,
+    pub fade_in: bool,
+    pub fade_out: bool,
+    /// Duração (hold do chaser, ciclo do EFX, passo do RGB Matrix), com tap.
+    pub hold: bool,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcFrame {
+    /// Só uma criação da moldura roda por vez.
+    pub solo: bool,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcClock {
+    pub mode: ClockMode,
+    pub countdown_s: u32,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ClockMode {
+    Clock,
+    Stopwatch,
+    Countdown,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcAnimation {
+    pub matrix: Option<Id>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcLabel {
+    /// Cores (#rrggbb) do fundo e da borda; `None` = sem.
+    pub background: Option<String>,
+    pub border: Option<String>,
+}
+
+// ---------- 3D View ----------
+
+/// Palco do preview: tamanho em metros e posição de cada fixture.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Stage {
+    pub width: f32,
+    pub depth: f32,
+    pub height: f32,
+    pub fixtures: Vec<FixturePosition>,
+    /// Elementos de palco (truss, caixas, pessoas…), que só complementam a prévia.
+    pub elements: Vec<StageElement>,
+}
+
+/// Posição (metros: x para a direita, y para cima, z para a plateia) e rotação (graus).
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FixturePosition {
+    pub fixture: Id,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub rotation_x: f32,
+    pub rotation_y: f32,
+    pub rotation_z: f32,
+}
+
+/// Elemento de palco, com posição e rotação como as das fixtures.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StageElement {
+    pub id: Id,
+    pub kind: StageElementKind,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub rotation_x: f32,
+    pub rotation_y: f32,
+    pub rotation_z: f32,
+}
+
+/// Tipos de elemento de palco (no truss, o comprimento em centímetros).
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum StageElementKind {
+    Truss100,
+    Truss150,
+    Truss300,
+    Riser,
+    Stairs,
+    LedPanel,
+    ProjectionScreen,
+    Subwoofer,
+    Speaker,
+    Monitor,
+    MicStand,
+    Person,
+    Drums,
+    Keyboard,
+    Pulpit,
+    Plant,
+}
+
 // ---------- Execução ----------
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -444,6 +747,26 @@ pub struct DeskLevel {
     /// Canal DMX, de 1 a 512.
     pub channel: u16,
     pub value: u8,
+}
+
+/// Seção master do console (E12) e o BPM global.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Master {
+    /// Grand Master: reduz os canais de intensidade (dimmer e cores).
+    pub grand_master: u8,
+    pub blackout: bool,
+    pub bpm: u16,
+}
+
+/// Valor ao vivo de um elemento do console. Conforme o tipo: slider e animation `[nível]`,
+/// XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms, cue list `[passo]`,
+/// botão de blackout de fixtures `[1]` quando ligado.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WidgetValue {
+    pub widget: Id,
+    pub value: Vec<u32>,
 }
 
 /// Dados do app e da máquina para o Monitoramento.
@@ -598,6 +921,37 @@ pub enum Op {
     ResetDesk {
         universe: Option<Id>,
     },
+    SaveConsolePage {
+        page: VcPage,
+    },
+    /// Remove a página e os elementos dela.
+    RemoveConsolePage {
+        id: Id,
+    },
+    /// Grava vários elementos de uma vez (mover, alinhar, colar).
+    SaveWidgets {
+        widgets: Vec<VcWidget>,
+    },
+    /// Remove os elementos; os de dentro de uma moldura removida vão junto.
+    RemoveWidgets {
+        ids: Vec<Id>,
+    },
+    SetWidgetValue {
+        widget: Id,
+        value: Vec<u32>,
+    },
+    SetGrandMaster {
+        value: u8,
+    },
+    SetBlackout {
+        on: bool,
+    },
+    SetBpm {
+        bpm: u16,
+    },
+    SaveStage {
+        stage: Stage,
+    },
     /// Adiciona ou substitui uma definição na biblioteca.
     SaveFixtureDef {
         def: FixtureDef,
@@ -666,5 +1020,35 @@ mod tests {
             json!({ "id": "c1", "name": "Tudo", "folder": null, "type": "collection", "functions": ["s1"] })
         );
         assert_eq!(serde_json::from_value::<Function>(value).unwrap(), function);
+    }
+
+    #[test]
+    fn widget_has_type_beside_common_fields() {
+        let widget = VcWidget {
+            id: "w1".into(),
+            page: "p1".into(),
+            frame: None,
+            caption: "Palco".into(),
+            color: "#ff8000".into(),
+            layouts: VcLayouts {
+                phone: None,
+                tablet: None,
+                desktop: Some(Rect {
+                    x: 0,
+                    y: 0,
+                    w: 4,
+                    h: 1,
+                }),
+            },
+            inputs: vec![],
+            kind: VcWidgetKind::Label(VcLabel {
+                background: Some("#402000".into()),
+                border: None,
+            }),
+        };
+        let value = serde_json::to_value(&widget).unwrap();
+        assert_eq!(value["type"], "label");
+        assert_eq!(value["background"], "#402000");
+        assert_eq!(serde_json::from_value::<VcWidget>(value).unwrap(), widget);
     }
 }

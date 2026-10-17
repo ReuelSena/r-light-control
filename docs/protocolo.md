@@ -54,13 +54,21 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio; remove (e tira dos passos de chaser e das coleções) |
 | `saveFolder` / `removeFolder` | `folder` / `id` | Pasta do Studio (de um tipo só); remover solta as criações dela. Mover uma criação de pasta é um `saveFunction` com outro `folder` |
 | `setFunctionRunning` | `id, running` | Roda ou para uma criação |
-| `stopAllFunctions` | — | Para todas as criações rodando ("Parar todas" do Studio e Stop All do console) |
-| `panic` | — | Pânico: para todas as criações e zera a Mesa simples inteira (dois toques no botão da barra) |
+| `stopAllFunctions` | — | Para todas as criações rodando ("Parar todas" do Studio e Stop All do console), baixa os sliders de playback e solta os passos escolhidos nas cue lists |
+| `panic` | — | Pânico: o mesmo do `stopAllFunctions` e zera a Mesa simples inteira (dois toques no botão da barra) |
 | `setDeskLevel` | `universe, channel, value` | Fader de um canal da Mesa simples (canal de 1 a 512, valor de 0 a 255) |
 | `setDeskGroupLevel` | `group, value` | Fader de um grupo de canais na Mesa simples: grava o nível do grupo e o valor em cada canal dele (os faders de canal acompanham) |
 | `resetDesk` | `universe?` | Zera a Mesa simples: os canais do universo ou, sem ele, os grupos de canais (soltando os canais deles) |
+| `saveConsolePage` / `removeConsolePage` | `page` / `id` | Página do console; remover leva os elementos dela |
+| `saveWidgets` | `widgets` | Cria ou substitui vários elementos do console de uma vez (mover, alinhar, colar, copiar layout) |
+| `removeWidgets` | `ids` | Remove elementos; os filhos de uma moldura removida vão junto |
+| `setWidgetValue` | `widget, value` | Valor ao vivo de um elemento (ver `widgetValues` abaixo); `value` vazio solta o valor |
+| `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global |
+| `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
 
-A lista cresce na rodada 3 (Console).
+**Console (`Project.console`):** páginas e elementos (`VcWidget`). Cada elemento tem `id`, `page`, `frame` (moldura ou `null`), `caption`, `color`, `inputs` (controle MIDI e tecla por parte do elemento) e `layouts` com a posição em células em cada formato (`phone`, `tablet`, `desktop`; `null` = não aparece nele). O `type` (`button`, `slider`, `cueList`, `xyPad`, `speedDial`, `frame`, `clock`, `animation`, `label`) fica no mesmo nível dos campos do tipo.
+
+**Palco (`Project.stage`):** largura, profundidade e altura em metros, a posição (x, y, z) e rotação de cada fixture e os elementos de palco (`elements`: tipo, posição e rotação), que só aparecem na prévia.
 
 **Criações do Studio (`Function`):** `id`, `name`, `folder` (pasta ou `null`) e `type` (`scene`, `chaser`, `sequence`, `collection`, `efx`, `rgbMatrix`) no mesmo nível dos campos do tipo. A sequência usa os campos do chaser, mais a cena (`scene`) e os valores em cada passo.
 
@@ -70,9 +78,11 @@ Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 
 - `running`: criações rodando;
 - `desk`: níveis da Mesa simples (não são salvos no projeto);
+- `master`: Grand Master, blackout e BPM;
+- `widgetValues`: valores ao vivo dos elementos do console (não são salvos no projeto): slider e animation `[nível]`, XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms, cue list `[passo]` escolhido à mão, botão de apagar fixtures `[1]` quando ligado;
 - `stats`: CPU, memória, duração do tick do motor e tempo ligado, para o Monitoramento.
 
-Os **valores de saída** dos universos (512 canais cada) ficam fora do JSON: no `useEngine()` são o `output`, e do servidor (F3) virão em frames binários. Na F2, o `MockClient` os simula a 25 Hz a partir das criações rodando e da mesa.
+Os **valores de saída** dos universos (512 canais cada) ficam fora do JSON: no `useEngine()` são o `output`, e do servidor (F3) virão em frames binários. Na F2, o `MockClient` os simula a 25 Hz a partir das criações rodando, do console e da mesa, com o Grand Master e os blackouts por cima.
 
 ## Janelas do mesmo aparelho
 

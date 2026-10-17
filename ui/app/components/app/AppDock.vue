@@ -22,6 +22,8 @@ function onReady(event: DockviewReadyEvent) {
   api = event.api
   try {
     api.fromJSON(JSON.parse(localStorage.getItem(LAYOUT) ?? ''))
+    // Painéis salvos de telas que deixaram de existir (ex.: Configurações, que virou painel lateral)
+    for (const panel of api.panels.filter((p) => !isScreen(p.id))) api.removePanel(panel)
   } catch {
     // Sem layout salvo: Fixtures e Patch lado a lado
     open('fixtures')

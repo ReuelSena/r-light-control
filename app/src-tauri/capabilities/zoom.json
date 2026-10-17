@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "zoom",
+  "description": "A UI, servida pelo servidor local, ajusta o zoom da própria janela (⚙ → Zoom da interface).",
+  "windows": ["*"],
+  "remote": { "urls": ["http://localhost:*/*", "http://127.0.0.1:*/*"] },
+  "permissions": ["core:webview:allow-set-webview-zoom"]
+}

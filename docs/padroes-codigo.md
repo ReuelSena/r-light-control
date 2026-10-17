@@ -46,6 +46,8 @@ if value == 255 { … }
 - Todo texto visível passa pelo i18n (`t('chave')`). Os textos ficam em `ui/i18n/locales/pt-BR.json`.
 - Dados de alta frequência (valores DMX, preview) ficam fora da reatividade do Vue (`shallowRef`, `markRaw`, `Uint8Array`).
 - Lint: `@nuxt/eslint`. Typecheck: `nuxt typecheck`.
+- Auto-import do Nuxt: o leitor de exports pode pular um `export const` que vem logo depois de outro com tipo genérico de dois parâmetros (`Record<A, B>`). Se um export de `utils/` "não existe" no typecheck, confira `.nuxt/imports.d.ts` e mude a ordem ou o tipo.
+- Componentes em subpastas ganham o nome da pasta como prefixo (`components/view3d/View3dStage.vue` → `<View3dStage>`); o arquivo já começa com o prefixo para o nome não repetir.
 
 ## 5. Comunicação UI ↔ servidor
 

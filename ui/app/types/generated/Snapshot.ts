@@ -2,10 +2,12 @@
 import type { Desk } from "./Desk";
 import type { DmxInterface } from "./DmxInterface";
 import type { FixtureDef } from "./FixtureDef";
+import type { Master } from "./Master";
 import type { MidiDevice } from "./MidiDevice";
 import type { Project } from "./Project";
 import type { RemoteAccess } from "./RemoteAccess";
 import type { Stats } from "./Stats";
+import type { WidgetValue } from "./WidgetValue";
 
 /**
  * Estado completo que o servidor envia ao cliente ao conectar (A3).
@@ -30,4 +32,8 @@ running: Array<string>,
 /**
  * Mesa simples (não é salva no projeto).
  */
-desk: Desk, stats: Stats, };
+desk: Desk, master: Master, 
+/**
+ * Valores ao vivo dos elementos do console (não são salvos no projeto).
+ */
+widgetValues: Array<WidgetValue>, stats: Stats, };

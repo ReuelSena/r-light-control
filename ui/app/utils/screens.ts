@@ -1,23 +1,18 @@
 import type { Component } from 'vue'
-import { Activity, Box, Cable, Clapperboard, Lamp, Settings, SlidersHorizontal, SlidersVertical, Usb } from 'lucide-vue-next'
-import PlaceholderScreen from '~/screens/PlaceholderScreen.vue'
+import { Activity, Box, Cable, Clapperboard, Lamp, SlidersHorizontal, SlidersVertical, Usb } from 'lucide-vue-next'
 
 // Telas do app (E12). A mesma tela aparece como página (modo simples), painel (modo modular)
-// ou janela externa (E13).
-
-/** Tela que chega numa rodada seguinte do protótipo (F2). */
-const later = (screen: string, round: number) => () => h(PlaceholderScreen, { screen, round })
+// ou janela externa (E13). As Configurações não são tela: ficam num painel lateral aberto pelo ⚙.
 
 export const screens = {
-  console: { icon: SlidersVertical, component: later('console', 3) },
+  console: { icon: SlidersVertical, component: defineAsyncComponent(() => import('~/screens/ConsoleScreen.vue')) },
   fixtures: { icon: Lamp, component: defineAsyncComponent(() => import('~/screens/FixturesScreen.vue')) },
   studio: { icon: Clapperboard, component: defineAsyncComponent(() => import('~/screens/StudioScreen.vue')) },
   patch: { icon: Cable, component: defineAsyncComponent(() => import('~/screens/PatchScreen.vue')) },
-  view3d: { icon: Box, component: later('view3d', 3) },
+  view3d: { icon: Box, component: defineAsyncComponent(() => import('~/screens/View3dScreen.vue')) },
   desk: { icon: SlidersHorizontal, component: defineAsyncComponent(() => import('~/screens/DeskScreen.vue')) },
   monitor: { icon: Activity, component: defineAsyncComponent(() => import('~/screens/MonitorScreen.vue')) },
   io: { icon: Usb, component: defineAsyncComponent(() => import('~/screens/InOutScreen.vue')) },
-  settings: { icon: Settings, component: defineAsyncComponent(() => import('~/screens/SettingsScreen.vue')) },
 } satisfies Record<string, { icon: Component; component: Component }>
 
 export type ScreenId = keyof typeof screens
@@ -28,4 +23,4 @@ export const isScreen = (id: unknown): id is ScreenId => typeof id === 'string' 
 export const navScreens: ScreenId[] = ['console', 'fixtures', 'studio', 'patch', 'view3d', 'desk', 'monitor', 'io']
 /** Celular: quatro na barra inferior e o resto em "Mais". */
 export const phoneScreens: ScreenId[] = ['console', 'studio', 'desk', 'fixtures']
-export const moreScreens: ScreenId[] = ['patch', 'view3d', 'monitor', 'io', 'settings']
+export const moreScreens: ScreenId[] = ['patch', 'view3d', 'monitor', 'io']

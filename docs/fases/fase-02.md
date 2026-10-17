@@ -1,6 +1,38 @@
 # F2 — Protótipo navegável de todas as telas
 
-**Status:** aprovado em 2026-10-16 (E11–E13). Rodada 1 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 2 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 3 em andamento.
+**Status:** aprovado em 2026-10-16 (E11–E13). Rodada 1 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 2 aprovada em 2026-10-16, depois dos ajustes da validação. Rodada 3 aprovada em 2026-10-16, depois dos ajustes da validação.
+
+**Rodada 3 entregue**
+- **Console, operação:** páginas em abas e os elementos botão, slider (nível em grupos de canais, playback ou submaster; fader ou knob), cue list, XY pad, Tempos (VC-3), moldura (com opção solo), relógio (hora, cronômetro ou contagem), animation (RGB Matrix) e texto. Seção master fixa: Grand Master, Blackout, Stop All e BPM com tap. As teclas definidas nos elementos funcionam.
+- **Console, edição:**
+  - paleta (o toque adiciona no primeiro lugar livre) e grade com encaixe;
+  - mover e redimensionar com mouse e toque (no toque, depois de escolher), destino em verde ou vermelho, entrar e sair de molduras;
+  - multisseleção (Ctrl + clique ou toque longo), alinhamento, duplicar e remover;
+  - propriedades (VC-1): texto, cor, ação (rodar criação, blackout geral, apagar fixtures ou grupos, parar tudo), modo, destaque e as entradas externas (MIDI com "aprender", simulado, e tecla);
+  - páginas: nova, renomear e excluir.
+- **VC-2:** o formato em edição aparece na barra; "Tirar deste formato", a lista dos elementos fora do formato e "Copiar layout de…" outro formato. No ⚙, o formato deste aparelho.
+- **3D View:** palco com as fixtures acendendo pela saída simulada (feixes, pixels das barras, strobe), vistas 3D, topo, frente e lateral, arrastar a fixture na vista de topo, posição e rotação no painel, tamanho do palco, qualidade e fumaça (por aparelho).
+- **Contrato:** `Console` e `Stage` no projeto; `master` e `widgetValues` no estado de execução; operações novas em [`docs/protocolo.md`](../protocolo.md). O `MockClient` simula o efeito do console na saída (playback, submaster, nível, XY pad, apagar fixtures, Grand Master e blackout).
+
+**Ajustes pedidos na validação da rodada 3 (2026-10-16)**
+- Na edição do console, o painel de propriedades fica sempre no lugar (com um aviso quando nada está escolhido): escolher ou soltar um elemento não mexe no layout.
+- Grade do console mais fina: cada célula virou 2 × 2 (16, 32 e 48 colunas).
+- Paleta dos elementos com a versão escura de cada cor e cinzas do branco ao preto, num botão que abre a paleta. O Texto ganhou cor de fundo e de borda e pode ter 1 célula de altura.
+- Etiqueta com a tecla no canto dos elementos acionados por teclado, na operação e na edição.
+- Correção: no celular, o toque que abria o painel de propriedades também abria a paleta de cor embaixo do dedo (clique fantasma); o `RlButton` passou a cancelar esse clique.
+- 3D View: "Editar posição" ao lado das vistas; ligado, arrastar a fixture a move em qualquer vista (topo, frente, lateral e 3D), e no vazio a câmera continua mexendo.
+- Atalhos padrão: Ctrl + − e Ctrl + + (zoom do sistema, ou do console quando ele está na frente); −, + e Enter do teclado numérico para blackout, parar tudo e tap do BPM, com etiquetas na seção master. Essas teclas são recusadas na captura dos elementos; as da fileira de cima ficam livres.
+- 3D View: aba Elementos, com elementos de palco (box truss de 1, 1,5 e 3 m, praticável, escada, painel LED, tela, caixas de grave, ativa e retorno, pedestal, pessoa, bateria, teclado, púlpito e planta); Ctrl + D duplica ao lado e Del exclui. O toque e o arrasto valem só para o que é da aba aberta (fixtures ou elementos).
+- 3D View com o mouse: o botão do meio gira ou desloca a câmera, o zoom é só na roda e o botão esquerdo só escolhe (e arrasta o escolhido com "Editar posição").
+- Barras de rolagem no padrão do design system em todo o app (trilho afundado e cursor em relevo, sem setas).
+- Configurações num painel lateral aberto pelo ⚙, sobre a tela atual (antes era uma tela): dá para ajustar algo sem sair de uma criação ou edição. No celular, o painel sobe de baixo, e o "Mais" ficou só com os menus.
+- Botão de dicas de atalho ao lado do "Editar": mostra ou esconde as etiquetas das teclas (elementos e seção master). Atalhos Alt + E (editar) e Alt + I (dicas), também reservados.
+- Zoom geral da interface no ⚙ (no app desktop; no navegador, o do navegador) e zoom do console ao lado do "Editar", guardados em cada aparelho.
+- Botões sem ícone por padrão. Nas propriedades, "Mostrar ícone" liga o do tipo da criação, e "Trocar" abre a biblioteca inteira de ícones com busca.
+
+**Decisões do início da rodada 3 (2026-10-16)**
+- **VC-2:** elementos compartilhados entre os formatos; cada formato guarda só a posição. Três formatos fixos pela largura da tela, com troca no ⚙.
+- **VC-3:** o elemento "Tempos" ajusta as criações de uma lista, como o Speed Dial do QLC+.
 
 **Ajustes pedidos na validação da rodada 2 (2026-10-16)**
 - **Editor de cena:**
@@ -168,7 +200,7 @@ O menu **Projeto** (novo, abrir, salvar, recentes) fica no canto esquerdo da bar
      - modo (liga/desliga ou flash);
      - ação: função, blackout geral, blackout de fixtures ou grupos, ou stop all;
      - entrada externa: controle MIDI (com "aprender") ou tecla do teclado.
-   - **VC-2:** layouts por formato de tela. Cada aparelho abre o layout do seu formato. Os detalhes (o que é compartilhado entre formatos) serão decididos no início da rodada.
+   - **VC-2:** layouts por formato de tela. Cada aparelho abre o layout do seu formato. Os elementos são compartilhados e cada formato guarda só a posição (decidido no início da rodada).
    - **VC-3:** controle no console para ajustar os fades ao vivo.
 12. **3D View:** layout do preview (com a cena de feixes da F1 como amostra), vistas, palco e posicionamento das fixtures.
 
@@ -211,7 +243,7 @@ Motor, USB, arquivos de verdade (abrir e salvar são simulados) e MIDI de verdad
 
 - [x] Rodada 1 aprovada (shell modular, janela externa, Fixtures, Patch, In/Out, Configurações).
 - [x] Rodada 2 aprovada (Studio, editores, Mesa simples, Monitoramento).
-- [ ] Rodada 3 aprovada (Console em operação e edição, VC-1, VC-2, 3D View).
+- [x] Rodada 3 aprovada (Console em operação e edição, VC-1, VC-2, 3D View).
 - [ ] Todos os fluxos percorridos no desktop, no tablet e no celular.
 - [ ] Contrato v0 e rascunho do `docs/protocolo.md` revisados.
 - [ ] Telas congeladas, com prints em `docs/telas/`.

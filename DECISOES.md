@@ -28,7 +28,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - Motivos: timing do Open DMX, app leve e caminho para Android na v2.
 - **E2. UI ↔ motor só por WebSocket e HTTP.**
   - A janela Tauri abre a mesma UI que o celular acessa pela rede local.
-  - O IPC do Tauri fica restrito a recursos nativos (ex.: diálogo de arquivo).
+  - O IPC do Tauri fica restrito a recursos nativos (ex.: diálogo de arquivo, zoom da janela). Cada recurso liberado tem uma capability própria em `app/src-tauri/capabilities/`.
 - **E3. Formato próprio** (JSON versionado) para projeto e fixture.
   - Importação apenas de fixtures `.qxf` do QLC+, convertidas para o formato próprio.
   - Não há importação de `.qxw`.
@@ -46,12 +46,21 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - Um botão **FINO** logo abaixo de cada fader reduz o deslocamento, para ajustes de precisão.
   - No desktop, a roda do mouse ajusta fader e knob: 1% por clique, 0,1% com FINO.
 - **E10. Exibição de valores.** Em % (0–100) por padrão, com opção de DMX (0–255) nas configurações.
+  - **Zoom (2026-10-16):** cada aparelho escolhe o zoom geral da interface no ⚙ e o zoom do console ao lado do "Editar".
+    - O zoom geral é o zoom nativo da janela do app desktop, que mantém medidas, arrastos e balões coerentes. O `zoom` do CSS foi descartado porque desalinha os balões e os arrastos. No navegador, vale o zoom do próprio navegador.
+    - O zoom do console aumenta ou diminui as células da grade; se passar da tela, a grade rola.
 - **E11. Virtual Console montado pelo usuário.** Como no QLC+, o usuário posiciona e configura cada elemento.
-  - Aparência e comportamento dos botões são propriedades de cada elemento: destaque (aceso ou LED), cor, modo (liga/desliga ou flash) e ação (função, blackout geral, blackout de fixtures ou grupos, stop all).
+  - Aparência e comportamento dos botões são propriedades de cada elemento: destaque (aceso ou LED), cor, modo (liga/desliga ou flash), ação (função, blackout geral, blackout de fixtures ou grupos, stop all) e ícone.
+    - O botão mostra só o texto. O ícone é opcional: ao ligar, começa com o do tipo da criação (ou o da ação) e pode ser trocado por qualquer um da biblioteca (lucide), com busca.
   - Os botões fixos do sistema (FINO, navegação, abas) seguem os padrões do design system.
-  - **Layouts por formato de tela:** o usuário cria e ajusta o console para cada formato (ex.: celular, tablet, desktop), e cada aparelho abre o layout do seu formato.
+  - **Layouts por formato de tela (VC-2):** o usuário cria e ajusta o console para cada formato, e cada aparelho abre o layout do seu formato.
+    - Os elementos são compartilhados: criação, cor e entradas externas valem em todos os formatos. Cada formato guarda só a posição e o tamanho do elemento, ou não o mostra.
+    - Três formatos fixos, escolhidos pela largura da tela: celular (< 640 px), tablet (< 1024 px) e desktop. O ⚙ de cada aparelho pode fixar outro.
+    - Grade de 16, 32 e 48 colunas, para ajuste fino de posição; a célula é quadrada e acompanha a largura. Na edição, a célula mantém o tamanho da operação (o painel de propriedades não aperta os elementos).
+  - **Cores dos elementos:** as cores vivas, a versão escura de cada uma (fundo para texto na cor viva) e cinzas do branco ao preto. O elemento Texto tem cor de fundo e de borda.
+  - **Fades ao vivo (VC-3):** elemento "Tempos" (como o Speed Dial do QLC+), com a lista das criações que controla e os tempos que ajusta (fade in, fade out e duração, com tap). Sem valor, valem os tempos gravados nas criações.
 - **E12. Organização da interface.** Menus:
-  - **Console:** Virtual Console.
+  - **Console:** Virtual Console, com a seção master (Grand Master, Blackout, Stop All e o BPM com tap) fixa ao lado; no celular, uma faixa em cima.
   - **Fixtures:** criação, importação, configuração e agrupamento dos equipamentos.
     - Dois tipos de grupo: **de fixtures** (grade 2D de cabeças, para o RGB Matrix) e **de canais** (como os "Channel Groups" do QLC+: canais de quaisquer fixtures, do mesmo atributo ou misturados, usados em faders do console e da mesa simples e nas cenas).
     - Na lista, o grupo de canais mostra o ícone do atributo quando todos os canais são do mesmo tipo, e um ícone genérico quando são misturados.
@@ -60,6 +69,11 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - Ao criar uma coleção com criações rodando, o app pergunta se ela nasce vazia ou com as que estão rodando.
   - **Patch.**
   - **3D View:** visualização, configuração e posicionamento dos equipamentos para o preview.
+    - Vistas 3D, topo, frente e lateral. Com "Editar posição" ligado, arrastar uma fixture a move em qualquer vista: no topo pelo chão, na frente em X e altura, na lateral em Z e altura e, no 3D, de frente para a câmera. Os números ficam no painel.
+    - Câmera com o mouse (2026-10-16): o botão do meio gira (na vista 3D) ou desloca (nas outras), o direito desloca e só a roda aproxima. O botão esquerdo só escolhe (e arrasta o escolhido com "Editar posição"). No toque, um dedo gira ou desloca e a pinça aproxima.
+    - Aba **Elementos** (2026-10-16): elementos de palco que complementam a prévia (box truss de 1, 1,5 e 3 m, praticável 2 × 1 m, escada, painel LED, tela de projeção, caixa de grave, caixa ativa, retorno, pedestal de microfone, pessoa, bateria, teclado, púlpito e planta). Com um elemento escolhido, Ctrl + D duplica ao lado (na direção da largura dele) e Del o exclui; os botões Duplicar e Excluir fazem o mesmo no toque.
+    - O toque e o arrasto valem só para o que é da aba aberta: fixtures na aba Fixtures, elementos na aba Elementos (na aba Palco, nenhum dos dois).
+    - O tamanho do palco, as posições e os elementos ficam no projeto; a qualidade do desenho e a fumaça, em cada aparelho.
   - **Mesa simples:** banco de faders, como no QLC+, para mexer em canais DMX específicos ou grupos de canais fora do console.
     - Em tela larga (a partir de 1024 px), como no QLC+: faders de canal em cima e a faixa dos grupos de canais embaixo. No celular, os grupos ficam numa aba.
     - O fader de um grupo grava nos canais do grupo, e os faders desses canais acompanham. O "Zerar" dos grupos solta os canais deles.
@@ -68,15 +82,20 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - **In/Out:** uma tela só, sem abas, com duas seções:
     - **Saídas:** universos e interfaces DMX;
     - **Entradas:** só identifica os controladores MIDI conectados por USB.
+  - **Atalhos padrão do teclado (2026-10-16):**
+    - Ctrl + − e Ctrl + + mudam o zoom geral; com o console na frente (tela aberta, painel ativo do modular ou janela externa dele), mudam o zoom do console.
+    - Seção master, no teclado numérico: − blackout, + parar tudo, Enter tap do BPM. Valem com o console na tela, também na edição.
+    - Console: Alt + E liga e desliga a edição; Alt + I mostra ou esconde as dicas de atalho (as etiquetas das teclas nos elementos e na seção master), escolha guardada em cada aparelho. O botão das dicas fica ao lado do "Editar". Funcionam também com o foco num campo, porque não escrevem nada.
+    - Essas teclas e combinações são reservadas: nenhum elemento pode usá-las. O teclado numérico tem nome próprio ("Num 1", "Num -"), então as teclas da fileira de cima das letras (−, + e Enter inclusive) continuam livres para os elementos.
   - **Entradas externas por elemento:** o controle MIDI (com "aprender") ou a tecla do teclado que aciona um elemento do console é definido na edição do próprio elemento, como no QLC+. Não há tela separada de mapeamento MIDI.
-  - Configurações no ⚙.
+  - **Configurações (2026-10-16):** num painel lateral aberto pelo ⚙, sobre a tela atual, para ajustar algo sem sair de uma criação ou edição. Não são uma tela navegável: não entram nos menus, no modular nem em janela externa.
   - **Onde se programa:** as ferramentas de atributo (intensidade, cor, posição, efeitos) ficam no editor de cena do Studio, como no QLC+ 5. Não há aba "Programador".
     - No editor de cena, o toque escolhe **uma fixture** para receber os valores. **Ctrl + clique** (ou **toque longo**, no celular) soma outras **do mesmo tipo** (mesmo modelo e modo), e o que se mexe vale para todas as escolhidas. Os grupos de canais da cena mexem em várias de uma vez: o fader do grupo grava nos canais das fixtures do grupo que estão na cena (não inclui outras).
     - A aba **Canais** vem primeiro. Intensidade, Cor, Posição e Efeitos (shutter/strobe, gobo, prisma, zoom, foco) só aparecem quando a fixture tem esse tipo de canal.
     - "Adicionar fixtures" é o primeiro botão da fileira de fixtures e abre uma lista com nome, universo e canais de cada uma, com os atalhos "Desmarcar todos", "Selecionar do mesmo tipo" (o toque vale para todas do mesmo modelo) e "Selecionar grupo" (inclui as fixtures de um grupo de fixtures).
     - Os grupos de canais começam desligados. Ligar um grupo traz para a cena todas as fixtures dele; para tirar uma, usa-se "Adicionar fixtures".
     - Fade in e fade out ficam no fim do editor de cena: no show, o console ajusta os fades ao vivo (VC-3).
-  - **Celular:** Console · Studio · Mesa simples · Fixtures · Mais (com os demais menus e o ⚙).
+  - **Celular:** Console · Studio · Mesa simples · Fixtures · Mais (com os demais menus). O ⚙ fica na barra de cima.
   - A **seção master** (GM, Blackout, Stop All) fica só no Console. Exceções (2026-10-16):
     - **botão de pânico na barra superior**, em todas as telas: um toque para todas as criações; dois toques seguidos também zeram a Mesa simples inteira;
     - **"Parar todas" no Studio**, que para só as criações.
@@ -139,3 +158,18 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-16 | Mesa simples: o fader de grupo grava nos canais do grupo e os faders de canal acompanham (E12). |
 | 2026-10-16 | Mesa simples sem páginas: os 512 canais numa faixa, e Ctrl + roda do mouse rola a faixa (E12, design system). |
 | 2026-10-16 | Rodada 2 da F2 aprovada e commitada. |
+| 2026-10-16 | VC-2: elementos compartilhados entre os formatos (só a posição muda), três formatos fixos pela largura, com troca no ⚙ (E11). VC-3: elemento "Tempos" com a lista das criações que controla (E11). |
+| 2026-10-16 | Rodada 3 da F2 entregue: Console (operação, edição, VC-1, VC-2 e VC-3) e 3D View. |
+| 2026-10-16 | Edição do console: o painel de propriedades fica sempre reservado, para o layout não mudar ao escolher um elemento (design system). |
+| 2026-10-16 | Console: grade com o dobro de colunas (16, 32 e 48); paleta dos elementos com versões escuras e cinzas; Texto com fundo e borda (E11). |
+| 2026-10-16 | Console: botões sem ícone por padrão; ícone opcional escolhido na biblioteca inteira, com busca (E11, VC-1). O Texto pode ter 1 célula de altura. |
+| 2026-10-16 | Console: o elemento acionado por tecla mostra a tecla numa etiqueta no canto, na operação e na edição (design system). |
+| 2026-10-16 | Zoom geral da interface no ⚙ (zoom nativo da janela do app desktop; IPC liberado só para isso) e zoom do console ao lado do "Editar" (E2, E10). |
+| 2026-10-16 | 3D View: "Editar posição" permite mover as fixtures em todas as vistas, não só no topo; desligado, o arrasto só mexe a câmera (E12). |
+| 2026-10-16 | Atalhos padrão: Ctrl + −/+ para o zoom (o do console quando ele está na frente) e −, + e Enter do teclado numérico para blackout, parar tudo e tap; teclas reservadas, com o teclado numérico separado da fileira de cima (E12). |
+| 2026-10-16 | 3D View: aba Elementos com elementos de palco (truss, caixas, pessoa, praticável, painel LED e decorativos), Ctrl + D duplica ao lado e Del exclui; cada aba move só o que é dela (E12). |
+| 2026-10-16 | 3D View: a câmera vai para o botão do meio do mouse (girar ou deslocar) e o zoom fica só na roda; o botão esquerdo só escolhe (E12). |
+| 2026-10-16 | Barras de rolagem no padrão do design system, para o app todo: trilho afundado e cursor em relevo, sem setas (design system). |
+| 2026-10-16 | Configurações num painel lateral aberto pelo ⚙, sobre a tela atual, no lugar da tela navegável (E12). |
+| 2026-10-16 | Console: botão de dicas de atalho ao lado do "Editar", que mostra ou esconde as etiquetas das teclas; atalhos Alt + E (editar) e Alt + I (dicas), reservados (E12). |
+| 2026-10-16 | Rodada 3 da F2 aprovada e commitada. |

@@ -15,6 +15,8 @@ useHead({ title: () => `${t(`screens.${screen.value}`)} · R Light Control` })
 
 const modular = computed(() => prefs.value.modular && wide.value)
 const moreOpen = ref(false)
+// Configurações num painel lateral sobre a tela atual (não é uma tela navegável)
+const settingsOpen = ref(false)
 
 // Pânico: um toque para as criações; o segundo toque logo em seguida também zera a mesa simples.
 // O LED fica aceso enquanto houver algo para parar.
@@ -64,7 +66,7 @@ function go(id: ScreenId) {
       >
         <OctagonX :size="18" />
       </RlButton>
-      <RlLcd class="max-2xl:hidden">120 BPM</RlLcd>
+      <RlLcd class="max-2xl:hidden">{{ state.master.bpm }} BPM</RlLcd>
       <span class="flex items-center gap-1.5 text-xs font-bold" :title="usbOk ? t('shell.usbOk') : t('shell.usbFail')">
         <span class="rl-led" :style="{ '--led': usbOk ? 'var(--color-on)' : 'var(--color-danger)' }" />
         <span class="max-2xl:hidden">USB</span>
@@ -80,7 +82,7 @@ function go(id: ScreenId) {
       >
         <LayoutPanelLeft :size="18" />
       </RlButton>
-      <RlButton size="sm" :model-value="screen === 'settings'" :aria-label="t('screens.settings')" @press="go('settings')">
+      <RlButton size="sm" :model-value="settingsOpen" :aria-label="t('screens.settings')" :title="t('screens.settings')" @press="settingsOpen = true">
         <Settings :size="18" />
       </RlButton>
     </template>
@@ -110,6 +112,8 @@ function go(id: ScreenId) {
         </RlButton>
       </div>
     </RlDialog>
+
+    <AppSettings v-model:open="settingsOpen" />
   </RlAppShell>
 </template>
 

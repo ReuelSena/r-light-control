@@ -91,9 +91,9 @@ Validação:
 
 ### F2 — Protótipo navegável de todas as telas · 🟡
 
-Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-16; rodadas 1 e 2 aprovadas, rodada 3 em andamento).
+Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-16; rodadas 1, 2 e 3 aprovadas).
 
-- **Menus (E12):** Console · Fixtures · Studio · Patch · 3D View · Mesa simples · Monitoramento · In/Out, com Configurações no ⚙.
+- **Menus (E12):** Console · Fixtures · Studio · Patch · 3D View · Mesa simples · Monitoramento · In/Out, com as Configurações num painel lateral aberto pelo ⚙.
 - **Interface modular (E13):** painéis encaixáveis e redimensionáveis, janelas externas para outros monitores; começa no modo simples.
 - **Três rodadas, uma por vez:**
   1. Shell modular, Fixtures, Patch, In/Out e Configurações.
@@ -105,7 +105,7 @@ Mini-plano: [docs/fases/fase-02.md](docs/fases/fase-02.md) (aprovado em 2026-10-
 Validação:
 - [x] Rodada 1 aprovada.
 - [x] Rodada 2 aprovada.
-- [ ] Rodada 3 aprovada.
+- [x] Rodada 3 aprovada.
 - [ ] Todos os fluxos percorridos no desktop, tablet e celular.
 - [ ] Telas aprovadas e congeladas como referência.
 
@@ -327,14 +327,14 @@ Validação:
 ## Pedidos de recursos do Virtual Console (G4)
 
 - **VC-1 (2026-10-16): elementos configuráveis pelo usuário.** O console é montado pelo usuário, que posiciona e ajusta cada elemento a seu gosto, como no QLC+. Na edição de cada botão ele escolhe:
-  - destaque (botão aceso ou LED) e cor;
+  - destaque (botão aceso ou LED), cor e ícone (opcional, da biblioteca);
   - modo (liga/desliga ou flash);
   - ação: função, blackout geral, blackout de fixtures ou grupos específicos, ou stop all;
   - entrada externa: controle MIDI ou tecla do teclado.
 
   Protótipo na F2; implementação na F10/F11. O blackout por fixtures ou grupos não existe no QLC+.
-- **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Protótipo na F2 (rodada 3); implementação na F10.
-- **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. Protótipo na F2 (rodada 3); implementação na F10/F11, sobre os fades da F6.
+- **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Os elementos são os mesmos em todos os formatos (só a posição muda), e o formato vem da largura da tela, com troca no ⚙ (E11). Protótipo na F2 (rodada 3); implementação na F10.
+- **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3); implementação na F10/F11, sobre os fades da F6.
 
 ---
 

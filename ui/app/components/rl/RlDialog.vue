@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
+import { DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 import { X } from 'lucide-vue-next'
 
 // Diálogo modal. Com `sheet` vira painel: sobe de baixo no celular e entra pela direita em telas maiores.
@@ -19,9 +19,7 @@ const { t } = useI18n()
             <DialogTitle class="text-sm font-semibold tracking-wide uppercase">{{ title }}</DialogTitle>
             <RlInfo v-if="info" :text="info" />
           </span>
-          <DialogClose as-child>
-            <RlButton size="sm" :aria-label="t('rl.close')"><X :size="18" /></RlButton>
-          </DialogClose>
+          <RlButton size="sm" :aria-label="t('rl.close')" @press="open = false"><X :size="18" /></RlButton>
         </header>
         <div class="body">
           <slot />

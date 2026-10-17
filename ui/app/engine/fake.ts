@@ -9,6 +9,11 @@ import type { Physical } from '~/types/generated/Physical'
 import type { Project } from '~/types/generated/Project'
 import type { SceneValue } from '~/types/generated/SceneValue'
 import type { Snapshot } from '~/types/generated/Snapshot'
+import type { StageElementKind } from '~/types/generated/StageElementKind'
+import type { Rect } from '~/types/generated/Rect'
+import type { VcButton } from '~/types/generated/VcButton'
+import type { VcWidget } from '~/types/generated/VcWidget'
+import type { WidgetInput } from '~/types/generated/WidgetInput'
 
 // Dados fictícios do protótipo (F2). Saem quando o motor real chegar (F3).
 
@@ -143,10 +148,84 @@ const functions: Function[] = [
   },
 ]
 
+// Console de exemplo, montado no formato desktop; tablet e celular saem dele (copyLayout)
+const rect = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h })
+const key = (key: string, control: WidgetInput['control'] = 'main'): WidgetInput => ({ control, midi: null, key })
+const midi = (message: 'note' | 'controlChange', number: number): WidgetInput =>
+  ({ control: 'main', midi: { device: 'm1', channel: 1, message, number, feedback: true }, key: null })
+const widget = (id: string, page: string, caption: string, color: string, desktop: Rect, kind: object, frame: string | null = null, inputs: WidgetInput[] = []) =>
+  ({ id, page, frame, caption, color, layouts: { phone: null, tablet: null, desktop }, inputs, ...kind }) as VcWidget
+const button = (fn: string | null, extra: Partial<VcButton> = {}) =>
+  ({ type: 'button', action: 'function', function: fn, fixtures: [], groups: [], mode: 'toggle', highlight: 'face', icon: null, ...extra })
+
+function consoleWidgets(): VcWidget[] {
+  const widgets = [
+    widget('fr1', 'p1', 'Frente', '#ff8000', rect(0, 0, 16, 13), { type: 'frame', solo: true }),
+    widget('b1', 'p1', 'Âmbar', '#ffbf00', rect(0, 1, 4, 4), button('s1'), 'fr1', [key('1')]),
+    widget('b2', 'p1', 'Azul', '#0080ff', rect(4, 1, 4, 4), button('s2'), 'fr1', [key('2')]),
+    widget('b3', 'p1', 'Vermelha', '#ff0000', rect(8, 1, 4, 4), button('s3'), 'fr1', [key('3')]),
+    widget('b4', 'p1', 'Apagar PARs', '#ff0000', rect(0, 5, 4, 4), button(null, { action: 'blackoutFixtures', groups: ['g1'], highlight: 'led', icon: 'LightbulbOff' }), 'fr1'),
+    widget('sl1', 'p1', 'Sub frente', '#ff8000', rect(12, 1, 4, 12), { type: 'slider', mode: 'submaster', channelGroups: [], function: null, knob: false }, 'fr1'),
+    widget('b6', 'p1', 'Troca de cores', '#ff00aa', rect(16, 0, 4, 4), button('c1'), null, [midi('note', 36)]),
+    widget('b7', 'p1', 'Círculo', '#00bfff', rect(20, 0, 4, 4), button('e1')),
+    widget('b8', 'p1', 'Degradê', '#8000ff', rect(24, 0, 4, 4), button('r1')),
+    widget('b9', 'p1', 'Perseguição', '#ffbf00', rect(28, 0, 4, 4), button('r2')),
+    widget('b10', 'p1', 'Abertura', '#ff8000', rect(16, 4, 4, 4), button('k1', { highlight: 'led' })),
+    widget('b11', 'p1', 'Haze', '#00ff00', rect(20, 4, 4, 4), button('s5', { mode: 'flash' }), null, [key('H')]),
+    widget('b12', 'p1', 'Parar tudo', '#ff0000', rect(24, 4, 4, 4), button(null, { action: 'stopAll', icon: 'OctagonX' })),
+    widget('sl2', 'p1', 'Dimmer PARs', '#ffbf00', rect(32, 0, 4, 12), { type: 'slider', mode: 'level', channelGroups: ['cg1'], function: null, knob: false }, null, [midi('controlChange', 21)]),
+    widget('sl3', 'p1', 'MHs centro', '#00bfff', rect(36, 0, 4, 12), { type: 'slider', mode: 'playback', channelGroups: [], function: 's4', knob: false }),
+    widget('xy1', 'p1', 'Posição MHs', '#00bfff', rect(40, 0, 8, 12), { type: 'xyPad', fixtures: mhs }),
+    widget('sd1', 'p1', 'Fades da frente', '#ffff00', rect(16, 8, 12, 8), { type: 'speedDial', functions: ['s1', 's2', 's3'], fadeIn: true, fadeOut: true, hold: false }),
+    widget('cl1', 'p1', 'Troca de cores', '#ff00aa', rect(0, 13, 16, 12), { type: 'cueList', chaser: 'c1' }, null, [key('ArrowLeft', 'previous'), key('ArrowRight', 'next')]),
+    widget('ck1', 'p1', 'Relógio', '#00ffff', rect(28, 12, 8, 4), { type: 'clock', mode: 'clock', countdownS: 0 }),
+    widget('lb1', 'p1', 'Palco', '#ff8000', rect(40, 12, 8, 3), { type: 'label', background: '#402000', border: '#ff8000' }),
+    widget('an1', 'p2', 'Barras', '#8000ff', rect(0, 0, 12, 12), { type: 'animation', matrix: 'r1' }),
+    widget('an2', 'p2', 'PARs', '#ffbf00', rect(12, 0, 12, 12), { type: 'animation', matrix: 'r2' }),
+    widget('cl2', 'p2', 'Subida da frente', '#ff8000', rect(24, 0, 16, 12), { type: 'cueList', chaser: 'q1' }),
+    widget('ck2', 'p2', 'Cronômetro', '#00ffff', rect(40, 0, 8, 4), { type: 'clock', mode: 'stopwatch', countdownS: 0 }),
+  ]
+  for (const page of ['p1', 'p2']) {
+    copyLayout(widgets.filter((w) => w.page === page), 'desktop', 'tablet')
+    copyLayout(widgets.filter((w) => w.page === page), 'desktop', 'phone')
+  }
+  return widgets
+}
+
+// Posições no palco: PARs na vara da frente mirando o palco, moving heads na vara do fundo
+const at = (fixture: string, x: number, y: number, z: number, rotationX = 0) => ({ fixture, x, y, z, rotationX, rotationY: 0, rotationZ: 0 })
+const positions = [
+  ...pars.map((id, i) => at(id, -3.75 + i * 1.5, 4.5, 2.5, 35)),
+  at('par7', 0, 0.2, -3.6, 165),
+  ...mhs.map((id, i) => at(id, -3 + i * 2, 5, -2)),
+  at('strobe', 0, 5, 0.5),
+  at('hazer', 4, 0, -3.5),
+  at('barra1', -2.5, 0.1, -3.8),
+  at('barra2', 2.5, 0.1, -3.8),
+]
+
+// Elementos de palco do exemplo
+const element = (id: string, kind: StageElementKind, x: number, y: number, z: number, rotationY = 0) => ({ id, kind, x, y, z, rotationX: 0, rotationY, rotationZ: 0 })
+const elements = [
+  ...[-3, 0, 3].flatMap((x, i) => [element(`t${i + 1}`, 'truss300', x, 4.5, 2.5), element(`t${i + 4}`, 'truss300', x, 5, -2)]),
+  element('sub1', 'subwoofer', -4.2, 0, 3.4),
+  element('sub2', 'subwoofer', 4.2, 0, 3.4),
+  element('cx1', 'speaker', -4.2, 0.6, 3.4),
+  element('cx2', 'speaker', 4.2, 0.6, 3.4),
+  element('pr1', 'riser', -1, 0, -0.8),
+  element('pr2', 'riser', 1, 0, -0.8),
+  element('bt1', 'drums', 0, 0.4, -0.9),
+  element('ps1', 'person', 0, 0, 1.5),
+  element('pd1', 'micStand', 0, 0, 1.85),
+  element('rt1', 'monitor', 0, 0, 2.6),
+]
+
 export function emptyProject(): Project {
   return {
     name: 'Novo projeto', universes: [{ id: 'u1', name: 'Universo 1', output: null }],
     fixtureDefs: [], fixtures: [], fixtureGroups: [], channelGroups: [], functions: [], folders: [],
+    console: { pages: [{ id: 'p1', name: 'Página 1' }], widgets: [] },
+    stage: { width: 10, depth: 8, height: 6, fixtures: [], elements: [] },
   }
 }
 
@@ -173,6 +252,8 @@ export function fakeSnapshot(): Snapshot {
       ],
       functions: clone(functions),
       folders: [{ id: 'd1', name: 'Frente', kind: 'scene' }],
+      console: { pages: [{ id: 'p1', name: 'Show' }, { id: 'p2', name: 'Efeitos' }], widgets: consoleWidgets() },
+      stage: { width: 10, depth: 8, height: 6, fixtures: clone(positions), elements: clone(elements) },
     },
     projectPath: 'C:\\Shows\\Show de exemplo.rlc',
     dirty: false,
@@ -199,6 +280,8 @@ export function fakeSnapshot(): Snapshot {
     // Duas criações já rodando, para o Monitoramento mostrar sinal
     running: ['s1', 'r1'],
     desk: { levels: [], groups: [] },
+    master: { grandMaster: 255, blackout: false, bpm: 120 },
+    widgetValues: [],
     stats: { cpuPercent: 8, memoryMb: 142, tickMs: 0.4, uptimeS: 0 },
   }
 }

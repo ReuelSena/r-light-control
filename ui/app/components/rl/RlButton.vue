@@ -17,6 +17,7 @@ const active = defineModel<boolean>({ default: false })
 const emit = defineEmits<{ press: [event: MouseEvent] }>()
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 let held = false
+let touched = false // o último disparo veio de um toque
 
 function down(e: PointerEvent) {
   if (props.onLongpress) {
@@ -49,6 +50,14 @@ const cancelHold = () => clearTimeout(holdTimer)
 function up(e: PointerEvent) {
   cancelHold()
   if (props.mode !== 'flash' && !held) activate(e)
+  touched = e.pointerType === 'touch'
+}
+
+// Depois do toque, o navegador manda um clique de compatibilidade no mesmo ponto. Se o botão abriu
+// algo ali (painel, diálogo), o clique cairia nele; cancelar o `touchend` impede esse clique.
+function touchend(e: TouchEvent) {
+  if (touched && e.cancelable) e.preventDefault()
+  touched = false
 }
 
 // O `click` só conta quando vem do teclado (detail 0); o do ponteiro já foi tratado no `pointerup`.
@@ -71,6 +80,7 @@ function key(e: KeyboardEvent, pressed: boolean) {
     :style="{ '--lit': color }"
     @pointerdown="down"
     @pointerup="up"
+    @touchend="touchend"
     @pointercancel="cancelHold"
     @lostpointercapture="release"
     @contextmenu="onLongpress && $event.preventDefault()"

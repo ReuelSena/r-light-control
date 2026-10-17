@@ -6,7 +6,9 @@
     "ok": "OK",
     "close": "Fechar",
     "panel": "Painel",
-    "info": "Mais informações"
+    "info": "Mais informações",
+    "less": "Menos",
+    "more": "Mais"
   },
   "screens": {
     "console": "Console",
@@ -26,9 +28,6 @@
     "usbFail": "Alguma interface USB está desconectada",
     "stop": "Parar criações (dois toques: zera também a mesa simples)"
   },
-  "placeholder": {
-    "round": "Esta tela chega na rodada {round} do protótipo."
-  },
   "dock": {
     "popout": "Abrir em janela externa",
     "external": "Este painel está aberto numa janela externa.",
@@ -40,7 +39,9 @@
     "remove": "Remover",
     "confirmRemove": "Toque de novo para remover",
     "cancel": "Cancelar",
-    "save": "Salvar"
+    "save": "Salvar",
+    "duplicate": "Duplicar",
+    "rename": "Renomear"
   },
   "project": {
     "title": "Projeto",
@@ -183,8 +184,13 @@
     "thisDevice": "este aparelho",
     "about": "Sobre",
     "qlcNotice": "Usa o QLC+ (Apache 2.0) como referência de arquitetura e protocolos. Detalhes no arquivo NOTICE.",
-    "displayInfo": "Valem só para este aparelho.\nA interface modular (painéis encaixáveis e janelas externas) aparece em telas a partir de 1024 px.",
-    "scanInfo": "Celular ou tablet na mesma rede: leia o QR ou digite o endereço no navegador."
+    "displayInfo": "Valem só para este aparelho.\nA interface modular (painéis encaixáveis e janelas externas) aparece em telas a partir de 1024 px.\nO formato do console escolhe qual layout este aparelho abre (VC-2).",
+    "scanInfo": "Celular ou tablet na mesma rede: leia o QR ou digite o endereço no navegador.",
+    "consoleFormat": "Formato do console neste aparelho",
+    "formatAuto": "Automático (pela largura da tela)",
+    "zoom": "Zoom da interface",
+    "zoomBrowser": "No navegador, use o zoom do próprio navegador (Ctrl + e Ctrl −).",
+    "zoomInfo": "Ctrl + − e Ctrl + + também mudam o zoom. Com o console na frente, mudam o zoom do console."
   },
   "kind": {
     "colorChanger": "Troca de cor (PAR)",
@@ -464,5 +470,207 @@
     "collection": "Coleções",
     "efx": "EFX",
     "rgbMatrix": "RGB Matrix"
+  },
+  "vc": {
+    "edit": "Editar",
+    "master": "Master",
+    "blackout": "Blackout",
+    "stopAll": "Parar",
+    "tap": "Tap",
+    "reset": "Zerar",
+    "recorded": "Gravados",
+    "noChaser": "Escolha um chaser nas propriedades.",
+    "noMatrix": "Escolha um RGB Matrix nas propriedades.",
+    "color": "Cor {n}",
+    "empty": "Página vazia. Toque em Editar para montar.",
+    "emptyEditing": "Toque num tipo de elemento acima para adicionar.",
+    "properties": "Propriedades",
+    "hide": "Tirar deste formato",
+    "addPage": "Página",
+    "removePage": "Excluir página",
+    "pageName": "Página {n}",
+    "copyLayout": "Copiar layout de…",
+    "unplaced": "Fora deste formato ({n})",
+    "placedCount": "nenhum elemento | 1 elemento | {n} elementos",
+    "alignClash": "O alinhamento sobreporia outros elementos.",
+    "caption": "Texto",
+    "colorLabel": "Cor",
+    "action": "Ação",
+    "function": "Criação",
+    "chaser": "Chaser ou sequência",
+    "movers": "Fixtures com pan e tilt",
+    "blackoutTargets": "Grupos e fixtures apagados",
+    "mode": "Modo",
+    "highlight": "Destaque",
+    "look": "Aparência",
+    "fader": "Fader",
+    "knob": "Knob",
+    "times": "Tempos controlados",
+    "functions": "Criações ({n})",
+    "solo": "Moldura solo",
+    "countdown": "Contagem a partir de",
+    "inputs": "Entradas externas",
+    "learn": "Aprender",
+    "learning": "Mexa no controle MIDI…",
+    "noMidi": "Sem controle MIDI",
+    "feedback": "Devolver estado ao controlador",
+    "key": "Tecla",
+    "pressKey": "Aperte a tecla… (Esc cancela)",
+    "noKey": "Sem tecla",
+    "formats": {
+      "phone": "Celular",
+      "tablet": "Tablet",
+      "desktop": "Desktop"
+    },
+    "kind": {
+      "button": "Botão",
+      "slider": "Slider",
+      "cueList": "Cue list",
+      "xyPad": "XY pad",
+      "speedDial": "Tempos",
+      "frame": "Moldura",
+      "clock": "Relógio",
+      "animation": "Animation",
+      "label": "Texto"
+    },
+    "actions": {
+      "function": "Rodar criação",
+      "blackout": "Blackout geral",
+      "blackoutFixtures": "Apagar fixtures ou grupos",
+      "stopAll": "Parar tudo"
+    },
+    "modes": {
+      "toggle": "Liga/desliga",
+      "flash": "Flash"
+    },
+    "highlights": {
+      "face": "Aceso",
+      "led": "LED"
+    },
+    "sliderModes": {
+      "level": "Nível",
+      "playback": "Playback",
+      "submaster": "Submaster"
+    },
+    "clockModes": {
+      "clock": "Relógio",
+      "stopwatch": "Cronômetro",
+      "countdown": "Contagem"
+    },
+    "time": {
+      "fadeIn": "Fade in",
+      "fadeOut": "Fade out",
+      "hold": "Duração"
+    },
+    "control": {
+      "main": "Principal",
+      "previous": "Anterior",
+      "next": "Próximo",
+      "stop": "Parar",
+      "tap": "Tap",
+      "x": "Eixo X",
+      "y": "Eixo Y"
+    },
+    "align": {
+      "left": "Alinhar à esquerda",
+      "right": "Alinhar à direita",
+      "top": "Alinhar em cima",
+      "bottom": "Alinhar embaixo"
+    },
+    "midi": {
+      "note": "Nota {n}",
+      "controlChange": "CC {n}",
+      "programChange": "Program {n}",
+      "pitchBend": "Pitch bend",
+      "channel": "canal {n}"
+    },
+    "info": {
+      "formats": "Cada aparelho abre o layout do seu formato: celular, tablet ou desktop, pela largura da tela (o ⚙ de cada aparelho pode fixar outro).\nOs elementos são os mesmos em todos os formatos; só a posição e o tamanho mudam. O que você muda num elemento (criação, cor, entradas) vale para todos.",
+      "copyLayout": "Substitui o layout deste formato pelo do formato escolhido: os mesmos tamanhos, arrumados em ordem de leitura.",
+      "sliderMode": "Nível: mexe nos canais dos grupos de canais escolhidos.\nPlayback: roda a criação com a intensidade do slider.\nSubmaster: reduz a intensidade das criações dos botões da mesma moldura.",
+      "speedDial": "Ajusta ao vivo os tempos das criações da lista, no lugar dos tempos gravados nelas. \"Gravados\" volta aos tempos de cada criação.\nO Tap marca a duração (hold do chaser, ciclo do EFX, passo do RGB Matrix).",
+      "solo": "Só uma criação da moldura roda por vez: ligar um botão para os outros.",
+      "inputs": "O controle MIDI ou a tecla que aciona este elemento. \"Aprender\" espera você mexer no controlador. As teclas valem com o console fora da edição.",
+      "icons": "A biblioteca tem cerca de 1.700 ícones. Os nomes estão em inglês: busque por sun, star, music, heart, fire…\nA busca mostra até 150 resultados.",
+      "master": "Atalhos do teclado numérico:\n− blackout · + parar tudo · Enter tap do BPM.\nCtrl + − e Ctrl + + mudam o zoom do console.\nEssas teclas ficam reservadas; as da fileira de cima continuam livres para os elementos."
+    },
+    "pickWidget": "Toque num elemento para ver as propriedades.",
+    "manySelected": "{n} elementos escolhidos: use a barra acima para alinhar, duplicar ou remover.",
+    "background": "Fundo",
+    "border": "Borda",
+    "noColor": "Sem cor",
+    "icon": "Ícone",
+    "showIcon": "Mostrar ícone",
+    "changeIcon": "Trocar",
+    "searchIcon": "Buscar ícone",
+    "suggested": "Sugeridos",
+    "iconResults": "Nenhum resultado | 1 resultado | {n} resultados",
+    "loadingIcons": "Carregando ícones…",
+    "noIcons": "Nenhum ícone com esse nome.",
+    "zoom": "Zoom do console",
+    "keyHints": "Dicas de atalho",
+    "reservedKey": "{key} é um atalho padrão do app. Aperte outra tecla."
+  },
+  "view3d": {
+    "views": {
+      "perspective": "3D",
+      "top": "Topo",
+      "front": "Frente",
+      "side": "Lateral"
+    },
+    "stage": "Palco",
+    "info": "Prévia ao vivo: as fixtures acendem com o que sai nos universos.\nCâmera com o mouse: arrastar com o botão do meio (a roda) gira, na vista 3D, ou desloca, nas outras; o botão direito desloca; a roda aproxima. No toque, um dedo gira ou desloca e a pinça aproxima.\nO botão esquerdo (ou o toque) só escolhe, e só o que é da aba aberta: fixtures na aba Fixtures, elementos de palco na aba Elementos.\nCom \"Editar posição\" ligado, arrastar o escolhido o move (no toque, escolha antes): no Topo pelo chão, na Frente em X e altura, na Lateral em Z e altura, e no 3D de frente para a câmera.\nNa aba Elementos, Ctrl + D duplica o elemento ao lado e Del o exclui.",
+    "position": "{name}: posição",
+    "rotation": "Rotação",
+    "axis": {
+      "x": "X (m)",
+      "y": "Altura (m)",
+      "z": "Z (m)",
+      "rotationX": "X (°)",
+      "rotationY": "Y (°)",
+      "rotationZ": "Z (°)"
+    },
+    "pick": "Escolha uma fixture na lista ou no palco.",
+    "size": {
+      "width": "Largura (m)",
+      "depth": "Profundidade (m)",
+      "height": "Altura (m)"
+    },
+    "quality": "Qualidade",
+    "qualities": {
+      "low": "Baixa",
+      "medium": "Média",
+      "high": "Alta"
+    },
+    "smoke": "Fumaça",
+    "deviceInfo": "Qualidade e fumaça valem só para este aparelho: no celular, a qualidade baixa deixa o desenho mais leve.",
+    "editPosition": "Editar posição",
+    "elementsTab": "Elementos",
+    "addElement": "Adicionar elemento",
+    "noElements": "Nenhum elemento no palco.",
+    "pickElement": "Escolha um elemento na lista ou no palco.",
+    "elementGroups": {
+      "structure": "Estrutura",
+      "sound": "Som",
+      "scene": "Palco e decoração"
+    },
+    "elements": {
+      "truss100": "Box truss 1 m",
+      "truss150": "Box truss 1,5 m",
+      "truss300": "Box truss 3 m",
+      "riser": "Praticável 2 × 1 m",
+      "stairs": "Escada",
+      "ledPanel": "Painel LED",
+      "projectionScreen": "Tela de projeção",
+      "subwoofer": "Caixa de grave",
+      "speaker": "Caixa ativa",
+      "monitor": "Retorno",
+      "micStand": "Pedestal de microfone",
+      "person": "Pessoa",
+      "drums": "Bateria",
+      "keyboard": "Teclado",
+      "pulpit": "Púlpito",
+      "plant": "Planta"
+    }
   }
 }

@@ -3,6 +3,7 @@ import { Aperture, CircleDot, Disc, Focus, Gauge, Move, Palette, SlidersVertical
 import type { Attribute } from '~/types/generated/Attribute'
 import type { ChannelGroup } from '~/types/generated/ChannelGroup'
 import type { Fixture } from '~/types/generated/Fixture'
+import type { FixturePosition } from '~/types/generated/FixturePosition'
 import type { Project } from '~/types/generated/Project'
 
 /** Cores de etiqueta oferecidas para fixtures (vivas, como as cores semânticas). */
@@ -93,4 +94,11 @@ export function nextFreeAddress(project: Project, universe: string, count: numbe
     if (free) return start
   }
   return 0
+}
+
+/** Posição da fixture no palco (3D View); sem posição guardada, fica numa vara padrão no alto. */
+export function stagePosition(project: Project, f: Fixture): FixturePosition {
+  const { width, height, fixtures } = project.stage
+  const i = project.fixtures.findIndex((x) => x.id === f.id)
+  return fixtures.find((p) => p.fixture === f.id) ?? { fixture: f.id, x: -width / 2 + 0.5 + (i % 12) * 0.8, y: height - 1, z: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
 }

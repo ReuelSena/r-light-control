@@ -10,8 +10,8 @@ const { format } = useValueFormat()
 const vc = useConsole()
 const project = computed(() => state.value.project)
 const fn = (id: string | null) => project.value.functions.find((f) => f.id === id)
-// Só a cue list e o relógio precisam do tempo correndo
-const now = ['cueList', 'clock'].includes(props.widget.type) ? useClock(200) : ref(0)
+// Só o relógio precisa do tempo correndo
+const now = props.widget.type === 'clock' ? useClock(200) : ref(0)
 
 const setButton = (on: boolean) => props.widget.type === 'button' && vc.setButton(props.widget, on)
 // O botão só mostra ícone quando o usuário liga a opção (VC-1)
@@ -33,19 +33,25 @@ const xy = computed({
 
 // Cue list
 const chaser = computed(() => (props.widget.type === 'cueList' ? vc.chaserOf(props.widget) : undefined))
-const step = computed(() => (props.widget.type === 'cueList' ? vc.currentStep(props.widget, now.value) : -1))
+const step = computed(() => (props.widget.type === 'cueList' ? vc.currentStep(props.widget) : -1))
+const playing = computed(() => props.widget.type === 'cueList' && vc.running(props.widget.chaser))
 
-// Speed dial (VC-3): knob de 0 a 20 s, com mais precisão nos tempos curtos; sem valor, valem os tempos gravados
+// Speed dial (VC-3), sem valor, valem os tempos gravados. Em segundos, o knob vai de 0 a 20 s, com mais
+// precisão nos tempos curtos; seguindo o BPM, ele escolhe frações e múltiplos da batida (em milésimos)
 const MAX_MS = 20000
+const BEATS = [0, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 const times = computed(() => vc.value(props.widget.id))
 const dials = computed(() => {
   const w = props.widget
   return w.type === 'speedDial' ? (['fadeIn', 'fadeOut', 'hold'] as const).map((time, i) => ({ time, i })).filter(({ time }) => w[time]) : []
 })
+const inBeats = computed(() => props.widget.type === 'speedDial' && props.widget.beats)
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`
+const beats = (v: number) => `${v && v < 1000 ? `1/${1000 / v}` : v / 1000} bt`
+const knob = (v: number) => (inBeats.value ? BEATS.findLastIndex((b) => b <= v) / (BEATS.length - 1) : Math.sqrt(v / MAX_MS))
 function setTime(i: number, v: number) {
   const next = [...(times.value ?? [0, 0, 0])]
-  next[i] = Math.round((v * v * MAX_MS) / 50) * 50
+  next[i] = inBeats.value ? BEATS[Math.round(v * (BEATS.length - 1))]! : Math.round((v * v * MAX_MS) / 50) * 50
   vc.setValue(props.widget.id, next)
 }
 
@@ -121,7 +127,7 @@ function setColor(i: number, color: string) {
           type="button"
           class="cue"
           :class="{ current: i === step }"
-          @click="vc.goTo(widget, i)"
+          @click="vc.step(widget, { go: i })"
         >
           <span class="font-lcd">{{ i + 1 }}</span>
           <span class="flex-1 truncate">{{ s.note || fn(s.function)?.name }}</span>
@@ -135,11 +141,11 @@ function setColor(i: number, color: string) {
           size="sm"
           highlight="led"
           color="var(--color-on)"
-          :model-value="step >= 0"
+          :model-value="playing"
           :aria-label="t('vc.control.main')"
-          @press="vc.play(widget, step < 0)"
+          @press="vc.play(widget, !playing)"
         >
-          <component :is="step >= 0 ? Square : Play" :size="16" />
+          <component :is="playing ? Square : Play" :size="16" />
         </RlButton>
         <RlButton size="sm" :aria-label="t('vc.control.next')" @press="vc.input(widget, 'next', true)"><ChevronRight :size="18" /></RlButton>
       </div>
@@ -148,13 +154,21 @@ function setColor(i: number, color: string) {
     <template v-else-if="widget.type === 'speedDial'">
       <div class="flex min-h-0 flex-1 items-center justify-around gap-1">
         <div v-for="d in dials" :key="d.time" class="flex flex-col items-center gap-1">
-          <RlKnob :model-value="Math.sqrt((times?.[d.i] ?? 0) / MAX_MS)" :size="44" :color="widget.color" @update:model-value="(v: number) => setTime(d.i, v)" />
-          <RlLcd class="text-xs" :class="{ 'text-fg-dim!': !times }">{{ times ? seconds(times[d.i] ?? 0) : t('vc.recorded') }}</RlLcd>
+          <RlKnob :model-value="knob(times?.[d.i] ?? 0)" :size="44" :color="widget.color" @update:model-value="(v: number) => setTime(d.i, v)" />
+          <RlLcd class="text-xs" :class="{ 'text-fg-dim!': !times }">
+            {{ times ? (widget.beats ? beats(times[d.i] ?? 0) : seconds(times[d.i] ?? 0)) : t('vc.recorded') }}
+          </RlLcd>
           <span class="text-[10px] font-bold text-fg-muted uppercase">{{ t(`vc.time.${d.time}`) }}</span>
+          <!-- Seguindo o BPM, o tempo de agora pelo BPM master -->
+          <span v-if="widget.beats && times" class="text-[10px] text-fg-dim">
+            {{ `${(((times[d.i] ?? 0) * 60) / state.master.bpm / 1000).toFixed(2)} s` }}
+          </span>
         </div>
       </div>
       <div class="flex gap-1">
-        <RlButton v-if="widget.hold" size="sm" class="flex-1" @press="vc.tap(widget)">{{ t('vc.tap') }}</RlButton>
+        <RlButton v-if="widget.hold || widget.beats" size="sm" class="flex-1" @press="vc.tap(widget)">
+          {{ widget.beats ? t('vc.tapBpm') : t('vc.tap') }}
+        </RlButton>
         <RlButton size="sm" class="flex-1" :model-value="!times" highlight="led" @press="vc.setValue(widget.id, [])">{{ t('vc.recorded') }}</RlButton>
       </div>
     </template>

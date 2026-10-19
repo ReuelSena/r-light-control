@@ -220,6 +220,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
 
     <!-- Speed dial (VC-3) -->
     <template v-else-if="widget.type === 'speedDial'">
+      <RlSwitch :model-value="widget.beats" @update:model-value="(beats: boolean) => save({ beats })">{{ t('vc.followBpm') }}</RlSwitch>
       <div class="field-label">
         <span class="flex items-center gap-1">{{ t('vc.times') }} <RlInfo :text="t('vc.info.speedDial')" /></span>
         <div class="flex flex-wrap gap-x-4 gap-y-1">

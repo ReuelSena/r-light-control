@@ -1,10 +1,13 @@
 //! Motor (A1): uma thread a 50 Hz com prazo absoluto, dona do estado de execução. Os comandos chegam
 //! por canal e são aplicados no começo de cada tick, e cada tick publica o quadro de cada universo.
-//! Camadas de cada universo, de baixo para cima: o valor padrão dos canais, as cenas rodando, a prévia
-//! (a cena em edição), a Mesa simples, o "Localizar" e, por fim, o Grand Master e o blackout. O padrão
-//! de teste substitui as camadas de baixo.
-//! As cenas se misturam como no QLC+: nos canais de intensidade (dimmer e cores) vence o maior valor
-//! (HTP); nos outros, a cena iniciada por último (LTP).
+//! Camadas de cada universo, de baixo para cima: o valor padrão dos canais, as criações rodando, a
+//! prévia (a cena em edição), a Mesa simples, o "Localizar" e, por fim, o Grand Master e o blackout. O
+//! padrão de teste substitui as camadas de baixo.
+//! Cada cena acesa por uma criação (sozinha, no passo de um chaser ou numa coleção) ganha um fader.
+//! Os faders se misturam como no QLC+: nos canais de intensidade (dimmer e cores) vence o maior valor
+//! (HTP); nos outros, o fader iniciado por último (LTP).
+
+mod chaser;
 
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender, TryRecvError};
@@ -12,7 +15,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
-use rlc_core::{DeskLevel, Id, TestPattern};
+use rlc_core::{DeskLevel, Direction, Id, RunOrder, StepAction, TestPattern};
+
+use chaser::Runner;
 
 /// Período do tick: 50 Hz, como no QLC+.
 pub const TICK: Duration = Duration::from_millis(20);
@@ -27,6 +32,10 @@ pub struct Frames {
     pub universes: Vec<(Id, Frame)>,
     /// Quanto o último tick levou para calcular (o limite é o período).
     pub tick_time: Duration,
+    /// Passo atual de cada chaser disparado pelo usuário.
+    pub chasers: Vec<(Id, u16)>,
+    /// Criações que terminaram sozinhas (o Single Shot que apagou no fim).
+    pub done: Vec<Id>,
 }
 
 impl Frames {
@@ -50,12 +59,65 @@ pub struct UniversePatch {
     pub defaults: Box<Frame>,
 }
 
-/// Uma cena rodando, já nos endereços DMX (o motor não conhece fixtures).
-pub struct RunningScene {
+/// Uma criação disparada pelo usuário, já resolvida pelo servidor (o motor não conhece o projeto).
+pub struct Run {
     pub id: Id,
+    pub program: Program,
+}
+
+/// O que uma criação acende.
+#[derive(Clone)]
+pub enum Program {
+    Scene(SceneProgram),
+    Chaser(ChaserProgram),
+    /// Criações disparadas juntas (a coleção).
+    Collection(Vec<Program>),
+}
+
+/// Uma cena nos endereços DMX (o motor não conhece fixtures), com os fades que valem. Um fade em
+/// batidas vira tempo pelo BPM de quando ele começa.
+#[derive(Clone)]
+pub struct SceneProgram {
     pub levels: Vec<SceneLevel>,
-    pub fade_in: Duration,
-    pub fade_out: Duration,
+    pub fade_in: Span,
+    pub fade_out: Span,
+}
+
+#[derive(Clone)]
+pub struct ChaserProgram {
+    pub steps: Vec<Step>,
+    pub run_order: RunOrder,
+    pub direction: Direction,
+    /// No Single Shot, o último passo fica aceso até o chaser ser parado.
+    pub keep_last: bool,
+}
+
+/// Um passo: o que ele dispara e os tempos dele. Sem fade, vale o da criação do passo; com fade, ele
+/// vale para tudo o que o passo dispara (o "override" do QLC+). O passo dura o fade in mais o hold;
+/// com o hold em batidas, ele troca nas batidas.
+#[derive(Clone)]
+pub struct Step {
+    pub program: Program,
+    pub fade_in: Option<Span>,
+    pub hold: Span,
+    pub fade_out: Option<Span>,
+}
+
+/// Tempo em milissegundos ou, nos chasers em batidas, em milésimos de batida.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Span {
+    Ms(u32),
+    Beats(u32),
+}
+
+impl Span {
+    /// Em tempo, pelo intervalo entre as batidas de agora.
+    fn duration(self, beat: Duration) -> Duration {
+        match self {
+            Span::Ms(ms) => Duration::from_millis(ms.into()),
+            Span::Beats(beats) => beat * beats / 1000,
+        }
+    }
 }
 
 /// Valor de um canal de uma cena. Com o canal fino, o valor tem 16 bits (o grosso no byte de cima).
@@ -71,10 +133,14 @@ pub struct SceneLevel {
 pub enum Command {
     /// Universos do projeto, na ordem.
     Patch(Vec<UniversePatch>),
-    /// Cenas rodando, na ordem de início.
-    Scenes(Vec<RunningScene>),
-    /// Para as cenas na hora, sem fade out (pânico, "Novo" e "Abrir").
+    /// Criações disparadas pelo usuário, na ordem de início.
+    Running(Vec<Run>),
+    /// Para tudo na hora, sem fade out (pânico, "Novo" e "Abrir").
     Cut,
+    /// Leva um chaser disparado pelo usuário a outro passo (a cue list).
+    Step(Id, StepAction),
+    /// BPM global. A batida recomeça agora: no tap, ela cai no último toque.
+    Bpm(u16),
     /// Níveis da Mesa simples de todos os universos.
     Desk(Vec<DeskLevel>),
     /// Valores da cena em prévia, já nos endereços DMX.
@@ -119,6 +185,8 @@ impl Engine {
                     let frames = Arc::new(Frames {
                         universes,
                         tick_time: now.elapsed(),
+                        chasers: state.chasers(),
+                        done: state.done(),
                     });
                     publish.store(frames);
                     deadline = next_deadline(deadline, Instant::now());
@@ -147,12 +215,15 @@ fn next_deadline(previous: Instant, now: Instant) -> Instant {
     next
 }
 
-/// Uma cena no motor: rodando ou, depois de parada, no fade out.
+/// Uma cena acesa no motor: rodando ou, depois de parada, no fade out.
 struct Fader {
-    id: Id,
-    fade_out: Duration,
-    /// Quando a cena parou: ela sai do motor no fim do fade out.
-    stopped: Option<Instant>,
+    /// Número do fader, pelo qual a criação que o acendeu o encontra.
+    serial: u64,
+    /// A criação disparada pelo usuário de onde ele veio.
+    owner: Id,
+    fade_out: Span,
+    /// Quando a cena parou e o fade out dela, já em tempo: ela sai do motor no fim dele.
+    stopped: Option<(Instant, Duration)>,
     channels: Vec<Fade>,
 }
 
@@ -168,10 +239,201 @@ struct Fade {
     time: Duration,
 }
 
+impl Fader {
+    /// O fade out parte do valor do último quadro.
+    fn stop(&mut self, universes: &[UniversePatch], now: Instant, beat: Duration) {
+        if self.stopped.is_some() {
+            return;
+        }
+        let fade_out = self.fade_out.duration(beat);
+        for f in &mut self.channels {
+            let i = usize::from(f.level.channel) - 1;
+            if f.universe.is_none_or(|u| universes[u].fades[i]) {
+                let elapsed = now.saturating_duration_since(f.since);
+                f.start = fade(f.start, f.level.value, elapsed, f.time);
+            } else {
+                f.start = f.level.value;
+            }
+            f.since = now;
+            f.time = fade_out;
+        }
+        self.stopped = Some((now, fade_out));
+    }
+}
+
+/// Fade in e fade out impostos pelo passo de um chaser a tudo o que ele dispara; `None` = o da própria
+/// criação.
+type Fades = (Option<Span>, Option<Span>);
+
+/// O que uma criação rodando disparou no motor.
+enum Node {
+    /// Uma cena: o número do fader dela.
+    Scene(u64),
+    Chaser(Box<Runner>),
+    Collection(Vec<Node>),
+}
+
+impl Node {
+    /// Terminou sozinha: o Single Shot que apagou no fim, ou a coleção com tudo terminado.
+    fn done(&self) -> bool {
+        match self {
+            Node::Scene(_) => false,
+            Node::Chaser(runner) => runner.done,
+            Node::Collection(nodes) => !nodes.is_empty() && nodes.iter().all(Node::done),
+        }
+    }
+}
+
+/// O que começar, parar, atualizar e andar uma criação precisa do motor.
+struct Ctx<'a> {
+    faders: &'a mut Vec<Fader>,
+    serial: &'a mut u64,
+    universes: &'a [UniversePatch],
+    /// Saída das criações no último quadro: de onde parte o fade de uma cena que começa.
+    mixed: &'a [(Id, Frame)],
+    owner: &'a Id,
+    now: Instant,
+    /// Intervalo entre as batidas e a posição de agora na batida, em milésimos.
+    beat: Duration,
+    beat_pos: u64,
+}
+
+impl Ctx<'_> {
+    /// Cada cena ganha um fader, por último na mistura, partindo do valor que está saindo: um dimmer
+    /// já aceso não pisca, e a posição desliza da atual para a da cena.
+    fn start(&mut self, program: Program, fades: Fades) -> Node {
+        match program {
+            Program::Scene(scene) => {
+                *self.serial += 1;
+                let channels = valid(scene.levels)
+                    .map(|level| Fade {
+                        universe: position(self.universes, &level),
+                        start: self
+                            .mixed
+                            .iter()
+                            .find(|(id, _)| *id == level.universe)
+                            .map_or(0, |(_, frame)| read(frame, &level)),
+                        level,
+                        since: self.now,
+                        time: fades.0.unwrap_or(scene.fade_in).duration(self.beat),
+                    })
+                    .collect();
+                self.faders.push(Fader {
+                    serial: *self.serial,
+                    owner: self.owner.clone(),
+                    fade_out: fades.1.unwrap_or(scene.fade_out),
+                    stopped: None,
+                    channels,
+                });
+                Node::Scene(*self.serial)
+            }
+            Program::Chaser(chaser) => Node::Chaser(Box::new(Runner::new(chaser, fades))),
+            Program::Collection(programs) => {
+                Node::Collection(programs.into_iter().map(|p| self.start(p, fades)).collect())
+            }
+        }
+    }
+
+    /// Cada cena acesa começa o fade out dela.
+    fn stop(&mut self, node: &Node) {
+        match node {
+            Node::Scene(serial) => {
+                if let Some(fader) = self.faders.iter_mut().find(|f| f.serial == *serial) {
+                    fader.stop(self.universes, self.now, self.beat);
+                }
+            }
+            Node::Chaser(runner) => {
+                if let Some(active) = &runner.active {
+                    self.stop(&active.node);
+                }
+            }
+            Node::Collection(nodes) => {
+                for node in nodes {
+                    self.stop(node);
+                }
+            }
+        }
+    }
+
+    /// Edição com a criação rodando: vale na hora, sem recomeçar. Na cena, o valor mudado vai direto e
+    /// o resto continua o fade; o que mudou de tipo recomeça.
+    fn update(&mut self, node: &mut Node, program: Program, fades: Fades) {
+        match (node, program) {
+            (Node::Scene(serial), Program::Scene(scene)) => {
+                let Some(fader) = self.faders.iter_mut().find(|f| f.serial == *serial) else {
+                    return;
+                };
+                let old = std::mem::take(&mut fader.channels);
+                fader.channels = valid(scene.levels)
+                    .map(|level| match old.iter().find(|f| f.level == level) {
+                        Some(f) => f.clone(),
+                        None => Fade {
+                            universe: position(self.universes, &level),
+                            start: level.value,
+                            level,
+                            since: self.now,
+                            time: Duration::ZERO,
+                        },
+                    })
+                    .collect();
+                fader.fade_out = fades.1.unwrap_or(scene.fade_out);
+            }
+            (Node::Chaser(runner), Program::Chaser(chaser)) => runner.update(chaser, fades, self),
+            (Node::Collection(nodes), Program::Collection(programs)) => {
+                for gone in nodes.split_off(programs.len().min(nodes.len())) {
+                    self.stop(&gone);
+                }
+                for (i, program) in programs.into_iter().enumerate() {
+                    match nodes.get_mut(i) {
+                        Some(node) => self.update(node, program, fades),
+                        None => {
+                            let node = self.start(program, fades);
+                            nodes.push(node);
+                        }
+                    }
+                }
+            }
+            (node, program) => {
+                self.stop(node);
+                *node = self.start(program, fades);
+            }
+        }
+    }
+
+    /// Anda os chasers, também os de dentro de um passo ou de uma coleção.
+    fn tick(&mut self, node: &mut Node) {
+        match node {
+            Node::Scene(_) => {}
+            Node::Chaser(runner) => runner.tick(self),
+            Node::Collection(nodes) => {
+                for node in nodes {
+                    self.tick(node);
+                }
+            }
+        }
+    }
+}
+
+/// Um canal fora do universo seria erro do servidor: o motor não pode cair por ele.
+fn valid(levels: Vec<SceneLevel>) -> impl Iterator<Item = SceneLevel> {
+    let valid = |channel: u16| (1..=512).contains(&channel);
+    levels
+        .into_iter()
+        .filter(move |l| valid(l.channel) && l.fine.is_none_or(valid))
+}
+
+fn position(universes: &[UniversePatch], level: &SceneLevel) -> Option<usize> {
+    universes.iter().position(|u| u.id == level.universe)
+}
+
 struct State {
     universes: Vec<UniversePatch>,
-    scenes: Vec<Fader>,
-    /// Saída das cenas no último quadro: de onde parte o fade de uma cena que começa.
+    /// Criações disparadas pelo usuário, na ordem de início.
+    runs: Vec<(Id, Node)>,
+    /// Cenas acesas, na ordem de início: a mistura LTP segue essa ordem.
+    faders: Vec<Fader>,
+    serial: u64,
+    /// Saída das criações no último quadro: de onde parte o fade de uma cena que começa.
     mixed: Vec<(Id, Frame)>,
     desk: Vec<DeskLevel>,
     preview: Vec<DeskLevel>,
@@ -179,13 +441,20 @@ struct State {
     grand_master: u8,
     blackout: bool,
     test: Option<(TestPattern, Instant)>,
+    /// Intervalo entre as batidas (o BPM), a hora da próxima e quantas já passaram.
+    beat: Duration,
+    next_beat: Instant,
+    beats: u64,
 }
 
 impl Default for State {
     fn default() -> Self {
+        let beat = Duration::from_millis(500);
         Self {
             universes: Vec::new(),
-            scenes: Vec::new(),
+            runs: Vec::new(),
+            faders: Vec::new(),
+            serial: 0,
             mixed: Vec::new(),
             desk: Vec::new(),
             preview: Vec::new(),
@@ -193,6 +462,9 @@ impl Default for State {
             grand_master: 255,
             blackout: false,
             test: None,
+            beat,
+            next_beat: Instant::now() + beat,
+            beats: 0,
         }
     }
 }
@@ -202,12 +474,31 @@ impl State {
         match command {
             Command::Patch(universes) => {
                 self.universes = universes;
-                for f in self.scenes.iter_mut().flat_map(|s| &mut s.channels) {
+                for f in self.faders.iter_mut().flat_map(|s| &mut s.channels) {
                     f.universe = self.universes.iter().position(|u| u.id == f.level.universe);
                 }
             }
-            Command::Scenes(scenes) => self.set_scenes(scenes, now),
-            Command::Cut => self.scenes.clear(),
+            Command::Running(runs) => self.set_running(runs, now),
+            Command::Cut => {
+                self.runs.clear();
+                self.faders.clear();
+            }
+            Command::Step(id, action) => {
+                if let Some((_, Node::Chaser(runner))) =
+                    self.runs.iter_mut().find(|(r, _)| *r == id)
+                {
+                    runner.pending = Some(action);
+                }
+            }
+            // O toque é uma batida: a mais perto dele, a que acabou de passar ou a que ia chegar (os
+            // passos marcados para ela trocam agora)
+            Command::Bpm(bpm) => {
+                if self.beat_pos(now) % 1000 >= 500 {
+                    self.beats += 1;
+                }
+                self.beat = Duration::from_secs(60) / u32::from(bpm.max(1));
+                self.next_beat = now + self.beat;
+            }
             Command::Desk(levels) => self.desk = levels,
             Command::Preview(levels) => self.preview = levels,
             Command::Highlight(levels) => self.highlight = levels,
@@ -218,90 +509,97 @@ impl State {
         }
     }
 
-    /// Acompanha a lista das cenas rodando. As que saíram dela começam o fade out; as que continuam
-    /// recebem na hora os valores editados; as novas entram por último, com o fade in a partir do que
-    /// está saindo.
-    fn set_scenes(&mut self, scenes: Vec<RunningScene>, now: Instant) {
-        let universes = &self.universes;
-        let stopped = self
-            .scenes
-            .iter_mut()
-            .filter(|f| f.stopped.is_none() && !scenes.iter().any(|s| s.id == f.id));
-        for fader in stopped {
-            for f in &mut fader.channels {
-                // O fade out parte do valor do último quadro
-                let i = usize::from(f.level.channel) - 1;
-                if f.universe.is_none_or(|u| universes[u].fades[i]) {
-                    let elapsed = now.saturating_duration_since(f.since);
-                    f.start = fade(f.start, f.level.value, elapsed, f.time);
-                } else {
-                    f.start = f.level.value;
-                }
-                f.since = now;
-                f.time = fader.fade_out;
-            }
-            fader.stopped = Some(now);
-        }
-
-        let universe = |level: &SceneLevel| universes.iter().position(|u| u.id == level.universe);
-        // Um canal fora do universo seria erro do servidor: o motor não pode cair por ele
-        let valid = |channel: u16| (1..=512).contains(&channel);
-        for scene in scenes {
-            let levels = scene
-                .levels
-                .into_iter()
-                .filter(|l| valid(l.channel) && l.fine.is_none_or(valid));
-            match self
-                .scenes
-                .iter_mut()
-                .find(|f| f.id == scene.id && f.stopped.is_none())
-            {
-                // Edição com a cena rodando: o valor mudado vale na hora, e o resto continua o fade
-                Some(fader) => {
-                    let old = std::mem::take(&mut fader.channels);
-                    fader.channels = levels
-                        .map(|level| match old.iter().find(|f| f.level == level) {
-                            Some(f) => f.clone(),
-                            None => Fade {
-                                universe: universe(&level),
-                                start: level.value,
-                                level,
-                                since: now,
-                                time: Duration::ZERO,
-                            },
-                        })
-                        .collect();
-                    fader.fade_out = scene.fade_out;
-                }
-                // Rodar de novo uma cena no fade out: a parada sai, e a nova parte do valor que está
-                // saindo, sem piscar
-                None => {
-                    self.scenes.retain(|f| f.id != scene.id);
-                    let channels = levels
-                        .map(|level| Fade {
-                            universe: universe(&level),
-                            start: self
-                                .mixed
-                                .iter()
-                                .find(|(id, _)| *id == level.universe)
-                                .map_or(0, |(_, frame)| read(frame, &level)),
-                            level,
-                            since: now,
-                            time: scene.fade_in,
-                        })
-                        .collect();
-                    self.scenes.push(Fader {
-                        id: scene.id,
-                        fade_out: scene.fade_out,
-                        stopped: None,
-                        channels,
-                    });
-                }
-            }
+    fn ctx<'a>(&'a mut self, owner: &'a Id, now: Instant) -> Ctx<'a> {
+        Ctx {
+            beat_pos: self.beat_pos(now),
+            faders: &mut self.faders,
+            serial: &mut self.serial,
+            universes: &self.universes,
+            mixed: &self.mixed,
+            owner,
+            now,
+            beat: self.beat,
         }
     }
 
+    /// Acompanha a lista das criações disparadas. As que saíram dela começam o fade out; as que
+    /// continuam recebem as edições na hora; as novas entram por último.
+    fn set_running(&mut self, runs: Vec<Run>, now: Instant) {
+        let mut old = std::mem::take(&mut self.runs);
+        for (id, node) in &old {
+            if !runs.iter().any(|r| r.id == *id) {
+                self.ctx(id, now).stop(node);
+            }
+        }
+        for run in runs {
+            let node = match old.iter().position(|(id, _)| *id == run.id) {
+                Some(i) => {
+                    let (_, mut node) = old.swap_remove(i);
+                    self.ctx(&run.id, now)
+                        .update(&mut node, run.program, (None, None));
+                    node
+                }
+                // Disparada de novo no meio do fade out: o que estava apagando sai, e a nova parte do
+                // valor que está saindo, sem piscar
+                None => {
+                    self.faders
+                        .retain(|f| f.owner != run.id || f.stopped.is_none());
+                    self.ctx(&run.id, now).start(run.program, (None, None))
+                }
+            };
+            self.runs.push((run.id, node));
+        }
+    }
+
+    /// Este quadro cai numa batida? Cada batida conta a partir da anterior, e não do quadro, para não
+    /// derivar, e cai no quadro mais perto da hora certa.
+    fn on_beat(&mut self, now: Instant) -> bool {
+        if now + TICK / 2 < self.next_beat {
+            return false;
+        }
+        self.next_beat += self.beat;
+        self.beats += 1;
+        // Parado muito tempo (PC suspenso, depurador): recomeça daqui
+        if self.next_beat + TICK / 2 <= now {
+            self.next_beat = now + self.beat;
+        }
+        true
+    }
+
+    /// Posição na batida, em milésimos: as batidas que já passaram e a fração da atual. Como a
+    /// batida, a fração conta do quadro mais perto da hora certa.
+    fn beat_pos(&self, now: Instant) -> u64 {
+        let left = self.next_beat.saturating_duration_since(now + TICK / 2);
+        let left = (left.as_micros() * 1000 / self.beat.as_micros().max(1)).min(1000) as u64;
+        self.beats * 1000 + 1000 - left
+    }
+
+    fn chasers(&self) -> Vec<(Id, u16)> {
+        self.runs
+            .iter()
+            .filter_map(|(id, node)| match node {
+                Node::Chaser(runner) if !runner.done => runner.step.map(|s| (id.clone(), s as u16)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn done(&self) -> Vec<Id> {
+        self.runs
+            .iter()
+            .filter(|(_, node)| node.done())
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
     fn render(&mut self, now: Instant) -> Vec<(Id, Frame)> {
+        self.on_beat(now);
+        let mut runs = std::mem::take(&mut self.runs);
+        for (id, node) in &mut runs {
+            self.ctx(id, now).tick(node);
+        }
+        self.runs = runs;
+
         let mut mixed: Vec<Frame> = self.universes.iter().map(|u| *u.defaults).collect();
         self.mix(&mut mixed, now);
         let frames = self
@@ -352,18 +650,18 @@ impl State {
             .map(|u| u.id.clone())
             .zip(mixed)
             .collect();
-        self.scenes.retain(|f| {
+        self.faders.retain(|f| {
             f.stopped
-                .is_none_or(|at| now.saturating_duration_since(at) + TICK < f.fade_out)
+                .is_none_or(|(at, time)| now.saturating_duration_since(at) + TICK < time)
         });
         frames
     }
 
-    /// Mistura das cenas, na ordem de início: na intensidade vence o maior valor (HTP); no resto, a
-    /// última cena (LTP).
+    /// Mistura dos faders, na ordem de início: na intensidade vence o maior valor (HTP); no resto, o
+    /// último (LTP).
     fn mix(&self, frames: &mut [Frame], now: Instant) {
         let mut taken = vec![[false; 512]; frames.len()];
-        for fader in &self.scenes {
+        for fader in &self.faders {
             let stopped = fader.stopped.is_some();
             for f in &fader.channels {
                 let Some(u) = f.universe else { continue };
@@ -453,7 +751,7 @@ mod tests {
 
     /// Universo de teste: 1, 2 e 5 de intensidade (dimmer, vermelho, azul); 3 é pan; 4 é um strobo
     /// com padrão 255, sem fade; 6 e 7 são o tilt grosso e o fino de um moving head.
-    fn patched() -> State {
+    pub(crate) fn patched() -> State {
         let mut intensity = Box::new([true; 512]);
         for i in [2, 3, 5, 6] {
             intensity[i] = false;
@@ -489,9 +787,9 @@ mod tests {
         }
     }
 
-    fn scene(id: &str, levels: &[(u16, u16)], fade_ms: u64) -> RunningScene {
-        RunningScene {
-            id: id.into(),
+    /// Cena no universo de teste, com o mesmo tempo no fade in e no fade out.
+    pub(crate) fn scene(levels: &[(u16, u16)], fade_ms: u32) -> Program {
+        Program::Scene(SceneProgram {
             levels: levels
                 .iter()
                 .map(|&(channel, value)| SceneLevel {
@@ -501,8 +799,15 @@ mod tests {
                     value,
                 })
                 .collect(),
-            fade_in: Duration::from_millis(fade_ms),
-            fade_out: Duration::from_millis(fade_ms),
+            fade_in: Span::Ms(fade_ms),
+            fade_out: Span::Ms(fade_ms),
+        })
+    }
+
+    pub(crate) fn run(id: &str, program: Program) -> Run {
+        Run {
+            id: id.into(),
+            program,
         }
     }
 
@@ -528,10 +833,8 @@ mod tests {
         let mut s = state();
         let now = Instant::now();
         // A mesa tem 1, 2 e 3: a cena só aparece no 5
-        s.apply(
-            Command::Scenes(vec![scene("a", &[(1, 10), (5, 77)], 0)]),
-            now,
-        );
+        let a = run("a", scene(&[(1, 10), (5, 77)], 0));
+        s.apply(Command::Running(vec![a]), now);
         assert_eq!(frame(&mut s)[..5], [255, 100, 200, 255, 77]);
         // A prévia fica por cima da cena e embaixo da mesa
         s.apply(Command::Preview(vec![level(1, 50), level(5, 20)]), now);
@@ -579,24 +882,24 @@ mod tests {
             let f = s.render(t0 + TICK * tick)[0].1;
             (f[0], f[2])
         };
-        let run = |s: &mut State, tick: u32, dimmer: u16| {
-            let scenes = vec![scene("a", &[(1, dimmer), (3, 100)], 40)];
-            s.apply(Command::Scenes(scenes), t0 + TICK * tick);
+        let set = |s: &mut State, tick: u32, dimmer: u16| {
+            let runs = vec![run("a", scene(&[(1, dimmer), (3, 100)], 40))];
+            s.apply(Command::Running(runs), t0 + TICK * tick);
         };
-        run(&mut s, 0, 250);
+        set(&mut s, 0, 250);
         assert_eq!(
             [0, 1, 2].map(|t| at(&mut s, t)),
             [(125, 50), (250, 100), (250, 100)]
         );
         // Editada rodando: vale no quadro seguinte, para cima e para baixo
-        run(&mut s, 3, 254);
+        set(&mut s, 3, 254);
         assert_eq!(at(&mut s, 3), (254, 100));
-        run(&mut s, 4, 180);
+        set(&mut s, 4, 180);
         assert_eq!(at(&mut s, 4), (180, 100));
         // Parada: a intensidade vai a 0 e o pan volta ao padrão, no fade out
-        s.apply(Command::Scenes(vec![]), t0 + TICK * 5);
+        s.apply(Command::Running(vec![]), t0 + TICK * 5);
         assert_eq!([5, 6].map(|t| at(&mut s, t)), [(90, 50), (0, 0)]);
-        assert!(s.scenes.is_empty());
+        assert!(s.faders.is_empty());
     }
 
     #[test]
@@ -607,25 +910,25 @@ mod tests {
             let f = s.render(t0 + TICK * tick)[0].1;
             [f[0], f[1], f[4], f[2]]
         };
-        let azul = || scene("azul", &[(1, 200), (5, 255), (3, 50)], 0);
-        let vermelha = || scene("vermelha", &[(1, 100), (2, 255), (3, 200)], 40);
-        let run = |s: &mut State, tick: u32, scenes: Vec<RunningScene>| {
-            s.apply(Command::Scenes(scenes), t0 + TICK * tick);
+        let azul = || run("azul", scene(&[(1, 200), (5, 255), (3, 50)], 0));
+        let vermelha = || run("vermelha", scene(&[(1, 100), (2, 255), (3, 200)], 40));
+        let set = |s: &mut State, tick: u32, runs: Vec<Run>| {
+            s.apply(Command::Running(runs), t0 + TICK * tick);
         };
-        run(&mut s, 0, vec![azul()]);
-        run(&mut s, 0, vec![azul(), vermelha()]);
+        set(&mut s, 0, vec![azul()]);
+        set(&mut s, 0, vec![azul(), vermelha()]);
         // Dimmer, vermelho e azul pelo maior (magenta); o pan da última iniciada
         assert_eq!(at(&mut s, 1), [200, 255, 255, 200]);
         // Parar a vermelha: o vermelho apaga, e o pan desliza até o da azul
-        run(&mut s, 2, vec![azul()]);
+        set(&mut s, 2, vec![azul()]);
         assert_eq!(at(&mut s, 2), [200, 128, 255, 125]);
         assert_eq!(at(&mut s, 3), [200, 0, 255, 50]);
         // Rodar de novo no meio do fade out continua do valor que está saindo
-        run(&mut s, 4, vec![azul(), vermelha()]);
+        set(&mut s, 4, vec![azul(), vermelha()]);
         assert_eq!(at(&mut s, 5)[3], 200);
-        run(&mut s, 6, vec![azul()]);
+        set(&mut s, 6, vec![azul()]);
         assert_eq!(at(&mut s, 6)[3], 125);
-        run(&mut s, 7, vec![azul(), vermelha()]);
+        set(&mut s, 7, vec![azul(), vermelha()]);
         assert_eq!([7, 8].map(|t| at(&mut s, t)[3]), [162, 200]);
     }
 
@@ -634,9 +937,9 @@ mod tests {
         let mut s = patched();
         let t0 = Instant::now();
         let at = |s: &mut State, tick: u32| s.render(t0 + TICK * tick)[0].1[3];
-        s.apply(Command::Scenes(vec![scene("a", &[(4, 10)], 40)]), t0);
+        s.apply(Command::Running(vec![run("a", scene(&[(4, 10)], 40))]), t0);
         assert_eq!(at(&mut s, 0), 10);
-        s.apply(Command::Scenes(vec![]), t0 + TICK);
+        s.apply(Command::Running(vec![]), t0 + TICK);
         // O strobo volta ao padrão (255) só no fim do fade out
         assert_eq!([1, 2].map(|t| at(&mut s, t)), [10, 255]);
     }
@@ -645,14 +948,16 @@ mod tests {
     fn fine_channel_makes_a_16_bit_fade() {
         let mut s = patched();
         let t0 = Instant::now();
-        let mut tilt = scene("a", &[], 40);
+        let Program::Scene(mut tilt) = scene(&[], 40) else {
+            unreachable!()
+        };
         tilt.levels.push(SceneLevel {
             universe: "u1".into(),
             channel: 6,
             fine: Some(7),
             value: 0x0100,
         });
-        s.apply(Command::Scenes(vec![tilt]), t0);
+        s.apply(Command::Running(vec![run("a", Program::Scene(tilt))]), t0);
         // No meio do fade, o grosso ainda em 0 e o fino na metade
         let f = s.render(t0)[0].1;
         assert_eq!((f[5], f[6]), (0, 128));
@@ -661,15 +966,36 @@ mod tests {
     }
 
     #[test]
-    fn cut_stops_the_scenes_without_fade_out() {
+    fn cut_stops_everything_without_fade_out() {
         let mut s = patched();
         let now = Instant::now();
-        let mut a = scene("a", &[(1, 255)], 0);
-        a.fade_out = Duration::from_secs(10);
-        s.apply(Command::Scenes(vec![a]), now);
+        let Program::Scene(mut a) = scene(&[(1, 255)], 0) else {
+            unreachable!()
+        };
+        a.fade_out = Span::Ms(10_000);
+        s.apply(Command::Running(vec![run("a", Program::Scene(a))]), now);
         assert_eq!(frame(&mut s)[0], 255);
         s.apply(Command::Cut, now);
         assert_eq!(frame(&mut s)[0], 0);
+        assert!(s.runs.is_empty());
+    }
+
+    #[test]
+    fn collection_starts_and_stops_everything_together() {
+        let mut s = patched();
+        let t0 = Instant::now();
+        let at = |s: &mut State, tick: u32| {
+            let f = s.render(t0 + TICK * tick)[0].1;
+            [f[0], f[2]]
+        };
+        // Cada cena com o seu fade: o dimmer em 2 ticks e o pan na hora
+        let both = Program::Collection(vec![scene(&[(1, 200)], 40), scene(&[(3, 90)], 0)]);
+        s.apply(Command::Running(vec![run("k", both)]), t0);
+        assert_eq!([0, 1].map(|t| at(&mut s, t)), [[100, 90], [200, 90]]);
+        // Com uma cena dentro, ela nunca termina sozinha
+        assert!(s.done().is_empty());
+        s.apply(Command::Running(vec![]), t0 + TICK * 2);
+        assert_eq!([2, 3].map(|t| at(&mut s, t)), [[100, 0], [0, 0]]);
     }
 
     #[test]
@@ -712,6 +1038,27 @@ mod tests {
     }
 
     #[test]
+    fn beats_follow_the_bpm_without_drift_and_restart_on_tap() {
+        let mut s = State::default();
+        let t0 = Instant::now();
+        // 128 BPM: uma batida a cada 468,75 ms, que não cabe na grade de 20 ms
+        s.apply(Command::Bpm(128), t0);
+        let beats: Vec<u32> = (1..=3000).filter(|&k| s.on_beat(t0 + TICK * k)).collect();
+        assert_eq!(beats.len(), 128);
+        // A última batida cai em 60 s exatos, e nenhuma fica mais de meio tick fora da hora certa
+        assert_eq!(beats.last(), Some(&3000));
+        for (n, k) in beats.iter().enumerate() {
+            let right = 468.75 * (n + 1) as f64;
+            assert!((f64::from(*k * 20) - right).abs() <= 10.0, "batida {n}");
+        }
+        // O tap recomeça a batida: a próxima vem um intervalo depois do toque
+        let tap = t0 + TICK * 3010;
+        s.apply(Command::Bpm(120), tap);
+        let next = (3011..4000).find(|&k| s.on_beat(t0 + TICK * k));
+        assert_eq!(next, Some(3035));
+    }
+
+    #[test]
     fn four_full_universes_render_well_within_the_tick() {
         let mut s = State::default();
         let ids: Vec<Id> = (1..=4).map(|u| format!("u{u}")).collect();
@@ -726,10 +1073,8 @@ mod tests {
             .collect();
         let t0 = Instant::now();
         s.apply(Command::Patch(patch), t0);
-        // Oito cenas em fade, cada uma com os 2048 canais
-        let scenes = (0..8)
-            .map(|n| RunningScene {
-                id: format!("s{n}"),
+        let full = |n: u16| {
+            Program::Scene(SceneProgram {
                 levels: ids
                     .iter()
                     .flat_map(|u| {
@@ -741,11 +1086,29 @@ mod tests {
                         })
                     })
                     .collect(),
-                fade_in: Duration::from_secs(10),
-                fade_out: Duration::from_secs(10),
+                fade_in: Span::Ms(10_000),
+                fade_out: Span::Ms(10_000),
             })
-            .collect();
-        s.apply(Command::Scenes(scenes), t0);
+        };
+        // Oito cenas em fade, cada uma com os 2048 canais, e quatro chasers delas trocando de passo a
+        // cada 3 quadros, com crossfade de 2 quadros
+        let mut runs: Vec<Run> = (0..8).map(|n| run(&format!("s{n}"), full(n))).collect();
+        for n in 0..4 {
+            let step = |k: u16| Step {
+                program: full(n * 2 + k),
+                fade_in: Some(Span::Ms(40)),
+                hold: Span::Ms(20),
+                fade_out: Some(Span::Ms(40)),
+            };
+            let chaser = ChaserProgram {
+                steps: vec![step(0), step(1)],
+                run_order: RunOrder::Loop,
+                direction: Direction::Forward,
+                keep_last: false,
+            };
+            runs.push(run(&format!("c{n}"), Program::Chaser(chaser)));
+        }
+        s.apply(Command::Running(runs), t0);
         let started = Instant::now();
         for tick in 0..50 {
             s.render(t0 + TICK * tick);

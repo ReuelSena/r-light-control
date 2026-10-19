@@ -33,7 +33,7 @@ function save(functions: string[]) {
     <RlDialog v-model:open="adding" :title="t('collection.add')" sheet>
       <div class="grid gap-1.5">
         <RlButton
-          v-for="f in state.project.functions.filter((x) => x.id !== fn.id && !fn.functions.includes(x.id))"
+          v-for="f in state.project.functions.filter((x) => x.id !== fn.id && !fn.functions.includes(x.id) && !contains(state.project.functions, x, fn.id))"
           :key="f.id"
           class="justify-start!"
           @press="save([...fn.functions, f.id]); adding = false"

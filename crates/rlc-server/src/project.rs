@@ -5,12 +5,12 @@ use std::path::{Path, PathBuf};
 
 use rlc_core::Project;
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 1;
+const SCHEMA_VERSION: u32 = 3;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +19,7 @@ struct ProjectFile {
     schema_version: u32,
     /// Só na recuperação: o arquivo do projeto, se ele já foi salvo.
     origin: Option<String>,
-    project: Project,
+    project: Value,
 }
 
 /// Caminho do projeto na pasta. Recusa nomes que o Windows não aceita.
@@ -59,10 +59,10 @@ pub fn list(dir: &Path) -> Vec<String> {
 
 /// Lê um projeto (ou a recuperação). Recusa o que não é projeto e o que veio de uma versão mais nova.
 pub fn read(path: &Path) -> Result<(Project, Option<String>), String> {
+    let invalid = |e: serde_json::Error| format!("{} não é um projeto válido ({e}).", name(path));
     let text = std::fs::read_to_string(path)
         .map_err(|e| format!("Não foi possível ler {}: {e}", path.display()))?;
-    let file: ProjectFile = serde_json::from_str(&text)
-        .map_err(|e| format!("{} não é um projeto válido ({e}).", name(path)))?;
+    let mut file: ProjectFile = serde_json::from_str(&text).map_err(invalid)?;
     if file.format != FORMAT {
         return Err(format!(
             "{} não é um projeto do R Light Control.",
@@ -75,7 +75,44 @@ pub fn read(path: &Path) -> Result<(Project, Option<String>), String> {
             name(path)
         ));
     }
-    Ok((file.project, file.origin))
+    migrate(&mut file.project, file.schema_version);
+    let project = serde_json::from_value(file.project).map_err(invalid)?;
+    Ok((project, file.origin))
+}
+
+/// Cadeia de migrações (A5): leva um projeto de uma versão antiga até a atual, uma versão por vez.
+fn migrate(project: &mut Value, version: u32) {
+    // 1 → 2 (F7): o fim do Single Shot virou opção dos chasers e das sequências; os antigos apagam
+    if version < 2 {
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+        {
+            if matches!(
+                f.get("type").and_then(Value::as_str),
+                Some("chaser" | "sequence")
+            ) {
+                f.insert("keepLast".into(), false.into());
+            }
+        }
+    }
+    // 2 → 3 (F7): o elemento "Tempos" ganhou "Seguir o BPM", ligada também nos que já existiam
+    if version < 3 {
+        let widgets = project
+            .pointer_mut("/console/widgets")
+            .and_then(Value::as_array_mut);
+        for w in widgets
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+        {
+            if w.get("type").and_then(Value::as_str) == Some("speedDial") {
+                w.insert("beats".into(), true.into());
+            }
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -136,6 +173,27 @@ mod tests {
         let newer = json!({ "format": FORMAT, "schemaVersion": 99, "project": crate::apply::empty_project() });
         std::fs::write(&bad, newer.to_string()).unwrap();
         assert!(read(&bad).unwrap_err().contains("mais nova"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_1_opens_migrated() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = crate::hub::example_snapshot(None).project;
+        // O arquivo como a versão 1 gravava: os chasers sem o "keepLast" (abrem apagando no fim) e o
+        // elemento "Tempos" sem o "beats" (abre seguindo o BPM)
+        let mut old = serde_json::to_value(&project).unwrap();
+        for f in old["functions"].as_array_mut().unwrap() {
+            f.as_object_mut().unwrap().remove("keepLast");
+        }
+        for w in old["console"]["widgets"].as_array_mut().unwrap() {
+            w.as_object_mut().unwrap().remove("beats");
+        }
+        let file = dir.join("antigo.rlc");
+        let v1 = json!({ "format": FORMAT, "schemaVersion": 1, "project": old });
+        std::fs::write(&file, v1.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

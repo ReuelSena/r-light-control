@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use axum::extract::ws::Utf8Bytes;
 use rlc_core::*;
 use rlc_dmx::ftdi::{self, FtdiInfo, Protocol};
-use rlc_engine::{Command, Engine, Published};
+use rlc_engine::{Command, Engine, Frames, Published};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
@@ -21,8 +21,8 @@ use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
 use crate::apply::{
-    Topic, apply, empty_project, highlight_levels, is_live, new_id, preview_levels, running_scenes,
-    universe_patch,
+    Topic, apply, empty_project, highlight_levels, is_live, new_id, preview_levels,
+    running_programs, universe_patch,
 };
 use crate::{library, project};
 
@@ -74,6 +74,7 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
             clients: vec![],
         },
         running: vec![],
+        chaser_steps: vec![],
         desk: Desk {
             levels: vec![],
             groups: vec![],
@@ -195,6 +196,12 @@ impl Hub {
             op,
             Op::Panic { .. } | Op::NewProject | Op::OpenProject { .. }
         );
+        // O passo da cue list e o BPM do tap vão direto ao motor, depois das criações rodando
+        let direct = match &op {
+            Op::StepChaser { id, action } => Some(Command::Step(id.clone(), *action)),
+            Op::SetBpm { bpm } => Some(Command::Bpm(*bpm)),
+            _ => None,
+        };
         let (topics, reply) = match op {
             Op::OpenProject { name } => (self.open(&name)?, Value::Null),
             Op::SaveProject { name } => (self.save(name)?, Value::Null),
@@ -207,7 +214,38 @@ impl Hub {
         }
         self.publish(&topics);
         self.sync_engine(&topics);
+        if let Some(command) = direct {
+            self.engine.send(command);
+        }
         Ok(reply)
+    }
+
+    /// Acompanha o motor: o passo atual de cada chaser e as criações que terminaram sozinhas (o
+    /// Single Shot que apagou no fim), que saem das criações rodando.
+    pub fn follow_engine(&mut self, frames: &Frames) {
+        let s = &mut self.snapshot;
+        let mut topics = vec![];
+        if s.running.iter().any(|id| frames.done.contains(id)) {
+            s.running.retain(|id| !frames.done.contains(id));
+            topics.push(Topic::Running);
+        }
+        let steps: Vec<CurrentStep> = frames
+            .chasers
+            .iter()
+            .filter(|(id, _)| s.running.contains(id))
+            .map(|(id, step)| CurrentStep {
+                chaser: id.clone(),
+                step: *step,
+            })
+            .collect();
+        if steps != s.chaser_steps {
+            s.chaser_steps = steps;
+            topics.push(Topic::ChaserSteps);
+        }
+        if !topics.is_empty() {
+            self.publish(&topics);
+            self.sync_engine(&topics);
+        }
     }
 
     /// Operações do contrato (`apply`), com o histórico do desfazer e o que vai para o disco.
@@ -467,7 +505,7 @@ impl Hub {
                 }
             }
         }
-        // As cenas rodando acompanham as edições, inclusive a da própria cena, e os tempos ajustados
+        // As criações rodando acompanham as edições, inclusive a delas mesmas, e os tempos ajustados
         // ao vivo no console
         if any(&[
             Topic::Project,
@@ -480,7 +518,7 @@ impl Hub {
             Topic::WidgetValues,
         ]) {
             self.engine
-                .send(Command::Scenes(running_scenes(&self.snapshot)));
+                .send(Command::Running(running_programs(&self.snapshot)));
         }
         if any(&[Topic::Project, Topic::Desk]) {
             self.engine
@@ -743,6 +781,36 @@ mod tests {
         .unwrap();
         assert_eq!(hub.snapshot.project, saved);
         assert!(hub.command(Op::Undo).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn engine_steps_reach_the_state_and_finished_creations_stop() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        for id in ["c1", "q1"] {
+            let run = Op::SetFunctionRunning {
+                id: id.into(),
+                running: true,
+            };
+            hub.command(run).unwrap();
+        }
+        // A sequência terminou sozinha; um chaser que já foi parado não aparece
+        let frames = Frames {
+            chasers: vec![("c1".into(), 2), ("q1".into(), 0), ("parado".into(), 1)],
+            done: vec!["q1".into()],
+            ..Default::default()
+        };
+        hub.follow_engine(&frames);
+        let step = CurrentStep {
+            chaser: "c1".into(),
+            step: 2,
+        };
+        assert_eq!(hub.snapshot.running, ["c1"]);
+        assert_eq!(hub.snapshot.chaser_steps, [step]);
         std::fs::remove_dir_all(dir).unwrap();
     }
 

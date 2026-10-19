@@ -67,7 +67,7 @@ function blank(type: WidgetType): VcWidget {
     slider: { type, mode: 'level', channelGroups: [], function: null, knob: false },
     cueList: { type, chaser: firstOf('chaser') },
     xyPad: { type, fixtures: [] },
-    speedDial: { type, functions: [], fadeIn: true, fadeOut: true, hold: false },
+    speedDial: { type, functions: [], fadeIn: true, fadeOut: true, hold: false, beats: true },
     frame: { type, solo: false },
     clock: { type, mode: 'clock', countdownS: 300 },
     animation: { type, matrix: firstOf('rgbMatrix') },

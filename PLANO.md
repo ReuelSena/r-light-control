@@ -184,9 +184,9 @@ Validação (detalhada em [docs/fases/fase-05.md](docs/fases/fase-05.md)):
 
 ## Etapa C — Funções
 
-### F6 — Merge, fades e Cena · 🟡
+### F6 — Merge, fades e Cena · ✅
 
-Mini-plano: [docs/fases/fase-06.md](docs/fases/fase-06.md) (aprovado em 2026-10-17; entregue em 2026-10-18). Validação em andamento: o elemento "Tempos" foi ligado às cenas a pedido do usuário.
+Mini-plano: [docs/fases/fase-06.md](docs/fases/fase-06.md) (aprovado em 2026-10-17). Concluída em 2026-10-18, a pedido do usuário, com 8 itens validados. Os outros (a posição entre cenas, os fades nos Beams, o tick com 4 universos e o elemento "Tempos", ligado às cenas a pedido dele) ainda não foram testados e serão ajustados depois, se precisar.
 
 - **Merge:** HTP na intensidade (dimmer e cores, como no QLC+) e LTP por ordem de início no resto. Ao parar, o LTP volta ao que está embaixo.
 - **Fades:** lineares em inteiros (os números do QLC+), do valor atual, com canais finos de 16 bits. Rodas, gobo, prisma e strobo mudam de uma vez.
@@ -201,28 +201,33 @@ Validação:
 - [x] Duas cenas sobrepostas: maior dimmer vence e as cores se misturam (HTP). _Na posição (vence a última iniciada), ainda não testado._
 - [x] GM a 50% reduz só a intensidade.
 - [ ] Tick abaixo de 2 ms com 4 universos. _Ainda não testado (o teste automático mede 0,2 ms no app compilado)._
-- [ ] O elemento "Tempos" troca o fade in e o fade out das cenas da lista (ajuste pedido na validação).
+- [ ] O elemento "Tempos" troca o fade in e o fade out das cenas da lista (ajuste pedido na validação). _Ainda não testado; dá para conferir na validação da F7._
 
-### F7 — Chaser, Sequência, Coleção e BPM · ⬜
+### F7 — Chaser, Sequência, Coleção e BPM · 🟡
+
+Mini-plano: [docs/fases/fase-07.md](docs/fases/fase-07.md) (aprovado em 2026-10-18; entregue em 2026-10-18, aguardando a validação do usuário).
 
 - **Chaser:** modos de velocidade Default/Common/PerStep, crossfade, next/prev/goto, run order Loop/SingleShot/PingPong/Random.
 - **Sequência** e **Coleção.**
 - **Tempo:** BPM global com tap tempo.
-- **Ponto de partida (F6):**
-  - O motor (`rlc-engine`) mistura as cenas rodando: um fader por cena, na ordem de início, com fade in e fade out. O servidor manda as cenas já nos endereços DMX (`running_scenes` em `apply.rs`).
-  - Os passos de um chaser podem entrar como cenas nesse mesmo mecanismo.
-  - Chasers, sequências e coleções ainda não acendem.
-- **Ref:** `engine/src/{chaser,chaserrunner,chaserstep,sequence,collection}.cpp`
+- **Fim do Single Shot (pedido do usuário, 2026-10-18):** opção do chaser: apagar depois do último passo ou manter o último passo aceso.
+- **Cue list:** ligada ao chaser de verdade já nesta fase (play, stop, anterior, próximo e toque num passo).
+- **Ajuste pedido na validação (2026-10-19):** o elemento "Tempos" segue o BPM master ("Seguir o BPM", ligada por padrão): tempos em batidas e um TAP só, o do master.
+- **Ref:** `engine/src/{chaser,chaserrunner,chaserstep,sequence,collection,mastertimer}.cpp`
 
-Validação:
+Validação (detalhada em [docs/fases/fase-07.md](docs/fases/fase-07.md)):
 - [ ] Chaser de 8 passos com crossfade de 2 s, suave.
 - [ ] Tap a 120 BPM mantém o tempo.
 - [ ] PingPong e Random corretos.
+- [ ] O TAP master muda os tempos de todos os elementos "Tempos" que seguem o BPM, e os chasers da lista acompanham (ajuste pedido na validação).
 
 ### F8 — Grupos de fixtures e EFX · ⬜
 
 - **Grupos:** grupos 2D de cabeças.
 - **EFX:** os 10 algoritmos, modo absoluto e relativo, spread/offset, preview do caminho.
+- **Ponto de partida (F7):**
+  - O servidor manda ao motor as criações rodando como uma árvore (`Program` em `rlc-engine`: cena, chaser e coleção), traduzida em `running_programs` (`apply.rs`). O EFX entra como mais um tipo dessa árvore.
+  - Num passo de chaser ou numa coleção, o EFX já ocupa o lugar dele, mas ainda não acende.
 - **Ref:** `engine/src/{efx,efxfixture,fixturegroup,grouphead}.cpp`
 
 Validação:
@@ -364,7 +369,7 @@ Validação:
 
   Protótipo na F2; implementação na F10/F11. O blackout por fixtures ou grupos não existe no QLC+.
 - **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Os elementos são os mesmos em todos os formatos (só a posição muda), e o formato vem da largura da tela, com troca no ⚙ (E11). Protótipo na F2 (rodada 3); implementação na F10.
-- **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3). O fade in e o fade out das cenas foram ligados na F6 (2026-10-18, pedido do usuário); a duração entra na F7, com os chasers.
+- **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3). O fade in e o fade out das cenas foram ligados na F6 (2026-10-18, pedido do usuário); a duração entrou na F7, com os chasers. Na validação da F7 (2026-10-19), o elemento passou a seguir o BPM master ("Seguir o BPM"), com os tempos em batidas e o TAP do master (E11).
 
 ---
 

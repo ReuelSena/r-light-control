@@ -12,12 +12,12 @@ const props = defineProps<{ fn: ChaserFn }>()
 const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
-const now = useClock(100)
 const selectedStep = ref(0)
 const adding = ref(false)
 
 const isSequence = computed(() => props.fn.type === 'sequence')
-const current = computed(() => (state.value.running.includes(props.fn.id) ? chaserStep(props.fn, now.value) : -1))
+// Passo atual, vindo do motor
+const current = computed(() => state.value.chaserSteps.find((c) => c.chaser === props.fn.id)?.step ?? -1)
 const functionOf = (id: string) => project.value.functions.find((f) => f.id === id)
 const fixtureOf = (id: string) => project.value.fixtures.find((f) => f.id === id)
 const step = computed(() => props.fn.steps[selectedStep.value])
@@ -85,6 +85,9 @@ function addStep(functionId: string) {
           @update:model-value="(direction) => save({ direction })"
         />
         <RlSwitch :model-value="fn.beats" @update:model-value="(beats) => save({ beats })">{{ t('chaser.beats') }}</RlSwitch>
+        <RlSwitch v-if="fn.runOrder === 'singleShot'" :model-value="fn.keepLast" @update:model-value="(keepLast) => save({ keepLast })">
+          {{ t('chaser.keepLast') }}
+        </RlSwitch>
       </div>
 
       <div class="grid content-start gap-2">
@@ -178,7 +181,12 @@ function addStep(functionId: string) {
 
     <RlDialog v-model:open="adding" :title="t('chaser.addStep')" sheet>
       <div class="grid gap-1.5">
-        <RlButton v-for="f in project.functions.filter((x) => x.id !== fn.id)" :key="f.id" class="justify-start!" @press="addStep(f.id)">
+        <RlButton
+          v-for="f in project.functions.filter((x) => x.id !== fn.id && !contains(project.functions, x, fn.id))"
+          :key="f.id"
+          class="justify-start!"
+          @press="addStep(f.id)"
+        >
           <component :is="functionIcons[f.type]" :size="18" />
           {{ f.name }}
         </RlButton>

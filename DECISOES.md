@@ -77,7 +77,13 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - **Ligado às cenas na F6 (2026-10-18, pedido do usuário):** o fade in e o fade out do elemento valem na entrada e na saída das cenas da lista, inclusive numa troca de cenas. Mexer com a cena rodando vale para a saída dela.
     - O QLC+ grava o tempo na função. Aqui o tempo gravado não muda: o elemento vale só ao vivo.
     - Com dois elementos para a mesma cena, vale o último mexido.
-    - A duração entra com os chasers (F7).
+    - **Nos chasers (2026-10-18, F7):** o fade in, o fade out e a duração do elemento valem para todos os passos dos chasers e das sequências da lista, em qualquer modo (no QLC+, só nos tempos comuns). Numa coleção da lista, valem para as criações dela. Num chaser em batidas, a duração em segundos não vale: manda o BPM.
+    - **Seguir o BPM (2026-10-19, pedido do usuário na validação da F7):** o elemento "Tempos" tem a chave "Seguir o BPM", ligada por padrão (também nos elementos que já existiam).
+      - Ligada: fade in, fade out e duração em batidas (0, 1/8, 1/4, 1/2, 1, 2, 4, 8 e 16), com o tempo real vindo do BPM master. O TAP do elemento é o mesmo do master. Um tap muda o BPM, e todos os elementos e chasers acompanham na hora.
+      - Os chasers da lista passam a andar nas batidas, inclusive os em segundos; os passos de fração de batida (1/2, 1/4) também caem no tempo.
+      - Desligada: segundos e TAP próprio, como antes. Trocar a chave volta o elemento aos tempos gravados.
+      - Motivo: o BPM master e os segundos do elemento, cada um com o seu TAP, confundiam.
+  - **Cue list (2026-10-18, F7):** ligada ao chaser de verdade já na F7: play, stop, anterior, próximo e toque num passo, com o passo atual vindo do motor. Os faders de crossfade manual do QLC+ ficam para a F11.
 - **E12. Organização da interface.** Menus:
   - **Console:** Virtual Console, com a seção master (Grand Master, Blackout, Stop All e o BPM com tap) fixa ao lado; no celular, uma faixa em cima.
   - **Fixtures:** criação, importação, configuração e agrupamento dos equipamentos.
@@ -141,7 +147,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - O projeto tem um único escritor. Cada operação tipada é validada, incrementa a revisão e é difundida a todos os clientes.
   - O servidor é a autoridade. A UI só é otimista no controle que está sob o dedo.
   - **Edição simultânea (2026-10-17):** a última gravação vale, em tudo (inclusive no palco). Não há trava nem mescla.
-  - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acendia nada. Desde a F6 (2026-10-18), as cenas acendem; as outras criações acendem a partir da F7.
+  - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acendia nada. Desde a F6 (2026-10-18), as cenas acendem; desde a F7 (2026-10-18), os chasers, as sequências e as coleções também. O EFX e o RGB Matrix acendem a partir da F8 e da F9.
   - **Sem salvar até a F5 (2026-10-17):** o servidor abre com o show de exemplo; "Novo projeto" funciona, Abrir e Salvar ficam desligados. O que se muda se perde ao fechar o app.
   - **Projetos (2026-10-17, F5):**
     - Arquivos `.rlc` numa pasta só, `Documentos\R Light Control\`, salvos pelo nome e abertos pela lista, também no celular. Salvar guarda a versão anterior em `.rlc.bak`.
@@ -158,6 +164,14 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - Editar uma cena rodando vale na hora, sem fade e sem reiniciar.
     - Stop All e "Parar todas" usam o fade out de cada criação. O pânico (já no primeiro toque), o "Novo" e o "Abrir" cortam na hora.
     - Grand Master só no modo "reduzir a intensidade". Os modos "limitar" e "todos os canais" do QLC+ ficam de fora.
+  - **Chasers, sequências e coleções (2026-10-18, F7):**
+    - O motor roda os chasers (tempo dos passos, ordem e batidas), como o `ChaserRunner` do QLC+.
+    - O passo dura o fade in mais o hold. Na troca, o passo que sai faz o fade out enquanto o próximo faz o fade in (crossfade), partindo do valor que está saindo.
+    - Os tempos do passo (Comum ou Por passo) valem para tudo o que ele dispara; no Padrão, cada criação usa os seus. No hold, "Padrão" vale como "Comum", como no QLC+.
+    - **Fim do Single Shot:** opção de cada chaser e sequência: apagar depois do último passo (o padrão, como no QLC+) ou manter o último passo aceso até alguém parar o chaser.
+    - Só aparece rodando o que o usuário disparou (o chaser, a coleção). O que eles disparam não acende o LED do botão nem do Studio, e roda à parte: uma cena pode rodar sozinha e dentro de um chaser ao mesmo tempo, sem uma mexer na outra.
+    - Uma criação não contém a si mesma (direto ou por outra), como no QLC+.
+    - **BPM:** o motor gera as batidas; o tap recomeça a batida no último toque, que conta como uma batida. Num chaser em batidas, os passos trocam sempre numa batida, ou numa fração dela quando o passo é menor que uma batida (2026-10-19; o QLC+ só conta batidas inteiras).
   - **Localizar (2026-10-17, F5):** acende as fixtures escolhidas (dimmer e RGBW a 100%, shutter no padrão, pan e tilt parados), sem gravar na cena.
   - **Desfazer (2026-10-17, F5):** um histórico só, no servidor, para todos os aparelhos (100 passos). Entram o projeto e a biblioteca; a operação ao vivo, as preferências de cada aparelho, a rede local, o PIN e o tipo da interface ficam de fora. "Novo" e "Abrir" começam um histórico novo. Só pelo teclado por enquanto.
   - **Blackout (2026-10-17):** como no QLC+, zera só os canais de intensidade (dimmer e cores) e mantém o resto (pan, tilt, gobo), para os moving heads não se mexerem. Canais sem fixture contam como intensidade.
@@ -176,6 +190,8 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - Definições de fixture embutidas no projeto (slug + hash), para que um projeto nunca quebre por falta de definição.
 - **A5. Arquivos.**
   - JSON com `{format, schemaVersion}`. Ao carregar, uma cadeia de migrações converte versões antigas.
+    - **Versão 2 do projeto (2026-10-18, F7):** a opção "manter o último passo" dos chasers e sequências. A versão 1 abre com ela desligada (apagar no fim).
+    - **Versão 3 (2026-10-19, F7):** a chave "Seguir o BPM" do elemento "Tempos". As versões anteriores abrem com ela ligada.
   - Escrita atômica (arquivo temporário + rename) e `.bak`.
 
 ## Registro
@@ -241,3 +257,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-17 | Mini-plano da F6 aprovado: cores em HTP como no QLC+ (moldura solo para uma cor por vez); ao parar, o LTP volta ao que está embaixo; rodas e gobo sem fade; prévia acima das criações; Stop All com fade out e pânico na hora; Grand Master só "reduzir" (A2). |
 | 2026-10-18 | F6 entregue: cenas misturadas no motor (HTP/LTP), fades em inteiros e em 16 bits, edição ao vivo. O pânico corta já no primeiro toque (`panic { all }`) (A2, A3). |
 | 2026-10-18 | Pedido na validação da F6: o elemento "Tempos" (VC-3) passa a controlar o fade in e o fade out das cenas da lista já na F6, sem mexer nos tempos gravados (E11). |
+| 2026-10-18 | F6 concluída a pedido do usuário, com 8 itens validados; os não testados (posição entre cenas, fades nos Beams, tick com 4 universos e o elemento "Tempos") serão ajustados depois, se precisar. Início da F7 (estudo das referências e mini-plano). |
+| 2026-10-18 | Mini-plano da F7 aprovado: o motor roda os chasers, crossfade como no QLC+, só o que o usuário disparou aparece rodando, Tempos em todos os passos, cue list ligada já na F7, sem criação que contém a si mesma, hold "Padrão" = "Comum" (A2, E11). Pedido do usuário: o fim do Single Shot é uma opção do chaser (apagar ou manter o último passo). |
+| 2026-10-18 | F7 entregue: chasers, sequências e coleções acendem; batidas do BPM no motor; cue list ligada ao chaser; projeto na versão 2 (A5). Um chaser sem passos fica rodando sem acender, e "anterior" no primeiro passo de um Single Shot não faz nada. |
+| 2026-10-19 | Pedido na validação da F7: o elemento "Tempos" ganha "Seguir o BPM" (ligada por padrão): tempos em batidas do BPM master, TAP único com o master, chasers da lista nas batidas, passos de fração de batida no tempo (E11, VC-3; projeto na versão 3, A5). |

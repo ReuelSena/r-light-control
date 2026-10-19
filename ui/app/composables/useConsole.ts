@@ -1,4 +1,5 @@
 import type { InputControl } from '~/types/generated/InputControl'
+import type { StepAction } from '~/types/generated/StepAction'
 import type { VcWidget } from '~/types/generated/VcWidget'
 
 type Widget<T extends VcWidget['type']> = Extract<VcWidget, { type: T }>
@@ -52,30 +53,27 @@ export function useConsole() {
     }
   }
 
-  /** Passo atual da cue list: o escolhido à mão ou o que o tempo dita; -1 com o chaser parado. */
-  function currentStep(w: Widget<'cueList'>, now: number) {
-    const chaser = chaserOf(w)
-    if (!chaser || !running(chaser.id)) return -1
-    return value(w.id)?.[0] ?? chaserStep(chaser, now)
+  /** Passo atual da cue list, vindo do motor; -1 com o chaser parado. */
+  function currentStep(w: Widget<'cueList'>) {
+    if (!running(w.chaser)) return -1
+    return state.value.chaserSteps.find((c) => c.chaser === w.chaser)?.step ?? -1
   }
 
-  /** Vai para um passo (dá a volta nas pontas) e põe o chaser para rodar. */
-  function goTo(w: Widget<'cueList'>, step: number) {
-    const chaser = chaserOf(w)
-    const n = chaser?.steps.length ?? 0
-    if (!chaser || !n) return
-    setValue(w.id, [(step + n) % n])
-    if (!running(chaser.id)) send({ op: 'setFunctionRunning', id: chaser.id, running: true })
+  /** Próximo, anterior ou um passo escolhido; o chaser parado passa a rodar. A ordem (Loop, Ping Pong…)
+   * fica com o motor. */
+  function step(w: Widget<'cueList'>, action: StepAction) {
+    if (w.chaser && chaserOf(w)?.steps.length) send({ op: 'stepChaser', id: w.chaser, action })
   }
 
-  /** Play volta a andar no tempo; stop para o chaser. */
+  /** Play roda o chaser do começo; stop para. */
   function play(w: Widget<'cueList'>, on: boolean) {
-    setValue(w.id, [])
     if (w.chaser) send({ op: 'setFunctionRunning', id: w.chaser, running: on })
   }
 
-  /** TAP do speed dial: o intervalo entre dois toques vira a duração. */
+  /** TAP do speed dial: seguindo o BPM, é o tap do BPM master; em segundos, o intervalo entre dois
+   * toques vira a duração. */
   function tap(w: Widget<'speedDial'>) {
+    if (w.beats) return tapBpm()
     const now = Date.now()
     const last = taps.get(w.id)
     taps.set(w.id, now)
@@ -102,15 +100,12 @@ export function useConsole() {
     }
     if (!down) return
     if (w.type === 'cueList') {
-      const step = currentStep(w, Date.now())
-      if (control === 'main') play(w, step < 0)
+      if (control === 'main') play(w, !running(w.chaser))
       if (control === 'stop') play(w, false)
-      if (control === 'next') goTo(w, step + 1)
-      // Parada, "anterior" começa pelo último passo
-      if (control === 'previous') goTo(w, step < 0 ? -1 : step - 1)
+      if (control === 'next' || control === 'previous') step(w, control)
     }
     if (w.type === 'speedDial' && control === 'tap') tap(w)
   }
 
-  return { value, setValue, active, setButton, chaserOf, currentStep, goTo, play, tap, tapBpm, input }
+  return { value, setValue, running, active, setButton, chaserOf, currentStep, step, play, tap, tapBpm, input }
 }

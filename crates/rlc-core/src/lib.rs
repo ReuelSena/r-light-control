@@ -27,8 +27,11 @@ pub struct Snapshot {
     pub interfaces: Vec<DmxInterface>,
     pub midi_devices: Vec<MidiDevice>,
     pub remote: RemoteAccess,
-    /// Funções rodando agora.
+    /// Criações disparadas pelo usuário, rodando agora (o que um chaser ou uma coleção dispara não
+    /// entra).
     pub running: Vec<Id>,
+    /// Passo atual de cada chaser (ou sequência) da lista `running`, vindo do motor.
+    pub chaser_steps: Vec<CurrentStep>,
     /// Mesa simples (não é salva no projeto).
     pub desk: Desk,
     pub master: Master,
@@ -335,6 +338,8 @@ pub struct Chaser {
     pub fade_out_mode: SpeedMode,
     /// Tempos dos modos "comum".
     pub common: Timing,
+    /// No Single Shot, o último passo fica aceso até o chaser ser parado (senão, apaga no fim).
+    pub keep_last: bool,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -657,6 +662,8 @@ pub struct VcSpeedDial {
     pub fade_out: bool,
     /// Duração (hold do chaser, ciclo do EFX, passo do RGB Matrix), com tap.
     pub hold: bool,
+    /// Segue o BPM master: os tempos ficam em batidas, e o tap é o do BPM. Senão, em segundos.
+    pub beats: bool,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -787,13 +794,32 @@ pub struct Master {
 }
 
 /// Valor ao vivo de um elemento do console. Conforme o tipo: slider e animation `[nível]`,
-/// XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms, cue list `[passo]`,
-/// botão de blackout de fixtures `[1]` quando ligado.
+/// XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms (ou em milésimos de batida, quando
+/// ele segue o BPM), botão de blackout de fixtures `[1]` quando ligado.
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WidgetValue {
     pub widget: Id,
     pub value: Vec<u32>,
+}
+
+/// Passo em que um chaser rodando está.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CurrentStep {
+    pub chaser: Id,
+    /// Posição do passo, a partir de 0.
+    pub step: u16,
+}
+
+/// Pedido da cue list a um chaser: o próximo passo, o anterior ou um escolhido.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum StepAction {
+    Next,
+    Previous,
+    /// Posição do passo, a partir de 0.
+    Go(u16),
 }
 
 /// Dados do app e da máquina para o Monitoramento.
@@ -940,6 +966,12 @@ pub enum Op {
     SetFunctionRunning {
         id: Id,
         running: bool,
+    },
+    /// Cue list: leva um chaser (ou sequência) a outro passo. Parado, ele passa a rodar: "próximo"
+    /// começa no primeiro passo e "anterior", no último.
+    StepChaser {
+        id: Id,
+        action: StepAction,
     },
     /// Para todas as criações rodando, cada uma com o seu fade out (Studio e Stop All do console).
     StopAllFunctions,

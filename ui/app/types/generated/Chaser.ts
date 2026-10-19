@@ -17,4 +17,8 @@ beats: boolean, fadeInMode: SpeedMode, holdMode: SpeedMode, fadeOutMode: SpeedMo
 /**
  * Tempos dos modos "comum".
  */
-common: Timing, };
+common: Timing, 
+/**
+ * No Single Shot, o último passo fica aceso até o chaser ser parado (senão, apaga no fim).
+ */
+keepLast: boolean, };

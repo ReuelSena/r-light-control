@@ -4,4 +4,8 @@ export type VcSpeedDial = { functions: Array<string>, fadeIn: boolean, fadeOut: 
 /**
  * Duração (hold do chaser, ciclo do EFX, passo do RGB Matrix), com tap.
  */
-hold: boolean, };
+hold: boolean, 
+/**
+ * Segue o BPM master: os tempos ficam em batidas, e o tap é o do BPM. Senão, em segundos.
+ */
+beats: boolean, };

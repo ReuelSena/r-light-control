@@ -2,10 +2,10 @@
 //! estado que mudaram, que viram os avisos `evt` (A3). As regras vêm do motor de mentira da F2.
 //! Uma operação recusada não muda nada.
 
-use std::time::Duration;
-
 use rlc_core::*;
-use rlc_engine::{RunningScene, SceneLevel, UniversePatch};
+use rlc_engine::{
+    ChaserProgram, Program, Run, SceneLevel, SceneProgram, Span, Step, UniversePatch,
+};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
@@ -31,6 +31,7 @@ pub enum Topic {
     Interfaces,
     Remote,
     Running,
+    ChaserSteps,
     Desk,
     Master,
     WidgetValues,
@@ -62,6 +63,7 @@ impl Topic {
             Topic::Interfaces => "interfaces",
             Topic::Remote => "remote",
             Topic::Running => "running",
+            Topic::ChaserSteps => "chaserSteps",
             Topic::Desk => "desk",
             Topic::Master => "master",
             Topic::WidgetValues => "widgetValues",
@@ -128,6 +130,7 @@ impl Topic {
             Topic::Interfaces => json!(s.interfaces),
             Topic::Remote => json!(s.remote),
             Topic::Running => json!(s.running),
+            Topic::ChaserSteps => json!(s.chaser_steps),
             Topic::Desk => json!(s.desk),
             Topic::Master => json!(s.master),
             Topic::WidgetValues => json!(s.widget_values),
@@ -144,6 +147,7 @@ pub fn is_live(op: &Op) -> bool {
     matches!(
         op,
         Op::SetFunctionRunning { .. }
+            | Op::StepChaser { .. }
             | Op::StopAllFunctions
             | Op::Panic { .. }
             | Op::SetDeskLevel { .. }
@@ -346,6 +350,10 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::ChannelGroups, T::Console]
         }
         Op::SaveFunction { function } => {
+            // Como no QLC+, uma criação não contém a si mesma, direto ou por outra
+            if contains(&p.functions, &function.kind, &function.id) {
+                return Err("Uma criação não pode conter a si mesma.".into());
+            }
             upsert(&mut p.functions, function, |f| &f.id)?;
             vec![T::Functions]
         }
@@ -399,19 +407,30 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             }
             vec![T::Running]
         }
-        // Parar também baixa os sliders de playback e solta os passos escolhidos nas cue lists.
-        // O pânico corta as cenas na hora (no hub); com `all`, também zera a Mesa simples e desliga o
-        // padrão de teste, a prévia e o "Localizar".
+        // O passo pedido vai ao motor (no hub); parado, o chaser passa a rodar
+        Op::StepChaser { id, .. } => {
+            let chaser = |f: &Function| {
+                f.id == id && matches!(f.kind, FunctionKind::Chaser(_) | FunctionKind::Sequence(_))
+            };
+            if !p.functions.iter().any(chaser) {
+                return Err("A cue list só anda chasers e sequências.".into());
+            }
+            if s.running.contains(&id) {
+                return Ok((vec![], Value::Null));
+            }
+            s.running.push(id);
+            vec![T::Running]
+        }
+        // Parar também baixa os sliders de playback. O pânico corta as cenas na hora (no hub); com
+        // `all`, também zera a Mesa simples e desliga o padrão de teste, a prévia e o "Localizar".
         Op::StopAllFunctions | Op::Panic { .. } => {
             s.running.clear();
             let playback: Vec<&Id> = p
                 .console
                 .widgets
                 .iter()
-                .filter(|w| match &w.kind {
-                    VcWidgetKind::Slider(slider) => slider.mode == SliderMode::Playback,
-                    VcWidgetKind::CueList(_) => true,
-                    _ => false,
+                .filter(|w| {
+                    matches!(&w.kind, VcWidgetKind::Slider(slider) if slider.mode == SliderMode::Playback)
                 })
                 .map(|w| &w.id)
                 .collect();
@@ -496,10 +515,29 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         }
         Op::SaveWidgets { widgets } => {
             unique(widgets.iter().map(|w| &w.id))?;
+            // O elemento "Tempos" que trocou de unidade (segundos ou batidas) volta aos tempos
+            // gravados: o valor de uma unidade não serve na outra
+            let unit = |w: &VcWidget| match &w.kind {
+                VcWidgetKind::SpeedDial(dial) => Some(dial.beats),
+                _ => None,
+            };
+            let changed: Vec<Id> = widgets
+                .iter()
+                .filter(|w| {
+                    let old = p.console.widgets.iter().find(|old| old.id == w.id);
+                    old.is_some_and(|old| unit(old) != unit(w))
+                })
+                .map(|w| w.id.clone())
+                .collect();
             for w in widgets {
                 upsert(&mut p.console.widgets, w, |w| &w.id)?;
             }
-            vec![T::Console]
+            if changed.is_empty() {
+                vec![T::Console]
+            } else {
+                s.widget_values.retain(|v| !changed.contains(&v.widget));
+                vec![T::Console, T::WidgetValues]
+            }
         }
         Op::RemoveWidgets { ids } => {
             p.console.widgets.retain(|w| {
@@ -525,7 +563,11 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             s.master.blackout = on;
             vec![T::Master]
         }
+        // O BPM vai ao motor no hub, para a batida recomeçar só no tap (e não a cada mudança do master)
         Op::SetBpm { bpm } => {
+            if !(30..=300).contains(&bpm) {
+                return Err("BPM fora de 30 a 300.".into());
+            }
             s.master.bpm = bpm;
             vec![T::Master]
         }
@@ -710,92 +752,220 @@ pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
         .collect()
 }
 
-/// Cenas rodando, na ordem de início, nos endereços DMX, com os fades que valem agora. O canal fino
-/// vai junto do grosso, para o fade em 16 bits; sem o fino na cena, ele vale 0.
-pub fn running_scenes(s: &Snapshot) -> Vec<RunningScene> {
-    let p = &s.project;
+/// Criações disparadas pelo usuário, na ordem de início, já resolvidas para o motor: as cenas nos
+/// endereços DMX, e os chasers e as coleções com o que disparam e os tempos que valem agora. O EFX e o
+/// RGB Matrix só acendem na F8 e na F9.
+pub fn running_programs(s: &Snapshot) -> Vec<Run> {
     s.running
         .iter()
         .filter_map(|id| {
-            let function = p.functions.iter().find(|f| &f.id == id)?;
-            let FunctionKind::Scene(scene) = &function.kind else {
-                return None;
-            };
-            let mut levels = Vec::new();
-            for fixture in &p.fixtures {
-                // Valores da cena nesta fixture, pela posição do canal no modo
-                let values: Vec<(usize, u8)> = scene
-                    .values
-                    .iter()
-                    .filter(|v| v.fixture == fixture.id)
-                    .map(|v| (usize::from(v.channel), v.value))
-                    .collect();
-                let value = |pos: usize| values.iter().find(|(i, _)| *i == pos).map(|(_, v)| *v);
-                let channels: Vec<&Channel> = mode_channels(p, fixture).collect();
-                for &(pos, v) in &values {
-                    let Some(channel) = channels.get(pos) else {
-                        continue;
-                    };
-                    // O k-ésimo fino de um atributo é do k-ésimo canal grosso dele ("Pan, Tilt, Pan
-                    // fino, Tilt fino"); a conta acha o par dos dois lados
-                    let same = channels
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, c)| c.attribute == channel.attribute);
-                    let k = same
-                        .clone()
-                        .filter(|(i, c)| *i < pos && c.fine == channel.fine)
-                        .count();
-                    let pair = same.filter(|(_, c)| c.fine != channel.fine).nth(k);
-                    let pair = pair.map(|(i, _)| i);
-                    // Com os dois na cena, o fino vai junto do grosso
-                    if channel.fine && pair.and_then(value).is_some() {
-                        continue;
-                    }
-                    let Some(address) = channel_address(p, &fixture.id, pos as u16) else {
-                        continue;
-                    };
-                    let fine = pair
-                        .filter(|_| !channel.fine)
-                        .and_then(|i| channel_address(p, &fixture.id, i as u16));
-                    levels.push(SceneLevel {
-                        universe: address.universe,
-                        channel: address.channel,
-                        value: match fine {
-                            Some(_) => {
-                                u16::from(v) << 8 | u16::from(pair.and_then(value).unwrap_or(0))
-                            }
-                            None => u16::from(v),
-                        },
-                        fine: fine.map(|l| l.channel),
-                    });
-                }
-            }
-            // Tempos ajustados ao vivo (VC-3): vale o último elemento "Tempos" mexido que tem a cena
-            // na lista e controla esse tempo; sem nenhum, o tempo gravado na cena
-            let live = |index: usize, controls: fn(&VcSpeedDial) -> bool| {
-                s.widget_values.iter().rev().find_map(|v| {
-                    let widget = p.console.widgets.iter().find(|w| w.id == v.widget)?;
-                    match &widget.kind {
-                        VcWidgetKind::SpeedDial(dial)
-                            if controls(dial) && dial.functions.contains(id) =>
-                        {
-                            v.value.get(index).copied()
-                        }
-                        _ => None,
-                    }
-                })
-            };
-            let fade_in = live(0, |d| d.fade_in).unwrap_or(scene.fade_in_ms);
-            let fade_out = live(1, |d| d.fade_out).unwrap_or(scene.fade_out_ms);
-            Some(RunningScene {
+            let program = program(s, id, [None; 3], &mut vec![])?;
+            Some(Run {
                 id: id.clone(),
-                levels,
-                fade_in: Duration::from_millis(fade_in.into()),
-                fade_out: Duration::from_millis(fade_out.into()),
+                program,
             })
         })
         .collect()
+}
+
+/// O que uma criação acende. `dial` traz os tempos (fade in, fade out e duração) de um elemento
+/// "Tempos" que controla uma coleção de fora; o que controla a própria criação vale antes. `path` são
+/// as criações de fora: uma que contenha a si mesma não entra.
+fn program(s: &Snapshot, id: &Id, dial: [Option<Span>; 3], path: &mut Vec<Id>) -> Option<Program> {
+    let p = &s.project;
+    let function = p
+        .functions
+        .iter()
+        .find(|f| f.id == *id && !path.contains(id))?;
+    let dial: [Option<Span>; 3] = std::array::from_fn(|i| live_time(s, id, i).or(dial[i]));
+    path.push(id.clone());
+    let program = match &function.kind {
+        FunctionKind::Scene(scene) => Some(scene_program(
+            p,
+            &scene.values,
+            dial[0].unwrap_or(Span::Ms(scene.fade_in_ms)),
+            dial[1].unwrap_or(Span::Ms(scene.fade_out_ms)),
+        )),
+        FunctionKind::Collection(c) => Some(Program::Collection(
+            c.functions
+                .iter()
+                .filter_map(|f| program(s, f, dial, path))
+                .collect(),
+        )),
+        FunctionKind::Chaser(c) | FunctionKind::Sequence(c) => {
+            let unit = |v: u32| if c.beats { Span::Beats(v) } else { Span::Ms(v) };
+            let time = |mode: SpeedMode, common: u32, step: u32| match mode {
+                SpeedMode::Default => None,
+                SpeedMode::Common => Some(unit(common)),
+                SpeedMode::PerStep => Some(unit(step)),
+            };
+            // Na sequência, os passos acendem a cena dela, e o "Padrão" são os fades da cena
+            let scene = c.scene.as_ref().and_then(|scene| {
+                p.functions.iter().find_map(|f| match &f.kind {
+                    FunctionKind::Scene(sc) if f.id == *scene => {
+                        let live = |i| live_time(s, &f.id, i);
+                        Some((
+                            live(0).unwrap_or(Span::Ms(sc.fade_in_ms)),
+                            live(1).unwrap_or(Span::Ms(sc.fade_out_ms)),
+                        ))
+                    }
+                    _ => None,
+                })
+            });
+            let sequence = matches!(function.kind, FunctionKind::Sequence(_));
+            let steps = c
+                .steps
+                .iter()
+                .map(|step| Step {
+                    program: if sequence {
+                        let (fade_in, fade_out) = scene.unwrap_or((Span::Ms(0), Span::Ms(0)));
+                        scene_program(p, &step.values, fade_in, fade_out)
+                    } else {
+                        // O passo com um EFX (ou um RGB Matrix) conta o tempo sem acender nada
+                        program(s, &step.function, [None; 3], path)
+                            .unwrap_or(Program::Collection(vec![]))
+                    },
+                    fade_in: dial[0].or(time(
+                        c.fade_in_mode,
+                        c.common.fade_in_ms,
+                        step.timing.fade_in_ms,
+                    )),
+                    // No hold, "Padrão" vale como "Comum". A duração do elemento em batidas vale em
+                    // todos os chasers; a em segundos, só nos que não estão em batidas (neles, manda
+                    // o BPM)
+                    hold: match dial[2] {
+                        Some(span @ Span::Beats(_)) => span,
+                        Some(span) if !c.beats => span,
+                        _ if c.hold_mode == SpeedMode::PerStep => unit(step.timing.hold_ms),
+                        _ => unit(c.common.hold_ms),
+                    },
+                    fade_out: dial[1].or(time(
+                        c.fade_out_mode,
+                        c.common.fade_out_ms,
+                        step.timing.fade_out_ms,
+                    )),
+                })
+                .collect();
+            Some(Program::Chaser(ChaserProgram {
+                steps,
+                run_order: c.run_order,
+                direction: c.direction,
+                keep_last: c.keep_last,
+            }))
+        }
+        FunctionKind::Efx(_) | FunctionKind::RgbMatrix(_) => None,
+    };
+    path.pop();
+    program
+}
+
+/// Tempo ajustado ao vivo (VC-3) de uma criação: fade in, fade out ou duração (0, 1 ou 2), em
+/// segundos ou, no elemento que segue o BPM, em batidas. Vale o último elemento "Tempos" mexido que
+/// tem a criação na lista e controla esse tempo.
+fn live_time(s: &Snapshot, id: &Id, index: usize) -> Option<Span> {
+    s.widget_values.iter().rev().find_map(|v| {
+        let widget = s
+            .project
+            .console
+            .widgets
+            .iter()
+            .find(|w| w.id == v.widget)?;
+        match &widget.kind {
+            VcWidgetKind::SpeedDial(dial)
+                if dial.functions.contains(id)
+                    && [dial.fade_in, dial.fade_out, dial.hold][index] =>
+            {
+                let unit = if dial.beats { Span::Beats } else { Span::Ms };
+                v.value.get(index).map(|&v| unit(v))
+            }
+            _ => None,
+        }
+    })
+}
+
+/// Valores de uma cena (ou de um passo de sequência) nos endereços DMX. O canal fino vai junto do
+/// grosso, para o fade em 16 bits; sem o fino na cena, ele vale 0.
+fn scene_program(p: &Project, values: &[SceneValue], fade_in: Span, fade_out: Span) -> Program {
+    let mut levels = Vec::new();
+    for fixture in &p.fixtures {
+        // Valores da cena nesta fixture, pela posição do canal no modo
+        let values: Vec<(usize, u8)> = values
+            .iter()
+            .filter(|v| v.fixture == fixture.id)
+            .map(|v| (usize::from(v.channel), v.value))
+            .collect();
+        let value = |pos: usize| values.iter().find(|(i, _)| *i == pos).map(|(_, v)| *v);
+        let channels: Vec<&Channel> = mode_channels(p, fixture).collect();
+        for &(pos, v) in &values {
+            let Some(channel) = channels.get(pos) else {
+                continue;
+            };
+            // O k-ésimo fino de um atributo é do k-ésimo canal grosso dele ("Pan, Tilt, Pan fino,
+            // Tilt fino"); a conta acha o par dos dois lados
+            let same = channels
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.attribute == channel.attribute);
+            let k = same
+                .clone()
+                .filter(|(i, c)| *i < pos && c.fine == channel.fine)
+                .count();
+            let pair = same.filter(|(_, c)| c.fine != channel.fine).nth(k);
+            let pair = pair.map(|(i, _)| i);
+            // Com os dois na cena, o fino vai junto do grosso
+            if channel.fine && pair.and_then(value).is_some() {
+                continue;
+            }
+            let Some(address) = channel_address(p, &fixture.id, pos as u16) else {
+                continue;
+            };
+            let fine = pair
+                .filter(|_| !channel.fine)
+                .and_then(|i| channel_address(p, &fixture.id, i as u16));
+            levels.push(SceneLevel {
+                universe: address.universe,
+                channel: address.channel,
+                value: match fine {
+                    Some(_) => u16::from(v) << 8 | u16::from(pair.and_then(value).unwrap_or(0)),
+                    None => u16::from(v),
+                },
+                fine: fine.map(|l| l.channel),
+            });
+        }
+    }
+    Program::Scene(SceneProgram {
+        levels,
+        fade_in,
+        fade_out,
+    })
+}
+
+/// Criações que uma criação dispara direto: os passos do chaser e as da coleção.
+fn members(kind: &FunctionKind) -> Vec<&Id> {
+    match kind {
+        FunctionKind::Chaser(c) => c.steps.iter().map(|step| &step.function).collect(),
+        FunctionKind::Collection(c) => c.functions.iter().collect(),
+        _ => vec![],
+    }
+}
+
+/// A criação dispara `target`, direto ou por outra.
+fn contains<'a>(functions: &'a [Function], kind: &'a FunctionKind, target: &Id) -> bool {
+    let mut stack = members(kind);
+    let mut seen = vec![];
+    while let Some(id) = stack.pop() {
+        if id == target {
+            return true;
+        }
+        if seen.contains(&id) {
+            continue;
+        }
+        seen.push(id);
+        if let Some(f) = functions.iter().find(|f| f.id == *id) {
+            stack.extend(members(&f.kind));
+        }
+    }
+    false
 }
 
 fn is_intensity(attribute: Attribute) -> bool {
@@ -1223,33 +1393,57 @@ mod tests {
         assert!(s.preview.is_none() && s.highlight.is_empty());
     }
 
+    fn run(s: &mut Snapshot, id: &str) {
+        let op = Op::SetFunctionRunning {
+            id: id.into(),
+            running: true,
+        };
+        apply(s, op).unwrap();
+    }
+
+    /// A cena de uma criação rodando.
+    fn scene_of(program: &Program) -> &SceneProgram {
+        match program {
+            Program::Scene(scene) => scene,
+            _ => panic!("não é cena"),
+        }
+    }
+
+    fn chaser_of(program: &Program) -> &ChaserProgram {
+        match program {
+            Program::Chaser(chaser) => chaser,
+            _ => panic!("não é chaser"),
+        }
+    }
+
+    fn chaser_mut<'a>(s: &'a mut Snapshot, id: &str) -> &'a mut Chaser {
+        let f = s.project.functions.iter_mut().find(|f| f.id == id);
+        match f.map(|f| &mut f.kind) {
+            Some(FunctionKind::Chaser(c) | FunctionKind::Sequence(c)) => c,
+            _ => panic!("{id} não é chaser"),
+        }
+    }
+
     #[test]
     fn running_scenes_go_to_dmx_addresses_in_start_order() {
         let mut s = example();
-        let chaser = s
-            .project
-            .functions
-            .iter()
-            .find(|f| matches!(f.kind, FunctionKind::Chaser(_)))
-            .unwrap()
-            .id
-            .clone();
-        // O chaser só acende na F7
-        for id in ["s4".into(), chaser, "s1".into()] {
-            apply(&mut s, Op::SetFunctionRunning { id, running: true }).unwrap();
+        // O EFX só acende na F8
+        for id in ["s4", "e1", "s1"] {
+            run(&mut s, id);
         }
-        let scenes = running_scenes(&s);
-        let ids: Vec<&str> = scenes.iter().map(|s| s.id.as_str()).collect();
+        let runs = running_programs(&s);
+        let ids: Vec<&str> = runs.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(ids, ["s4", "s1"]);
-        assert_eq!(scenes[0].fade_in, Duration::from_secs(1));
+        assert_eq!(scene_of(&runs[0].program).fade_in, Span::Ms(1000));
         // MH 1 no 101: pan e tilt levam o fino junto, em 16 bits (sem o fino na cena, ele vale 0)
-        let at = |scenes: &[RunningScene], channel: u16| {
-            let level = scenes[0].levels.iter().find(|l| l.channel == channel);
+        let at = |runs: &[Run], channel: u16| {
+            let levels = &scene_of(&runs[0].program).levels;
+            let level = levels.iter().find(|l| l.channel == channel);
             level.map(|l| (l.fine, l.value))
         };
-        assert_eq!(at(&scenes, 101), Some((Some(102), 128 << 8)));
-        assert_eq!(at(&scenes, 103), Some((Some(104), 128 << 8)));
-        assert_eq!(at(&scenes, 106), Some((None, 255)));
+        assert_eq!(at(&runs, 101), Some((Some(102), 128 << 8)));
+        assert_eq!(at(&runs, 103), Some((Some(104), 128 << 8)));
+        assert_eq!(at(&runs, 106), Some((None, 255)));
 
         // Com o fino na cena, ele vai junto do grosso; só o fino (MH 2 no 115) muda só o fino
         let Some(FunctionKind::Scene(scene)) = s
@@ -1271,13 +1465,10 @@ mod tests {
             .values
             .retain(|v| v.fixture != "mh2" || v.channel != 2);
         scene.values.push(value("mh2", 3, 9));
-        let scenes = running_scenes(&s);
-        assert_eq!(at(&scenes, 101), Some((Some(102), 128 << 8 | 7)));
-        assert_eq!(at(&scenes, 102), None);
-        assert_eq!(
-            (at(&scenes, 117), at(&scenes, 118)),
-            (None, Some((None, 9)))
-        );
+        let runs = running_programs(&s);
+        assert_eq!(at(&runs, 101), Some((Some(102), 128 << 8 | 7)));
+        assert_eq!(at(&runs, 102), None);
+        assert_eq!((at(&runs, 117), at(&runs, 118)), (None, Some((None, 9))));
 
         // Fixture removida sai da cena rodando
         apply(
@@ -1287,41 +1478,218 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(running_scenes(&s)[0].levels.iter().all(|l| l.channel > 114));
+        let runs = running_programs(&s);
+        assert!(
+            scene_of(&runs[0].program)
+                .levels
+                .iter()
+                .all(|l| l.channel > 114)
+        );
     }
 
     #[test]
     fn speed_dial_sets_the_fades_of_its_scenes_live() {
         let mut s = example();
         for id in ["s1", "s4"] {
-            let op = Op::SetFunctionRunning {
-                id: id.into(),
-                running: true,
-            };
-            apply(&mut s, op).unwrap();
+            run(&mut s, id);
         }
         let fades = |s: &Snapshot| {
-            let times = |r: &RunningScene| (r.fade_in.as_millis(), r.fade_out.as_millis());
-            running_scenes(s).iter().map(times).collect::<Vec<_>>()
+            let times = |r: &Run| {
+                let scene = scene_of(&r.program);
+                (scene.fade_in, scene.fade_out)
+            };
+            running_programs(s).iter().map(times).collect::<Vec<_>>()
         };
         let dial = |value: Vec<u32>| Op::SetWidgetValue {
             widget: "sd1".into(),
             value,
         };
+        let ms = Span::Ms;
         // Sem valor, valem os tempos gravados (1 s)
-        assert_eq!(fades(&s), [(1000, 1000), (1000, 1000)]);
-        // "Fades da frente" controla a s1; a s4 fica com os gravados
+        assert_eq!(fades(&s), [(ms(1000), ms(1000)), (ms(1000), ms(1000))]);
+        // "Fades da frente" segue o BPM e controla a s1: os fades dela em batidas; a s4 fica com os
+        // gravados
+        apply(&mut s, dial(vec![2000, 500, 0])).unwrap();
+        let beats = (Span::Beats(2000), Span::Beats(500));
+        assert_eq!(fades(&s), [beats, (ms(1000), ms(1000))]);
+        // Em segundos: trocar a unidade solta o valor, que não serve na outra
+        let mut widget = s
+            .project
+            .console
+            .widgets
+            .iter()
+            .find(|w| w.id == "sd1")
+            .cloned()
+            .unwrap();
+        let VcWidgetKind::SpeedDial(d) = &mut widget.kind else {
+            panic!("sd1 não é Tempos")
+        };
+        d.beats = false;
+        let (topics, _) = apply(
+            &mut s,
+            Op::SaveWidgets {
+                widgets: vec![widget.clone()],
+            },
+        )
+        .unwrap();
+        assert_eq!(topics, [Topic::Console, Topic::WidgetValues]);
+        assert_eq!(fades(&s)[0], (ms(1000), ms(1000)));
         apply(&mut s, dial(vec![3000, 500, 0])).unwrap();
-        assert_eq!(fades(&s), [(3000, 500), (1000, 1000)]);
+        assert_eq!(fades(&s)[0], (ms(3000), ms(500)));
+        // Gravar o elemento sem trocar a unidade mantém o valor
+        apply(
+            &mut s,
+            Op::SaveWidgets {
+                widgets: vec![widget],
+            },
+        )
+        .unwrap();
+        assert_eq!(fades(&s)[0], (ms(3000), ms(500)));
         // Com o fade out desligado no elemento, o fade out volta ao gravado
         let widget = s.project.console.widgets.iter_mut().find(|w| w.id == "sd1");
         if let Some(VcWidgetKind::SpeedDial(d)) = widget.map(|w| &mut w.kind) {
             d.fade_out = false;
         }
-        assert_eq!(fades(&s)[0], (3000, 1000));
+        assert_eq!(fades(&s)[0], (ms(3000), ms(1000)));
         // "Gravados" solta o valor
         apply(&mut s, dial(vec![])).unwrap();
-        assert_eq!(fades(&s)[0], (1000, 1000));
+        assert_eq!(fades(&s)[0], (ms(1000), ms(1000)));
+    }
+
+    #[test]
+    fn chasers_go_with_their_steps_and_the_times_that_hold() {
+        let mut s = example();
+        run(&mut s, "c1");
+        let times = |s: &Snapshot| {
+            let runs = running_programs(s);
+            let step = &chaser_of(&runs[0].program).steps[0];
+            (step.fade_in, step.hold, step.fade_out)
+        };
+        // "Troca de cores": fade in e hold por passo (1 s e 2 s), fade out da cena
+        let c1 = &running_programs(&s)[0].program;
+        assert_eq!(chaser_of(c1).steps.len(), 3);
+        assert_eq!(
+            scene_of(&chaser_of(c1).steps[0].program).fade_out,
+            Span::Ms(1000)
+        );
+        assert_eq!(times(&s), (Some(Span::Ms(1000)), Span::Ms(2000), None));
+        // Comum e, no hold, "Padrão" valendo como "Comum"
+        let c = chaser_mut(&mut s, "c1");
+        (c.fade_in_mode, c.hold_mode) = (SpeedMode::Common, SpeedMode::Default);
+        c.common.hold_ms = 3000;
+        assert_eq!(times(&s), (Some(Span::Ms(500)), Span::Ms(3000), None));
+        // Em batidas
+        chaser_mut(&mut s, "c1").beats = true;
+        assert_eq!(times(&s), (Some(Span::Beats(500)), Span::Beats(3000), None));
+
+        // O elemento "Tempos" vale para todos os passos. Em segundos, a duração dele não vale num
+        // chaser em batidas
+        let set_dial = |s: &mut Snapshot, beats: bool| {
+            let dial = s.project.console.widgets.iter_mut().find(|w| w.id == "sd1");
+            if let Some(VcWidgetKind::SpeedDial(d)) = dial.map(|w| &mut w.kind) {
+                (d.functions, d.hold, d.beats) = (vec!["c1".into()], true, beats);
+            }
+            let value = Op::SetWidgetValue {
+                widget: "sd1".into(),
+                value: vec![300, 200, 900],
+            };
+            apply(s, value).unwrap();
+        };
+        set_dial(&mut s, false);
+        let fades = (Some(Span::Ms(300)), Span::Beats(3000), Some(Span::Ms(200)));
+        assert_eq!(times(&s), fades);
+        chaser_mut(&mut s, "c1").beats = false;
+        assert_eq!(times(&s).1, Span::Ms(900));
+        // Seguindo o BPM, tudo em batidas, também num chaser em segundos
+        set_dial(&mut s, true);
+        let beats = (
+            Some(Span::Beats(300)),
+            Span::Beats(900),
+            Some(Span::Beats(200)),
+        );
+        assert_eq!(times(&s), beats);
+    }
+
+    #[test]
+    fn sequences_and_collections_light_what_they_hold() {
+        let mut s = example();
+        for id in ["q1", "k1"] {
+            run(&mut s, id);
+        }
+        let runs = running_programs(&s);
+        // "Subida da frente": cada passo acende os valores dele na cena da sequência
+        let q1 = chaser_of(&runs[0].program);
+        let first = scene_of(&q1.steps[0].program);
+        let Some(FunctionKind::Sequence(sequence)) = s
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "q1")
+            .map(|f| &f.kind)
+        else {
+            panic!("q1 não é sequência")
+        };
+        assert_eq!(first.levels.len(), sequence.steps[0].values.len());
+        assert_eq!(first.fade_in, Span::Ms(1000));
+        assert_eq!(q1.steps[0].fade_in, Some(Span::Ms(800)));
+        // "Abertura": o chaser e as duas cenas; o EFX fica de fora até a F8
+        let Program::Collection(k1) = &runs[1].program else {
+            panic!("k1 não é coleção")
+        };
+        assert_eq!(k1.len(), 3);
+        assert!(matches!(k1[0], Program::Chaser(_)));
+    }
+
+    #[test]
+    fn a_creation_cannot_contain_itself() {
+        let mut s = example();
+        // "Abertura" (k1) já tem o "Troca de cores" (c1): c1 não pode ter um passo com k1
+        let mut c1 = s
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "c1")
+            .cloned()
+            .unwrap();
+        let FunctionKind::Chaser(c) = &mut c1.kind else {
+            panic!("c1 não é chaser")
+        };
+        let mut step = c.steps[0].clone();
+        step.function = "k1".into();
+        c.steps.push(step);
+        let refused = apply(&mut s, Op::SaveFunction { function: c1 });
+        assert_eq!(
+            refused.unwrap_err(),
+            "Uma criação não pode conter a si mesma."
+        );
+        let mut k1 = s
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "k1")
+            .cloned()
+            .unwrap();
+        if let FunctionKind::Collection(c) = &mut k1.kind {
+            c.functions.push("k1".into());
+        }
+        assert!(apply(&mut s, Op::SaveFunction { function: k1 }).is_err());
+    }
+
+    #[test]
+    fn cue_list_runs_a_stopped_chaser_and_only_chasers() {
+        let mut s = example();
+        let step = |id: &str| Op::StepChaser {
+            id: id.into(),
+            action: StepAction::Next,
+        };
+        let (topics, _) = apply(&mut s, step("c1")).unwrap();
+        assert_eq!(
+            (topics, s.running.clone()),
+            (vec![Topic::Running], vec!["c1".into()])
+        );
+        // Já rodando, o passo vai só ao motor
+        assert_eq!(apply(&mut s, step("c1")).unwrap().0, vec![]);
+        assert!(apply(&mut s, step("s1")).is_err());
     }
 
     #[test]

@@ -21,6 +21,12 @@ forem adicionadas:
   nos canais de intensidade, como em engine/src/universe.cpp, para
   crates/rlc-engine/src/lib.rs.
 
+- Chaser: a ordem dos passos (Loop, Single Shot, Ping Pong e Random), o
+  próximo e o anterior, os modos dos tempos e os passos em batidas, seguindo
+  engine/src/chaserrunner.cpp (getNextStepIndex, stepFadeIn, stepFadeOut e
+  stepDuration) e as batidas do engine/src/mastertimer.cpp, para
+  crates/rlc-engine/src/chaser.rs e crates/rlc-engine/src/lib.rs.
+
 - Importador de fixtures .qxf: leitura do formato e regras de conversão
   (presets e grupos dos canais, faixas de valores, modos, cabeças, canais
   finos e valor padrão) seguindo o carregador de engine/src/qlcfixturedef.cpp,

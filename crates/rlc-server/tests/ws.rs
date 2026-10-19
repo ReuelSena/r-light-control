@@ -65,6 +65,16 @@ async fn frame_until(ws: &mut Socket, universe: &str, ok: impl Fn(&[u8]) -> bool
     }
 }
 
+/// Espera um aviso do tópico em que `ok` vale (os outros avisos e os quadros no meio são ignorados).
+async fn evt_until(ws: &mut Socket, topic: &str, ok: impl Fn(&Value) -> bool) {
+    loop {
+        let message = next_json(ws).await;
+        if message["topic"] == topic && ok(&message["data"]) {
+            return;
+        }
+    }
+}
+
 async fn cmd(ws: &mut Socket, id: u64, op: Value) {
     let message = json!({ "t": "cmd", "id": id, "data": op }).to_string();
     ws.send(Message::Text(message.into())).await.unwrap();
@@ -197,4 +207,53 @@ async fn scenes_fade_in_take_live_edits_and_panic_cuts_them() {
         f[0] == 0
     })
     .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn chasers_step_by_the_cue_list_and_by_themselves() {
+    let port = server().await;
+    let mut ws = connect(port).await;
+    assert_eq!(next_json(&mut ws).await["t"], "hello");
+    let snapshot = next_json(&mut ws).await;
+    let functions = snapshot["data"]["project"]["functions"].as_array().unwrap();
+    let mut chaser = functions.iter().find(|f| f["id"] == "c1").unwrap().clone();
+    let save = |chaser: &Value| json!({ "op": "saveFunction", "function": chaser });
+    // Os quadros num segundo aparelho: quem espera um aviso não perde os quadros, e vice-versa
+    let mut out = connect(port).await;
+
+    // "Troca de cores", sem fade: âmbar, azul e vermelha no PAR 1 (dimmer, vermelho, verde e azul).
+    // Com o hold longo, só a cue list anda: o passo escolhido acende e chega aos aparelhos
+    for mode in ["fadeInMode", "holdMode", "fadeOutMode"] {
+        chaser[mode] = json!("common");
+    }
+    chaser["common"] = json!({ "fadeInMs": 0, "holdMs": 60000, "fadeOutMs": 0 });
+    cmd(&mut ws, 1, save(&chaser)).await;
+    let run = json!({ "op": "setFunctionRunning", "id": "c1", "running": true });
+    cmd(&mut ws, 2, run).await;
+    frame_until(&mut out, "u1", |f| f[..4] == [255, 255, 140, 0]).await;
+    let go = json!({ "op": "stepChaser", "id": "c1", "action": { "go": 2 } });
+    cmd(&mut ws, 3, go).await;
+    evt_until(&mut ws, "chaserSteps", |d| {
+        *d == json!([{ "chaser": "c1", "step": 2 }])
+    })
+    .await;
+    frame_until(&mut out, "u1", |f| f[..4] == [255, 255, 0, 0]).await;
+    // Depois do último, o primeiro
+    let next = json!({ "op": "stepChaser", "id": "c1", "action": "next" });
+    cmd(&mut ws, 4, next).await;
+    frame_until(&mut out, "u1", |f| f[..4] == [255, 255, 140, 0]).await;
+
+    // Com passos de 200 ms, ele anda sozinho, e o hold mais curto que o tempo que já passou troca
+    // o passo na hora
+    chaser["common"]["holdMs"] = json!(200);
+    cmd(&mut ws, 5, save(&chaser)).await;
+    for colors in [[255, 0, 0, 255], [255, 255, 0, 0], [255, 255, 140, 0]] {
+        frame_until(&mut out, "u1", |f| f[..4] == colors).await;
+    }
+
+    // Single Shot: no fim, apaga e sai das criações rodando
+    chaser["runOrder"] = json!("singleShot");
+    cmd(&mut ws, 6, save(&chaser)).await;
+    evt_until(&mut ws, "running", |d| *d == json!([])).await;
+    frame_until(&mut out, "u1", |f| f[0] == 0).await;
 }

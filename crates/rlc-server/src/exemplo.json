@@ -3263,6 +3263,7 @@
     "runOrder": "loop",
     "direction": "forward",
     "beats": false,
+    "keepLast": false,
     "fadeInMode": "perStep",
     "holdMode": "perStep",
     "fadeOutMode": "default",
@@ -3313,6 +3314,7 @@
     "runOrder": "pingPong",
     "direction": "forward",
     "beats": false,
+    "keepLast": false,
     "fadeInMode": "common",
     "holdMode": "common",
     "fadeOutMode": "common",
@@ -4391,7 +4393,8 @@
      ],
      "fadeIn": true,
      "fadeOut": true,
-     "hold": false
+     "hold": false,
+     "beats": true
     },
     {
      "id": "cl1",

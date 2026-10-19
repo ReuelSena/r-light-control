@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import { Camera, Film, Layers, LayoutGrid, Orbit, Repeat } from 'lucide-vue-next'
-import type { Chaser } from '~/types/generated/Chaser'
 import type { Efx } from '~/types/generated/Efx'
+import type { Function } from '~/types/generated/Function'
 import type { RgbMatrix } from '~/types/generated/RgbMatrix'
 
 export type { FunctionType } from '~/types/generated/FunctionType'
@@ -78,16 +78,20 @@ export function matrixColor(m: RgbMatrix, x: number, y: number, w: number, step:
   }
 }
 
-/** Passo atual de um chaser (ou sequência) rodando há `ms`. Simplificado: só o tempo de cada passo. */
-export function chaserStep(c: Chaser, ms: number) {
-  const durations = c.steps.map((s) => {
-    const fadeIn = c.fadeInMode === 'common' ? c.common.fadeInMs : s.timing.fadeInMs
-    const hold = c.holdMode === 'common' ? c.common.holdMs : s.timing.holdMs
-    return Math.max(fadeIn + hold, 100)
-  })
-  const total = durations.reduce((sum, d) => sum + d, 0)
-  if (!total) return -1
-  let t = ms % total
-  const i = durations.findIndex((d) => (t -= d) < 0)
-  return c.direction === 'backward' ? c.steps.length - 1 - i : i
+/** A criação dispara `target`, direto ou por outra (passos de chaser e coleções). Como no QLC+, uma
+ * criação não pode conter a si mesma: as listas de passos e de coleção escondem essas. */
+export function contains(functions: Function[], fn: Function, target: string) {
+  const members = (f: Function) => (f.type === 'chaser' ? f.steps.map((s) => s.function) : f.type === 'collection' ? f.functions : [])
+  // Cópia: a lista da coleção é o estado do app
+  const stack = [...members(fn)]
+  const seen = new Set<string>()
+  while (stack.length) {
+    const id = stack.pop()!
+    if (id === target) return true
+    if (seen.has(id)) continue
+    seen.add(id)
+    const f = functions.find((x) => x.id === id)
+    if (f) stack.push(...members(f))
+  }
+  return false
 }

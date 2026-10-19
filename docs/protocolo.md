@@ -41,7 +41,7 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 - **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`.
 - **Arquivo e biblioteca:** `projectPath`, `dirty`, `recovered`, `projects` (os projetos da pasta, relidos a cada segundo) e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
-- **Ao vivo:** `running`, `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (as fixtures do "Localizar").
+- **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (as fixtures do "Localizar").
 
 `stats` e `interfaces` chegam a cada segundo, com os números do Monitoramento.
 
@@ -90,10 +90,11 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `importQxf` | `fileName, content` | Converte o `.qxf` (crate `rlc-qxf`) e põe na biblioteca, como um `saveFixtureDef`: a mesma fixture (fabricante e modelo) substitui a anterior. Resposta: `ImportReport`, com os avisos da conversão. Um arquivo que não é fixture é recusado |
 | `addUniverse` / `updateUniverse` / `removeUniverse` | — / `universe` / `id` | Universos e a interface de saída de cada um. Uma interface manda um universo só: escolhida num, sai do outro. Um universo com fixtures não é removido |
 | `setRemoteAccess` | `enabled, pin?` | Acesso pela rede local e PIN |
-| `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio; remove (e tira dos passos de chaser, das coleções e do console) |
+| `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio (recusa a que contém a si mesma, direto ou por outra, como no QLC+); remove (e tira dos passos de chaser, das coleções e do console) |
 | `saveFolder` / `removeFolder` | `folder` / `id` | Pasta do Studio (de um tipo só); remover solta as criações dela. Mover uma criação de pasta é um `saveFunction` com outro `folder` |
-| `setFunctionRunning` | `id, running` | Roda ou para uma criação. A cena acende com o fade in e apaga com o fade out; as outras criações acendem a partir da F7 |
-| `stopAllFunctions` | — | Para todas as criações rodando, cada uma com o seu fade out ("Parar todas" do Studio e Stop All do console), baixa os sliders de playback e solta os passos escolhidos nas cue lists |
+| `setFunctionRunning` | `id, running` | Roda ou para uma criação. A cena acende com o fade in e apaga com o fade out; o chaser e a sequência andam pelos passos; a coleção dispara as criações dela. O EFX e o RGB Matrix acendem a partir da F8 e da F9 |
+| `stepChaser` | `id, action` | Cue list: leva um chaser ou uma sequência a outro passo (`"next"`, `"previous"` ou `{ "go": passo }`, a partir de 0), na hora, com os fades do passo. Parado, ele passa a rodar: "próximo" no primeiro passo e "anterior" no último. A ordem (Loop, Ping Pong, Random) fica com o motor |
+| `stopAllFunctions` | — | Para todas as criações rodando, cada uma com o seu fade out ("Parar todas" do Studio e Stop All do console), e baixa os sliders de playback |
 | `panic` | `all` | Pânico: o mesmo do `stopAllFunctions`, mas na hora, sem fade out. Com `all` (o segundo toque), também zera a Mesa simples inteira e desliga o padrão de teste, a prévia e o "Localizar" |
 | `setDeskLevel` | `universe, channel, value` | Fader de um canal da Mesa simples (canal de 1 a 512, valor de 0 a 255) |
 | `setDeskGroupLevel` | `group, value` | Fader de um grupo de canais na Mesa simples: grava o nível do grupo e o valor em cada canal dele (os faders de canal acompanham) |
@@ -102,7 +103,7 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `saveWidgets` | `widgets` | Cria ou substitui vários elementos do console de uma vez (mover, alinhar, colar, copiar layout) |
 | `removeWidgets` | `ids` | Remove elementos; os filhos de uma moldura removida vão junto |
 | `setWidgetValue` | `widget, value` | Valor ao vivo de um elemento (ver `widgetValues` abaixo); `value` vazio solta o valor |
-| `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global |
+| `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global (de 30 a 300). O `setBpm` é o tap: a batida do motor recomeça na hora dele, e o toque conta como a batida mais perto dele |
 | `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
 | `setPreview` | `function?` | Cena em prévia na luz (só cenas); sem `function`, desliga. Uma por vez, acima das criações rodando e abaixo da Mesa simples |
 | `setHighlight` | `fixtures` | Fixtures do "Localizar": dimmer e RGBW a 100%, shutter no padrão, acima da Mesa simples; vazio apaga |
@@ -119,10 +120,11 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 
 Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 
-- `running`: criações rodando, na ordem de início (na mistura LTP, vence a última);
+- `running`: criações disparadas pelo usuário, na ordem de início (na mistura LTP, vence a última). O que um chaser ou uma coleção dispara não entra. Um Single Shot que apagou no fim sai sozinho;
+- `chaserSteps`: o passo atual (`{ chaser, step }`, a partir de 0) de cada chaser ou sequência da lista `running`, vindo do motor;
 - `desk`: níveis da Mesa simples (não são salvos no projeto);
 - `master`: Grand Master, blackout e BPM;
-- `widgetValues`: valores ao vivo dos elementos do console (não são salvos no projeto): slider e animation `[nível]`, XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms (os fades valem no lugar dos gravados nas cenas da lista dele; com dois elementos para a mesma cena, vale o último mexido), cue list `[passo]` escolhido à mão, botão de apagar fixtures `[1]` quando ligado;
+- `widgetValues`: valores ao vivo dos elementos do console (não são salvos no projeto): slider e animation `[nível]`, XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms ou, com `beats` ("Seguir o BPM"), em milésimos de batida do BPM master (valem no lugar dos tempos gravados nas criações da lista dele: nas cenas, os fades; nos chasers, os tempos de todos os passos, menos a duração em segundos num chaser em batidas; numa coleção, nas criações dela; com dois elementos para a mesma criação, vale o último mexido; um `saveWidgets` que troca o `beats` solta o valor), botão de apagar fixtures `[1]` quando ligado;
 - `stats`: CPU e memória do app, duração do último tick do motor e tempo ligado, para o Monitoramento;
 - `interfaces`: as saídas DMX: a Dummy e as interfaces USB com chip FTDI (id `ftdi-` + número de série), com o tipo (`kind`, e `kindForced` quando escolhido à mão), se estão ligadas, quadros por segundo, maior atraso do último segundo e erros. Desplugada, a interface continua na lista;
 - `testPattern`: o padrão de teste ligado, se houver;
@@ -132,13 +134,13 @@ Os controladores MIDI (`midiDevices`) continuam simulados, vindos do show de exe
 
 **Saída do motor:** camadas, de baixo para cima:
 1. o valor padrão dos canais;
-2. as cenas rodando: dimmer e cores pelo maior valor (HTP), o resto pela última iniciada (LTP), com os fades delas;
+2. as criações rodando: cada cena acesa (sozinha, num passo de chaser ou numa coleção) com os fades dela; dimmer e cores pelo maior valor (HTP), o resto pela última iniciada (LTP). Na troca de passo, o que sai faz o fade out enquanto o que entra faz o fade in;
 3. a prévia;
 4. a Mesa simples;
 5. o "Localizar";
 6. o Grand Master (modo reduzir do QLC+) e o blackout, só nos canais de intensidade (dimmer e cores). Canais sem fixture contam como intensidade.
 
-O padrão de teste substitui as camadas de 1 a 5. Chasers, sequências, coleções, EFX e RGB Matrix entram na saída a partir da F7.
+O padrão de teste substitui as camadas de 1 a 5. O EFX e o RGB Matrix entram na saída na F8 e na F9.
 
 ## Janelas do mesmo aparelho
 

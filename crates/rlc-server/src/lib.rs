@@ -196,6 +196,20 @@ pub async fn start(settings: &Settings) -> anyhow::Result<u16> {
             stats.lock().refresh(&devices);
         }
     });
+    // O passo dos chasers e as criações que terminaram sozinhas; a trava do estado só quando mudam
+    let follow = state.clone();
+    tokio::spawn(async move {
+        let mut every = tokio::time::interval(Duration::from_millis(40));
+        let mut seen = vec![];
+        loop {
+            every.tick().await;
+            let frames = follow.frames.load();
+            if frames.chasers != seen || !frames.done.is_empty() {
+                seen = frames.chasers.clone();
+                follow.lock().follow_engine(&frames);
+            }
+        }
+    });
     let app = Router::new()
         .route("/ws", get(ws_upgrade))
         .fallback(static_file)

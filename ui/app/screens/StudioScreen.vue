@@ -44,7 +44,7 @@ function blank(type: FunctionType): Function {
   const playback = { runOrder: 'loop', direction: 'forward', timing } as const
   const chaser: Chaser = {
     scene: null, steps: [], runOrder: 'loop', direction: 'forward', beats: false,
-    fadeInMode: 'default', holdMode: 'default', fadeOutMode: 'default', common: timing,
+    fadeInMode: 'default', holdMode: 'default', fadeOutMode: 'default', common: timing, keepLast: false,
   }
   switch (type) {
     case 'scene': return { id, name, folder, type, values: [], channelGroups: [], fadeInMs: 0, fadeOutMs: 0 }

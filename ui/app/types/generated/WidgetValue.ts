@@ -2,7 +2,7 @@
 
 /**
  * Valor ao vivo de um elemento do console. Conforme o tipo: slider e animation `[nível]`,
- * XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms, cue list `[passo]`,
- * botão de blackout de fixtures `[1]` quando ligado.
+ * XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms (ou em milésimos de batida, quando
+ * ele segue o BPM), botão de blackout de fixtures `[1]` quando ligado.
  */
 export type WidgetValue = { widget: string, value: Array<number>, };

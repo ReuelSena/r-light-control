@@ -4,7 +4,7 @@
 - **Decisão 1:** as cores misturam pelo maior valor (HTP) em todas as fixtures, como no QLC+. Azul e vermelho rodando juntos dão magenta. Para uma cor por vez, o usuário usa a moldura solo.
 - **Decisão 2:** ao parar uma cena, os canais LTP voltam ao que está embaixo (outra cena rodando ou o valor padrão) durante o fade out. O QLC+ os mantém onde estão. A regra fica num lugar só do motor, para voltar ao jeito do QLC+ se o usuário preferir.
 
-Entregue em 2026-10-18. Na validação, o usuário aprovou 8 dos 12 itens; os outros 4 ainda não foram testados e serão ajustados depois, se precisar.
+Entregue em 2026-10-18. Na validação, o usuário aprovou 8 dos 12 itens; os outros 4 ainda não foram testados e serão ajustados depois, se precisar. Concluída em 2026-10-18, a pedido do usuário; o ajuste do elemento "Tempos" também ficou sem testar e pode ser conferido na validação da F7.
 
 **Ajuste pedido na validação (2026-10-18)**
 - **O elemento "Tempos" do console (VC-3) controla os fades das cenas da lista.** Antes ele só guardava os valores, e as cenas entravam sempre com o fade gravado.

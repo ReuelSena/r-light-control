@@ -31,14 +31,14 @@ function toggleFullscreen() {
   else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {})
 }
 
-// Pânico: um toque para as criações; o segundo toque logo em seguida também zera a mesa simples.
-// O LED fica aceso enquanto houver algo para parar.
+// Pânico: um toque corta as criações na hora (sem fade out); o segundo toque logo em seguida também
+// zera a mesa simples. O LED fica aceso enquanto houver algo para parar.
 const busy = computed(() => state.value.running.length + state.value.desk.levels.length + state.value.desk.groups.length > 0)
 let lastStop = 0
 function stop() {
   const double = Date.now() - lastStop < 400
   lastStop = Date.now()
-  send({ op: double ? 'panic' : 'stopAllFunctions' })
+  send({ op: 'panic', all: double })
 }
 
 // Verde quando todo universo com saída tem a interface conectada

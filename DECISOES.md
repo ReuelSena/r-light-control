@@ -74,6 +74,10 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - Grade de 16, 32 e 48 colunas, para ajuste fino de posição; a célula é quadrada e acompanha a largura. Na edição, a célula mantém o tamanho da operação (o painel de propriedades não aperta os elementos).
   - **Cores dos elementos:** as cores vivas, a versão escura de cada uma (fundo para texto na cor viva) e cinzas do branco ao preto. O elemento Texto tem cor de fundo e de borda.
   - **Fades ao vivo (VC-3):** elemento "Tempos" (como o Speed Dial do QLC+), com a lista das criações que controla e os tempos que ajusta (fade in, fade out e duração, com tap). Sem valor, valem os tempos gravados nas criações.
+    - **Ligado às cenas na F6 (2026-10-18, pedido do usuário):** o fade in e o fade out do elemento valem na entrada e na saída das cenas da lista, inclusive numa troca de cenas. Mexer com a cena rodando vale para a saída dela.
+    - O QLC+ grava o tempo na função. Aqui o tempo gravado não muda: o elemento vale só ao vivo.
+    - Com dois elementos para a mesma cena, vale o último mexido.
+    - A duração entra com os chasers (F7).
 - **E12. Organização da interface.** Menus:
   - **Console:** Virtual Console, com a seção master (Grand Master, Blackout, Stop All e o BPM com tap) fixa ao lado; no celular, uma faixa em cima.
   - **Fixtures:** criação, importação, configuração e agrupamento dos equipamentos.
@@ -137,14 +141,23 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - O projeto tem um único escritor. Cada operação tipada é validada, incrementa a revisão e é difundida a todos os clientes.
   - O servidor é a autoridade. A UI só é otimista no controle que está sob o dedo.
   - **Edição simultânea (2026-10-17):** a última gravação vale, em tudo (inclusive no palco). Não há trava nem mescla.
-  - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acende nada: a saída é a Mesa simples, com o Grand Master e o blackout.
+  - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acendia nada. Desde a F6 (2026-10-18), as cenas acendem; as outras criações acendem a partir da F7.
   - **Sem salvar até a F5 (2026-10-17):** o servidor abre com o show de exemplo; "Novo projeto" funciona, Abrir e Salvar ficam desligados. O que se muda se perde ao fechar o app.
   - **Projetos (2026-10-17, F5):**
     - Arquivos `.rlc` numa pasta só, `Documentos\R Light Control\`, salvos pelo nome e abertos pela lista, também no celular. Salvar guarda a versão anterior em `.rlc.bak`.
     - Ao iniciar, o app abre a recuperação; senão, o último projeto; senão, um projeto em branco. O show de exemplo fica gravado na pasta na primeira vez.
     - Com alterações não salvas, uma cópia de recuperação é gravada a cada mudança (no máximo 1 por segundo). Fechar sem salvar não perde nada: não há a pergunta "Salvar antes de sair?".
   - **Prévia (2026-10-17, F5):** o editor de cena é o programador (E12). O botão "Prévia" manda a cena em edição para a luz; começa desligado ao abrir a cena (como no QLC+ 5) e desliga ao sair do editor. Uma prévia por vez, para todos os aparelhos.
-    - Camadas da saída, de baixo para cima: valor padrão, prévia, Mesa simples, localizar, Grand Master e blackout.
+    - Camadas da saída, de baixo para cima: valor padrão, criações rodando (F6), prévia, Mesa simples, localizar, Grand Master e blackout. A prévia fica por cima das criações e mostra a cena exatamente como está.
+  - **Mistura das criações (2026-10-17, F6):**
+    - HTP como no QLC+: o dimmer e as cores (de todas as fixtures) misturam pelo maior valor. Azul e vermelho juntos dão magenta. Para uma cor por vez, a moldura solo.
+    - LTP no resto: vence a criação iniciada por último.
+    - Ao parar, no fade out: a intensidade desce até 0, e o LTP volta ao que está embaixo (outra criação rodando ou o valor padrão). O QLC+ mantém o LTP onde está; a regra fica num lugar só do motor, para voltar ao jeito dele se o usuário preferir.
+    - Fades lineares em inteiros, como no QLC+, a partir do valor que está saindo. Rodas de cor e de gobo, prisma, strobo/shutter, macros, efeitos, velocidades, manutenção e "outros" não fazem fade: mudam no começo do fade in e no fim do fade out.
+    - Canal com fino na fixture: fade em 16 bits, com o fino em 0 quando a cena não o tem.
+    - Editar uma cena rodando vale na hora, sem fade e sem reiniciar.
+    - Stop All e "Parar todas" usam o fade out de cada criação. O pânico (já no primeiro toque), o "Novo" e o "Abrir" cortam na hora.
+    - Grand Master só no modo "reduzir a intensidade". Os modos "limitar" e "todos os canais" do QLC+ ficam de fora.
   - **Localizar (2026-10-17, F5):** acende as fixtures escolhidas (dimmer e RGBW a 100%, shutter no padrão, pan e tilt parados), sem gravar na cena.
   - **Desfazer (2026-10-17, F5):** um histórico só, no servidor, para todos os aparelhos (100 passos). Entram o projeto e a biblioteca; a operação ao vivo, as preferências de cada aparelho, a rede local, o PIN e o tipo da interface ficam de fora. "Novo" e "Abrir" começam um histórico novo. Só pelo teclado por enquanto.
   - **Blackout (2026-10-17):** como no QLC+, zera só os canais de intensidade (dimmer e cores) e mantém o resto (pan, tilt, gobo), para os moving heads não se mexerem. Canais sem fixture contam como intensidade.
@@ -224,3 +237,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-17 | Pedido do usuário: desfazer e refazer (Ctrl + Z e Ctrl + Shift + Z) em todas as telas, na F5, menos com o console em operação (E12). Sai do backlog da v2. |
 | 2026-10-17 | Mini-plano da F5 aprovado: projetos numa pasta só, recuperação automática, prévia desligada ao abrir a cena, Mesa simples acima da prévia, localizar e desfazer com histórico único (A2, E12). Sem projeto anterior, o app abre em branco. |
 | 2026-10-17 | F5 entregue: projetos em arquivo, recuperação, prévia, localizar e desfazer. A recuperação é gravada no segundo seguinte à mudança, e a lista de projetos é relida a cada segundo (A2, A5). |
+| 2026-10-17 | F5 validada pelo usuário e concluída. Início da F6 (estudo das referências e mini-plano). |
+| 2026-10-17 | Mini-plano da F6 aprovado: cores em HTP como no QLC+ (moldura solo para uma cor por vez); ao parar, o LTP volta ao que está embaixo; rodas e gobo sem fade; prévia acima das criações; Stop All com fade out e pânico na hora; Grand Master só "reduzir" (A2). |
+| 2026-10-18 | F6 entregue: cenas misturadas no motor (HTP/LTP), fades em inteiros e em 16 bits, edição ao vivo. O pânico corta já no primeiro toque (`panic { all }`) (A2, A3). |
+| 2026-10-18 | Pedido na validação da F6: o elemento "Tempos" (VC-3) passa a controlar o fade in e o fade out das cenas da lista já na F6, sem mexer nos tempos gravados (E11). |

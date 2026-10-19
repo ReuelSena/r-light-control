@@ -21,7 +21,8 @@ use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
 use crate::apply::{
-    Topic, apply, empty_project, highlight_levels, is_live, new_id, preview_levels, universe_patch,
+    Topic, apply, empty_project, highlight_levels, is_live, new_id, preview_levels, running_scenes,
+    universe_patch,
 };
 use crate::{library, project};
 
@@ -189,6 +190,11 @@ impl Hub {
 
     /// Aplica uma operação de um cliente. Recusada, nada muda e ninguém é avisado.
     pub fn command(&mut self, op: Op) -> Result<Value, String> {
+        // O pânico, o "Novo" e o "Abrir" param as cenas sem fade out
+        let cut = matches!(
+            op,
+            Op::Panic { .. } | Op::NewProject | Op::OpenProject { .. }
+        );
         let (topics, reply) = match op {
             Op::OpenProject { name } => (self.open(&name)?, Value::Null),
             Op::SaveProject { name } => (self.save(name)?, Value::Null),
@@ -196,6 +202,9 @@ impl Hub {
             Op::Redo => (self.step_back(false)?, Value::Null),
             op => self.edit(op)?,
         };
+        if cut {
+            self.engine.send(Command::Cut);
+        }
         self.publish(&topics);
         self.sync_engine(&topics);
         Ok(reply)
@@ -457,6 +466,21 @@ impl Hub {
                     *patched = patched_universe(p, &slot.interface);
                 }
             }
+        }
+        // As cenas rodando acompanham as edições, inclusive a da própria cena, e os tempos ajustados
+        // ao vivo no console
+        if any(&[
+            Topic::Project,
+            Topic::Universes,
+            Topic::Fixtures,
+            Topic::FixtureDefs,
+            Topic::Functions,
+            Topic::Running,
+            Topic::Console,
+            Topic::WidgetValues,
+        ]) {
+            self.engine
+                .send(Command::Scenes(running_scenes(&self.snapshot)));
         }
         if any(&[Topic::Project, Topic::Desk]) {
             self.engine

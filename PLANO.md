@@ -156,9 +156,9 @@ Validação:
 - [x] Relatório correto.
 - [x] Conferência manual contra o QLC+.
 
-### F5 — Patch, projeto e programador · 🟡
+### F5 — Patch, projeto e programador · ✅
 
-Mini-plano: [docs/fases/fase-05.md](docs/fases/fase-05.md) (aprovado em 2026-10-17; entregue, aguardando a validação do usuário).
+Mini-plano: [docs/fases/fase-05.md](docs/fases/fase-05.md) (aprovado em 2026-10-17). Concluída e validada pelo usuário em 2026-10-17.
 
 - **Projeto:** fixtures embutidas; patch com conflitos e endereçamento automático (prontos desde a F2 e a F3).
 - **Grupos de canais:** gravados no projeto e usados pelos faders da mesa simples, das cenas (F6) e do console (F10).
@@ -172,42 +172,46 @@ Mini-plano: [docs/fases/fase-05.md](docs/fases/fase-05.md) (aprovado em 2026-10-
   - `qmlui/tardis/tardis.cpp`
 
 Validação (detalhada em [docs/fases/fase-05.md](docs/fases/fase-05.md)):
-- [ ] 20 fixtures em 2 universos.
-- [ ] Conflito sinalizado.
-- [ ] Salvar → reabrir dá um projeto idêntico.
-- [ ] Recuperação após matar o processo.
-- [ ] Prévia: a cena em edição muda a luz na hora; desligada, nada muda.
-- [ ] Localizar acende a fixture certa no palco.
-- [ ] Celular e desktop sincronizados (inclusive a prévia e o Localizar).
-- [ ] Ctrl + Z e Ctrl + Shift + Z desfazem e refazem em todas as telas; com o console em operação, as teclas vão para os elementos.
-- [ ] `pnpm check` passa.
+- [x] 20 fixtures em 2 universos.
+- [x] Conflito sinalizado.
+- [x] Salvar → reabrir dá um projeto idêntico.
+- [x] Recuperação após matar o processo.
+- [x] Prévia: a cena em edição muda a luz na hora; desligada, nada muda.
+- [x] Localizar acende a fixture certa no palco.
+- [x] Celular e desktop sincronizados (inclusive a prévia e o Localizar).
+- [x] Ctrl + Z e Ctrl + Shift + Z desfazem e refazem em todas as telas; com o console em operação, as teclas vão para os elementos.
+- [x] `pnpm check` passa.
 
 ## Etapa C — Funções
 
-### F6 — Merge, fades e Cena · ⬜
+### F6 — Merge, fades e Cena · 🟡
 
-- **Merge:** HTP na intensidade e LTP por ordem de início no resto.
-- **Faders:** prioridades, fades e crossfades em f32, canais fine de 16 bits.
-- **Grand Master:** Limit/Reduce × Intensity/All.
+Mini-plano: [docs/fases/fase-06.md](docs/fases/fase-06.md) (aprovado em 2026-10-17; entregue em 2026-10-18). Validação em andamento: o elemento "Tempos" foi ligado às cenas a pedido do usuário.
+
+- **Merge:** HTP na intensidade (dimmer e cores, como no QLC+) e LTP por ordem de início no resto. Ao parar, o LTP volta ao que está embaixo.
+- **Fades:** lineares em inteiros (os números do QLC+), do valor atual, com canais finos de 16 bits. Rodas, gobo, prisma e strobo mudam de uma vez.
+- **Grand Master:** só reduzir a intensidade (os modos Limit e All saíram do plano).
 - **Cena:** gravada do programador e editável enquanto roda. Stop All.
 - **Testes:** portados de `engine/test/{universe,genericfader,fadechannel,scene,grandmaster}`.
-- **Ponto de partida (F5):**
-  - Camadas da saída hoje, de baixo para cima: valor padrão, prévia (a cena em edição), Mesa simples, Localizar, Grand Master e blackout (`rlc-engine`).
-  - O mini-plano decide onde as criações rodando entram nessas camadas.
-  - "Rodar" ainda não acende nada (A2).
-  - O programador é o editor de cena com a Prévia (E12).
+- **Camadas da saída (decididas no mini-plano):** valor padrão, criações rodando, prévia (a cena em edição), Mesa simples, Localizar, Grand Master e blackout (`rlc-engine`). O programador continua sendo o editor de cena com a Prévia (E12).
+- **Tempos (VC-3), ajuste da validação:** o elemento do console troca o fade in e o fade out das cenas da lista, sem mexer nos tempos gravados.
 - **Ref:** `engine/src/{universe,genericfader,fadechannel,function,scene}.cpp`
 
 Validação:
-- [ ] Duas cenas sobrepostas: maior dimmer vence; para a cor, vence a última iniciada.
-- [ ] GM a 50% reduz só a intensidade.
-- [ ] Tick abaixo de 2 ms com 4 universos.
+- [x] Duas cenas sobrepostas: maior dimmer vence e as cores se misturam (HTP). _Na posição (vence a última iniciada), ainda não testado._
+- [x] GM a 50% reduz só a intensidade.
+- [ ] Tick abaixo de 2 ms com 4 universos. _Ainda não testado (o teste automático mede 0,2 ms no app compilado)._
+- [ ] O elemento "Tempos" troca o fade in e o fade out das cenas da lista (ajuste pedido na validação).
 
 ### F7 — Chaser, Sequência, Coleção e BPM · ⬜
 
 - **Chaser:** modos de velocidade Default/Common/PerStep, crossfade, next/prev/goto, run order Loop/SingleShot/PingPong/Random.
 - **Sequência** e **Coleção.**
 - **Tempo:** BPM global com tap tempo.
+- **Ponto de partida (F6):**
+  - O motor (`rlc-engine`) mistura as cenas rodando: um fader por cena, na ordem de início, com fade in e fade out. O servidor manda as cenas já nos endereços DMX (`running_scenes` em `apply.rs`).
+  - Os passos de um chaser podem entrar como cenas nesse mesmo mecanismo.
+  - Chasers, sequências e coleções ainda não acendem.
 - **Ref:** `engine/src/{chaser,chaserrunner,chaserstep,sequence,collection}.cpp`
 
 Validação:
@@ -360,7 +364,7 @@ Validação:
 
   Protótipo na F2; implementação na F10/F11. O blackout por fixtures ou grupos não existe no QLC+.
 - **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Os elementos são os mesmos em todos os formatos (só a posição muda), e o formato vem da largura da tela, com troca no ⚙ (E11). Protótipo na F2 (rodada 3); implementação na F10.
-- **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3); implementação na F10/F11, sobre os fades da F6.
+- **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3). O fade in e o fade out das cenas foram ligados na F6 (2026-10-18, pedido do usuário); a duração entra na F7, com os chasers.
 
 ---
 

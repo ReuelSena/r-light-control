@@ -941,10 +941,13 @@ pub enum Op {
         id: Id,
         running: bool,
     },
-    /// Para todas as criações rodando (Studio e Stop All do console).
+    /// Para todas as criações rodando, cada uma com o seu fade out (Studio e Stop All do console).
     StopAllFunctions,
-    /// Pânico: para todas as criações e zera a mesa simples inteira.
-    Panic,
+    /// Pânico: para todas as criações na hora, sem fade out. Com `all` (o segundo toque), também zera
+    /// a mesa simples inteira.
+    Panic {
+        all: bool,
+    },
     SetDeskLevel {
         universe: Id,
         channel: u16,

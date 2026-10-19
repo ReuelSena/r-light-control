@@ -2,8 +2,10 @@
 //! estado que mudaram, que viram os avisos `evt` (A3). As regras vêm do motor de mentira da F2.
 //! Uma operação recusada não muda nada.
 
+use std::time::Duration;
+
 use rlc_core::*;
-use rlc_engine::UniversePatch;
+use rlc_engine::{RunningScene, SceneLevel, UniversePatch};
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
@@ -143,7 +145,7 @@ pub fn is_live(op: &Op) -> bool {
         op,
         Op::SetFunctionRunning { .. }
             | Op::StopAllFunctions
-            | Op::Panic
+            | Op::Panic { .. }
             | Op::SetDeskLevel { .. }
             | Op::SetDeskGroupLevel { .. }
             | Op::ResetDesk { .. }
@@ -164,7 +166,7 @@ pub type Applied = Result<(Vec<Topic>, Value), String>;
 
 pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
     use Topic as T;
-    let panic = op == Op::Panic;
+    let panic_all = op == (Op::Panic { all: true });
     let p = &mut s.project;
     let topics = match op {
         Op::NewProject => {
@@ -398,8 +400,9 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Running]
         }
         // Parar também baixa os sliders de playback e solta os passos escolhidos nas cue lists.
-        // O pânico também zera a Mesa simples e desliga o padrão de teste.
-        Op::StopAllFunctions | Op::Panic => {
+        // O pânico corta as cenas na hora (no hub); com `all`, também zera a Mesa simples e desliga o
+        // padrão de teste, a prévia e o "Localizar".
+        Op::StopAllFunctions | Op::Panic { .. } => {
             s.running.clear();
             let playback: Vec<&Id> = p
                 .console
@@ -414,7 +417,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 .collect();
             s.widget_values.retain(|v| !playback.contains(&&v.widget));
             let mut topics = vec![T::Running, T::WidgetValues];
-            if panic {
+            if panic_all {
                 s.desk = Desk {
                     levels: vec![],
                     groups: vec![],
@@ -683,18 +686,114 @@ pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
             let mut patch = UniversePatch {
                 id: u.id.clone(),
                 intensity: Box::new([true; 512]),
+                fades: Box::new([true; 512]),
                 defaults: Box::new([0; 512]),
             };
             for f in p.fixtures.iter().filter(|f| f.universe == u.id) {
                 for (i, channel) in mode_channels(p, f).enumerate() {
                     let index = (usize::from(f.address) + i).checked_sub(1);
                     if let Some(c) = index.filter(|&c| c < 512) {
+                        use Attribute::*;
                         patch.intensity[c] = is_intensity(channel.attribute);
+                        // Rodas, gobo, prisma, strobo, macros… mudam de uma vez
+                        patch.fades[c] = patch.intensity[c]
+                            || matches!(
+                                channel.attribute,
+                                Pan | Tilt | Focus | Zoom | Iris | ColorTemperature
+                            );
                         patch.defaults[c] = channel.default;
                     }
                 }
             }
             patch
+        })
+        .collect()
+}
+
+/// Cenas rodando, na ordem de início, nos endereços DMX, com os fades que valem agora. O canal fino
+/// vai junto do grosso, para o fade em 16 bits; sem o fino na cena, ele vale 0.
+pub fn running_scenes(s: &Snapshot) -> Vec<RunningScene> {
+    let p = &s.project;
+    s.running
+        .iter()
+        .filter_map(|id| {
+            let function = p.functions.iter().find(|f| &f.id == id)?;
+            let FunctionKind::Scene(scene) = &function.kind else {
+                return None;
+            };
+            let mut levels = Vec::new();
+            for fixture in &p.fixtures {
+                // Valores da cena nesta fixture, pela posição do canal no modo
+                let values: Vec<(usize, u8)> = scene
+                    .values
+                    .iter()
+                    .filter(|v| v.fixture == fixture.id)
+                    .map(|v| (usize::from(v.channel), v.value))
+                    .collect();
+                let value = |pos: usize| values.iter().find(|(i, _)| *i == pos).map(|(_, v)| *v);
+                let channels: Vec<&Channel> = mode_channels(p, fixture).collect();
+                for &(pos, v) in &values {
+                    let Some(channel) = channels.get(pos) else {
+                        continue;
+                    };
+                    // O k-ésimo fino de um atributo é do k-ésimo canal grosso dele ("Pan, Tilt, Pan
+                    // fino, Tilt fino"); a conta acha o par dos dois lados
+                    let same = channels
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, c)| c.attribute == channel.attribute);
+                    let k = same
+                        .clone()
+                        .filter(|(i, c)| *i < pos && c.fine == channel.fine)
+                        .count();
+                    let pair = same.filter(|(_, c)| c.fine != channel.fine).nth(k);
+                    let pair = pair.map(|(i, _)| i);
+                    // Com os dois na cena, o fino vai junto do grosso
+                    if channel.fine && pair.and_then(value).is_some() {
+                        continue;
+                    }
+                    let Some(address) = channel_address(p, &fixture.id, pos as u16) else {
+                        continue;
+                    };
+                    let fine = pair
+                        .filter(|_| !channel.fine)
+                        .and_then(|i| channel_address(p, &fixture.id, i as u16));
+                    levels.push(SceneLevel {
+                        universe: address.universe,
+                        channel: address.channel,
+                        value: match fine {
+                            Some(_) => {
+                                u16::from(v) << 8 | u16::from(pair.and_then(value).unwrap_or(0))
+                            }
+                            None => u16::from(v),
+                        },
+                        fine: fine.map(|l| l.channel),
+                    });
+                }
+            }
+            // Tempos ajustados ao vivo (VC-3): vale o último elemento "Tempos" mexido que tem a cena
+            // na lista e controla esse tempo; sem nenhum, o tempo gravado na cena
+            let live = |index: usize, controls: fn(&VcSpeedDial) -> bool| {
+                s.widget_values.iter().rev().find_map(|v| {
+                    let widget = p.console.widgets.iter().find(|w| w.id == v.widget)?;
+                    match &widget.kind {
+                        VcWidgetKind::SpeedDial(dial)
+                            if controls(dial) && dial.functions.contains(id) =>
+                        {
+                            v.value.get(index).copied()
+                        }
+                        _ => None,
+                    }
+                })
+            };
+            let fade_in = live(0, |d| d.fade_in).unwrap_or(scene.fade_in_ms);
+            let fade_out = live(1, |d| d.fade_out).unwrap_or(scene.fade_out_ms);
+            Some(RunningScene {
+                id: id.clone(),
+                levels,
+                fade_in: Duration::from_millis(fade_in.into()),
+                fade_out: Duration::from_millis(fade_out.into()),
+            })
         })
         .collect()
 }
@@ -1119,9 +1218,121 @@ mod tests {
             .map(|l| (l.channel, l.value))
             .collect();
         assert_eq!(channels, [(2, 255), (3, 255)]);
-        // O pânico desliga os dois
-        apply(&mut s, Op::Panic).unwrap();
+        // O segundo toque do pânico desliga os dois
+        apply(&mut s, Op::Panic { all: true }).unwrap();
         assert!(s.preview.is_none() && s.highlight.is_empty());
+    }
+
+    #[test]
+    fn running_scenes_go_to_dmx_addresses_in_start_order() {
+        let mut s = example();
+        let chaser = s
+            .project
+            .functions
+            .iter()
+            .find(|f| matches!(f.kind, FunctionKind::Chaser(_)))
+            .unwrap()
+            .id
+            .clone();
+        // O chaser só acende na F7
+        for id in ["s4".into(), chaser, "s1".into()] {
+            apply(&mut s, Op::SetFunctionRunning { id, running: true }).unwrap();
+        }
+        let scenes = running_scenes(&s);
+        let ids: Vec<&str> = scenes.iter().map(|s| s.id.as_str()).collect();
+        assert_eq!(ids, ["s4", "s1"]);
+        assert_eq!(scenes[0].fade_in, Duration::from_secs(1));
+        // MH 1 no 101: pan e tilt levam o fino junto, em 16 bits (sem o fino na cena, ele vale 0)
+        let at = |scenes: &[RunningScene], channel: u16| {
+            let level = scenes[0].levels.iter().find(|l| l.channel == channel);
+            level.map(|l| (l.fine, l.value))
+        };
+        assert_eq!(at(&scenes, 101), Some((Some(102), 128 << 8)));
+        assert_eq!(at(&scenes, 103), Some((Some(104), 128 << 8)));
+        assert_eq!(at(&scenes, 106), Some((None, 255)));
+
+        // Com o fino na cena, ele vai junto do grosso; só o fino (MH 2 no 115) muda só o fino
+        let Some(FunctionKind::Scene(scene)) = s
+            .project
+            .functions
+            .iter_mut()
+            .find(|f| f.id == "s4")
+            .map(|f| &mut f.kind)
+        else {
+            panic!("s4 não é cena");
+        };
+        let value = |fixture: &str, channel, value| SceneValue {
+            fixture: fixture.into(),
+            channel,
+            value,
+        };
+        scene.values.push(value("mh1", 1, 7));
+        scene
+            .values
+            .retain(|v| v.fixture != "mh2" || v.channel != 2);
+        scene.values.push(value("mh2", 3, 9));
+        let scenes = running_scenes(&s);
+        assert_eq!(at(&scenes, 101), Some((Some(102), 128 << 8 | 7)));
+        assert_eq!(at(&scenes, 102), None);
+        assert_eq!(
+            (at(&scenes, 117), at(&scenes, 118)),
+            (None, Some((None, 9)))
+        );
+
+        // Fixture removida sai da cena rodando
+        apply(
+            &mut s,
+            Op::RemoveFixtures {
+                ids: vec!["mh1".into()],
+            },
+        )
+        .unwrap();
+        assert!(running_scenes(&s)[0].levels.iter().all(|l| l.channel > 114));
+    }
+
+    #[test]
+    fn speed_dial_sets_the_fades_of_its_scenes_live() {
+        let mut s = example();
+        for id in ["s1", "s4"] {
+            let op = Op::SetFunctionRunning {
+                id: id.into(),
+                running: true,
+            };
+            apply(&mut s, op).unwrap();
+        }
+        let fades = |s: &Snapshot| {
+            let times = |r: &RunningScene| (r.fade_in.as_millis(), r.fade_out.as_millis());
+            running_scenes(s).iter().map(times).collect::<Vec<_>>()
+        };
+        let dial = |value: Vec<u32>| Op::SetWidgetValue {
+            widget: "sd1".into(),
+            value,
+        };
+        // Sem valor, valem os tempos gravados (1 s)
+        assert_eq!(fades(&s), [(1000, 1000), (1000, 1000)]);
+        // "Fades da frente" controla a s1; a s4 fica com os gravados
+        apply(&mut s, dial(vec![3000, 500, 0])).unwrap();
+        assert_eq!(fades(&s), [(3000, 500), (1000, 1000)]);
+        // Com o fade out desligado no elemento, o fade out volta ao gravado
+        let widget = s.project.console.widgets.iter_mut().find(|w| w.id == "sd1");
+        if let Some(VcWidgetKind::SpeedDial(d)) = widget.map(|w| &mut w.kind) {
+            d.fade_out = false;
+        }
+        assert_eq!(fades(&s)[0], (3000, 1000));
+        // "Gravados" solta o valor
+        apply(&mut s, dial(vec![])).unwrap();
+        assert_eq!(fades(&s)[0], (1000, 1000));
+    }
+
+    #[test]
+    fn only_intensity_position_and_beam_size_fade() {
+        let s = example();
+        let patch = universe_patch(&s.project);
+        // MH 1 no 101: pan, pan fino e dimmer fazem fade; a roda de cor (108) e o gobo (109), não
+        let fades: Vec<bool> = [101, 102, 106, 108, 109]
+            .map(|c| patch[0].fades[c - 1])
+            .into();
+        assert_eq!(fades, [true, true, true, false, false]);
     }
 
     #[test]

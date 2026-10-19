@@ -1,6 +1,6 @@
 # F5 — Patch, projeto e programador
 
-**Status:** mini-plano aprovado em 2026-10-17, com as decisões como recomendado, menos a 2: sem projeto anterior, o app abre um projeto em branco. O show de exemplo fica gravado na pasta dos projetos ("Show de exemplo"), para abrir pela lista. Entregue em 2026-10-17, aguardando a validação do usuário.
+**Status:** mini-plano aprovado em 2026-10-17, com as decisões como recomendado, menos a 2: sem projeto anterior, o app abre um projeto em branco. O show de exemplo fica gravado na pasta dos projetos ("Show de exemplo"), para abrir pela lista. Entregue em 2026-10-17. Validada pelo usuário e concluída em 2026-10-17.
 
 **Entregue**
 - **Projetos:**

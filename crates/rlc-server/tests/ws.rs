@@ -144,3 +144,57 @@ async fn clients_get_state_events_and_the_engine_output() {
         }
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn scenes_fade_in_take_live_edits_and_panic_cuts_them() {
+    let port = server().await;
+    let mut ws = connect(port).await;
+    assert_eq!(next_json(&mut ws).await["t"], "hello");
+    let snapshot = next_json(&mut ws).await;
+    let functions = snapshot["data"]["project"]["functions"].as_array().unwrap();
+    let mut scene = functions.iter().find(|f| f["id"] == "s1").unwrap().clone();
+
+    // "Frente âmbar" (fade in de 1 s) no PAR 1: dimmer, vermelho e verde sobem juntos
+    let run = json!({ "op": "setFunctionRunning", "id": "s1", "running": true });
+    cmd(&mut ws, 1, run.clone()).await;
+    frame_until(&mut ws, "u1", |f| f[0] > 0 && f[0] < 255).await;
+    frame_until(&mut ws, "u1", |f| f[..3] == [255, 255, 140]).await;
+
+    // Editada rodando, vale na hora
+    scene["values"][2]["value"] = json!(60);
+    cmd(
+        &mut ws,
+        2,
+        json!({ "op": "saveFunction", "function": scene }),
+    )
+    .await;
+    frame_until(&mut ws, "u1", |f| f[2] == 60).await;
+
+    // O pânico corta na hora: do aceso direto para o apagado, sem fade out
+    cmd(&mut ws, 3, json!({ "op": "panic", "all": false })).await;
+    frame_until(&mut ws, "u1", |f| {
+        assert!(f[0] == 255 || f[0] == 0, "fade out no pânico: {}", f[0]);
+        f[0] == 0
+    })
+    .await;
+
+    // O elemento "Tempos" do console (VC-3) troca os fades gravados: com o fade in em 0, a cena
+    // entra direto…
+    let dial = |fade_out: u32| json!({ "op": "setWidgetValue", "widget": "sd1", "value": [0, fade_out, 0] });
+    cmd(&mut ws, 4, dial(2000)).await;
+    cmd(&mut ws, 5, run).await;
+    frame_until(&mut ws, "u1", |f| {
+        assert!(f[0] == 0 || f[0] == 255, "fade in com o Tempos: {}", f[0]);
+        f[0] == 255
+    })
+    .await;
+    // …e o fade out mexido com a cena rodando vale ao parar
+    cmd(&mut ws, 6, dial(0)).await;
+    let stop = json!({ "op": "setFunctionRunning", "id": "s1", "running": false });
+    cmd(&mut ws, 7, stop).await;
+    frame_until(&mut ws, "u1", |f| {
+        assert!(f[0] == 255 || f[0] == 0, "fade out com o Tempos: {}", f[0]);
+        f[0] == 0
+    })
+    .await;
+}

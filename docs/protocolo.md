@@ -92,9 +92,9 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `setRemoteAccess` | `enabled, pin?` | Acesso pela rede local e PIN |
 | `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio; remove (e tira dos passos de chaser, das coleções e do console) |
 | `saveFolder` / `removeFolder` | `folder` / `id` | Pasta do Studio (de um tipo só); remover solta as criações dela. Mover uma criação de pasta é um `saveFunction` com outro `folder` |
-| `setFunctionRunning` | `id, running` | Roda ou para uma criação (até a F6, não acende nada) |
-| `stopAllFunctions` | — | Para todas as criações rodando ("Parar todas" do Studio e Stop All do console), baixa os sliders de playback e solta os passos escolhidos nas cue lists |
-| `panic` | — | Pânico: o mesmo do `stopAllFunctions`, zera a Mesa simples inteira e desliga o padrão de teste, a prévia e o "Localizar" |
+| `setFunctionRunning` | `id, running` | Roda ou para uma criação. A cena acende com o fade in e apaga com o fade out; as outras criações acendem a partir da F7 |
+| `stopAllFunctions` | — | Para todas as criações rodando, cada uma com o seu fade out ("Parar todas" do Studio e Stop All do console), baixa os sliders de playback e solta os passos escolhidos nas cue lists |
+| `panic` | `all` | Pânico: o mesmo do `stopAllFunctions`, mas na hora, sem fade out. Com `all` (o segundo toque), também zera a Mesa simples inteira e desliga o padrão de teste, a prévia e o "Localizar" |
 | `setDeskLevel` | `universe, channel, value` | Fader de um canal da Mesa simples (canal de 1 a 512, valor de 0 a 255) |
 | `setDeskGroupLevel` | `group, value` | Fader de um grupo de canais na Mesa simples: grava o nível do grupo e o valor em cada canal dele (os faders de canal acompanham) |
 | `resetDesk` | `universe?` | Zera a Mesa simples: os canais do universo ou, sem ele, os grupos de canais (soltando os canais deles) |
@@ -104,7 +104,7 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `setWidgetValue` | `widget, value` | Valor ao vivo de um elemento (ver `widgetValues` abaixo); `value` vazio solta o valor |
 | `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global |
 | `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
-| `setPreview` | `function?` | Cena em prévia na luz (só cenas); sem `function`, desliga. Uma por vez, abaixo da Mesa simples |
+| `setPreview` | `function?` | Cena em prévia na luz (só cenas); sem `function`, desliga. Uma por vez, acima das criações rodando e abaixo da Mesa simples |
 | `setHighlight` | `fixtures` | Fixtures do "Localizar": dimmer e RGBW a 100%, shutter no padrão, acima da Mesa simples; vazio apaga |
 | `setTestPattern` | `pattern?` | Padrão de teste da saída (`ramp` ou `chase`; sem ele, desliga). Página `/dev/dmx` |
 | `setInterfaceKind` | `interface, kind?` | Tipo de uma interface USB (`enttecPro` ou `openDmx`) escolhido à mão e guardado no `settings.json`; sem `kind`, volta ao automático. A saída reabre no protocolo novo |
@@ -119,10 +119,10 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 
 Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 
-- `running`: criações rodando;
+- `running`: criações rodando, na ordem de início (na mistura LTP, vence a última);
 - `desk`: níveis da Mesa simples (não são salvos no projeto);
 - `master`: Grand Master, blackout e BPM;
-- `widgetValues`: valores ao vivo dos elementos do console (não são salvos no projeto): slider e animation `[nível]`, XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms, cue list `[passo]` escolhido à mão, botão de apagar fixtures `[1]` quando ligado;
+- `widgetValues`: valores ao vivo dos elementos do console (não são salvos no projeto): slider e animation `[nível]`, XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms (os fades valem no lugar dos gravados nas cenas da lista dele; com dois elementos para a mesma cena, vale o último mexido), cue list `[passo]` escolhido à mão, botão de apagar fixtures `[1]` quando ligado;
 - `stats`: CPU e memória do app, duração do último tick do motor e tempo ligado, para o Monitoramento;
 - `interfaces`: as saídas DMX: a Dummy e as interfaces USB com chip FTDI (id `ftdi-` + número de série), com o tipo (`kind`, e `kindForced` quando escolhido à mão), se estão ligadas, quadros por segundo, maior atraso do último segundo e erros. Desplugada, a interface continua na lista;
 - `testPattern`: o padrão de teste ligado, se houver;
@@ -130,7 +130,15 @@ Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 
 Os controladores MIDI (`midiDevices`) continuam simulados, vindos do show de exemplo, até a F12.
 
-**Saída do motor na F3:** a Mesa simples (ou o padrão de teste), com o Grand Master (modo reduzir do QLC+) e o blackout por cima, só nos canais de intensidade (dimmer e cores). Canais sem fixture contam como intensidade. As criações do Studio e o console entram na saída a partir da F6.
+**Saída do motor:** camadas, de baixo para cima:
+1. o valor padrão dos canais;
+2. as cenas rodando: dimmer e cores pelo maior valor (HTP), o resto pela última iniciada (LTP), com os fades delas;
+3. a prévia;
+4. a Mesa simples;
+5. o "Localizar";
+6. o Grand Master (modo reduzir do QLC+) e o blackout, só nos canais de intensidade (dimmer e cores). Canais sem fixture contam como intensidade.
+
+O padrão de teste substitui as camadas de 1 a 5. Chasers, sequências, coleções, EFX e RGB Matrix entram na saída a partir da F7.
 
 ## Janelas do mesmo aparelho
 

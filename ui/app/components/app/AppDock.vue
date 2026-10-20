@@ -11,6 +11,8 @@ const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
 let api: DockviewApi | undefined
+let layoutListener: { dispose(): void } | undefined
+onBeforeUnmount(() => layoutListener?.dispose())
 
 function open(id: ScreenId) {
   const panel = api?.getPanel(id)
@@ -30,7 +32,8 @@ function onReady(event: DockviewReadyEvent) {
     api.addPanel({ id: 'patch', component: 'screen', title: t('screens.patch'), params: { screen: 'patch' }, position: { referencePanel: 'fixtures', direction: 'right' } })
   }
   if (isScreen(route.params.screen)) open(route.params.screen)
-  api.onDidLayoutChange(() => {
+  // Parar de salvar ao desmontar: o dock se desfaz e o layout vazio apagaria o salvo
+  layoutListener = api.onDidLayoutChange(() => {
     try {
       localStorage.setItem(LAYOUT, JSON.stringify(api!.toJSON()))
     } catch {

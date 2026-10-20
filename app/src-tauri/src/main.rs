@@ -31,6 +31,9 @@ fn main() -> anyhow::Result<()> {
                 .title("R Light Control")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(800.0, 600.0)
+                // Sem o tratador de arrastar e soltar do Tauri, que no Windows engole o arrastar do
+                // navegador: o dock (E13) precisa dele para separar as abas.
+                .disable_drag_drop_handler()
                 .on_document_title_changed(|window, title| {
                     let _ = window.set_title(&title);
                 })
@@ -57,6 +60,7 @@ fn open_window(app: AppHandle, url: Url) {
         let label = format!("janela-{}", COUNT.fetch_add(1, Ordering::Relaxed));
         let built = WebviewWindowBuilder::new(&app, label, WebviewUrl::External(url))
             .inner_size(1100.0, 750.0)
+            .disable_drag_drop_handler()
             .on_document_title_changed(|window, title| {
                 let _ = window.set_title(&title);
             })

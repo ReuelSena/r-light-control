@@ -3,6 +3,8 @@ import { Ellipsis, LayoutPanelLeft, Maximize, Minimize, OctagonX, Settings } fro
 
 // Moldura do app: menus (E12) e, conforme a preferência deste aparelho, uma tela por vez
 // ou o modo modular com painéis encaixáveis (E13).
+// Chave fixa: sem ela o Nuxt recria a página a cada tela e o dock recomeça com um painel só
+definePageMeta({ key: 'screen' })
 const route = useRoute()
 const { t } = useI18n()
 const prefs = usePrefs()

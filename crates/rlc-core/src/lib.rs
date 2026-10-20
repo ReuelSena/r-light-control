@@ -397,9 +397,10 @@ pub struct Collection {
 #[serde(rename_all = "camelCase")]
 pub struct Efx {
     pub algorithm: EfxAlgorithm,
-    /// Tamanho e centro do desenho, de 0 a 255 (a escala do pan e do tilt).
+    /// Tamanho do desenho para cada lado do centro, de 0 a 127 (127 = o curso inteiro), como no QLC+.
     pub width: u8,
     pub height: u8,
+    /// Centro do desenho, de 0 a 255 (a escala do pan e do tilt). No relativo, 127 não desloca.
     pub x_offset: u8,
     pub y_offset: u8,
     /// Graus.
@@ -413,6 +414,7 @@ pub struct Efx {
     pub relative: bool,
     pub propagation: Propagation,
     pub fixtures: Vec<EfxFixture>,
+    /// Sem a ordem aleatória, como no QLC+.
     pub run_order: RunOrder,
     pub direction: Direction,
     pub timing: Timing,

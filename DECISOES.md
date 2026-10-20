@@ -5,6 +5,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 ## Gerais (regras do usuário)
 
 - **G1. Trabalho em fases com validação.** Executar → o usuário valida → ajustar → só então a próxima fase. Nenhuma fase começa sem a anterior aprovada.
+  - **Validação final (2026-10-19, pedido do usuário):** ele ainda não pode testar com os moving beams. Os testes que dependem deles saem do checklist da fase e vão para [docs/validacao-final.md](docs/validacao-final.md), feita numa rodada só antes do release (F16).
 - **G2. Interface e padrões primeiro.**
   - Os recursos são implementados sobre telas já aprovadas no protótipo (F2).
   - Mudança de tela passa primeiro pelo protótipo e pelo design system, para evitar retrabalho.
@@ -87,9 +88,11 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 - **E12. Organização da interface.** Menus:
   - **Console:** Virtual Console, com a seção master (Grand Master, Blackout, Stop All e o BPM com tap) fixa ao lado; no celular, uma faixa em cima.
   - **Fixtures:** criação, importação, configuração e agrupamento dos equipamentos.
-    - Dois tipos de grupo: **de fixtures** (grade 2D de cabeças, para o RGB Matrix) e **de canais** (como os "Channel Groups" do QLC+: canais de quaisquer fixtures, do mesmo atributo ou misturados, usados em faders do console e da mesa simples e nas cenas).
+    - Dois tipos de grupo: **de fixtures** (grade 2D de cabeças, para o RGB Matrix e o EFX) e **de canais** (como os "Channel Groups" do QLC+: canais de quaisquer fixtures, do mesmo atributo ou misturados, usados em faders do console e da mesa simples e nas cenas).
+    - **Grupo de fixtures (2026-10-19, F8):** cada cabeça entra uma vez só, como no QLC+; pintar uma cabeça que já está no grupo a muda de lugar. No EFX, "Adicionar fixture" tem "Selecionar grupo", que inclui as fixtures do grupo com pan ou tilt na ordem da grade (linha por linha), a ordem da propagação.
     - Na lista, o grupo de canais mostra o ícone do atributo quando todos os canais são do mesmo tipo, e um ícone genérico quando são misturados.
   - **Studio:** todas as criações (cenas, chasers, sequências, coleções, EFX, RGB Matrix…). Cada tipo tem um ícone próprio, usado em todo o projeto para identificá-lo.
+    - **Editor de EFX (2026-10-19, F8):** a ordem não tem "Aleatória" (como no QLC+), e a largura e a altura vão de 0 a 127 para cada lado do centro (127 = o curso inteiro, como no QLC+).
     - A lista agrupa as criações por tipo (sem filtro de tipo; só a busca). Dentro de cada tipo há pastas. Arrastar uma criação a move para uma pasta do mesmo tipo, ou para fora (soltando no título do tipo): com o mouse, clicar e arrastar; no toque, segurar e arrastar.
     - Ao criar uma coleção com criações rodando, o app pergunta se ela nasce vazia ou com as que estão rodando.
   - **Patch.**
@@ -147,7 +150,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - O projeto tem um único escritor. Cada operação tipada é validada, incrementa a revisão e é difundida a todos os clientes.
   - O servidor é a autoridade. A UI só é otimista no controle que está sob o dedo.
   - **Edição simultânea (2026-10-17):** a última gravação vale, em tudo (inclusive no palco). Não há trava nem mescla.
-  - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acendia nada. Desde a F6 (2026-10-18), as cenas acendem; desde a F7 (2026-10-18), os chasers, as sequências e as coleções também. O EFX e o RGB Matrix acendem a partir da F8 e da F9.
+  - **Estado no servidor (2026-10-17):** a partir da F3, todo o estado fica no servidor e o motor de mentira sai da UI. Até a F6, rodar uma criação não acendia nada. Desde a F6 (2026-10-18), as cenas acendem; desde a F7 (2026-10-18), os chasers, as sequências e as coleções também; desde a F8 (2026-10-19), o EFX. O RGB Matrix acende a partir da F9.
   - **Sem salvar até a F5 (2026-10-17):** o servidor abre com o show de exemplo; "Novo projeto" funciona, Abrir e Salvar ficam desligados. O que se muda se perde ao fechar o app.
   - **Projetos (2026-10-17, F5):**
     - Arquivos `.rlc` numa pasta só, `Documentos\R Light Control\`, salvos pelo nome e abertos pela lista, também no celular. Salvar guarda a versão anterior em `.rlc.bak`.
@@ -172,6 +175,12 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - Só aparece rodando o que o usuário disparou (o chaser, a coleção). O que eles disparam não acende o LED do botão nem do Studio, e roda à parte: uma cena pode rodar sozinha e dentro de um chaser ao mesmo tempo, sem uma mexer na outra.
     - Uma criação não contém a si mesma (direto ou por outra), como no QLC+.
     - **BPM:** o motor gera as batidas; o tap recomeça a batida no último toque, que conta como uma batida. Num chaser em batidas, os passos trocam sempre numa batida, ou numa fração dela quando o passo é menor que uma batida (2026-10-19; o QLC+ só conta batidas inteiras).
+  - **EFX (2026-10-19, F8):**
+    - O motor anda cada fixture pelo desenho (as contas do QLC+), e o ponto vira pan e tilt, em 16 bits com o fino. O que passa do curso fica na ponta. O EFX só mexe no pan e no tilt; a luz vem de uma cena.
+    - Cada fixture tem um fader da mistura, como uma cena: no fade in, sai da posição em que está e entra no desenho; ao parar, volta no fade out ao que está embaixo (a decisão 2 da F6). No QLC+, o desenho cresce do centro, e não há fade out.
+    - **Relativo:** o desenho é somado ao que está embaixo, com o zero em 127: as criações rodando, em qualquer ordem de início, e a prévia (o programador). A camada fica entre a prévia e a Mesa simples.
+    - **Propagação:** "Defasadas" põe cada fixture 1/n da volta à frente da anterior (com 4, 90°, como a prévia do QLC+; o motor do QLC+ usa 1/(n+1)). "Em sequência", cada uma começa o desenho do início 1/n da volta depois da anterior e, até a vez dela, fica onde está.
+    - Mudar a duração da volta (no editor, no elemento "Tempos" ou no BPM, com a volta em batidas) continua do ponto onde está, sem salto. "Uma vez" anda uma volta e termina; "Vai e volta" vira o sentido a cada volta, sem salto, também na linha.
   - **Localizar (2026-10-17, F5):** acende as fixtures escolhidas (dimmer e RGBW a 100%, shutter no padrão, pan e tilt parados), sem gravar na cena.
   - **Desfazer (2026-10-17, F5):** um histórico só, no servidor, para todos os aparelhos (100 passos). Entram o projeto e a biblioteca; a operação ao vivo, as preferências de cada aparelho, a rede local, o PIN e o tipo da interface ficam de fora. "Novo" e "Abrir" começam um histórico novo. Só pelo teclado por enquanto.
   - **Blackout (2026-10-17):** como no QLC+, zera só os canais de intensidade (dimmer e cores) e mantém o resto (pan, tilt, gobo), para os moving heads não se mexerem. Canais sem fixture contam como intensidade.
@@ -192,6 +201,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
   - JSON com `{format, schemaVersion}`. Ao carregar, uma cadeia de migrações converte versões antigas.
     - **Versão 2 do projeto (2026-10-18, F7):** a opção "manter o último passo" dos chasers e sequências. A versão 1 abre com ela desligada (apagar no fim).
     - **Versão 3 (2026-10-19, F7):** a chave "Seguir o BPM" do elemento "Tempos". As versões anteriores abrem com ela ligada.
+    - **Versão 4 (2026-10-19, F8):** o EFX sem a ordem aleatória e com a largura e a altura até 127. O EFX em "Aleatória" abre em "Repetir", e o tamanho acima de 127 abre em 127.
   - Escrita atômica (arquivo temporário + rename) e `.bak`.
 
 ## Registro
@@ -261,3 +271,8 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-18 | Mini-plano da F7 aprovado: o motor roda os chasers, crossfade como no QLC+, só o que o usuário disparou aparece rodando, Tempos em todos os passos, cue list ligada já na F7, sem criação que contém a si mesma, hold "Padrão" = "Comum" (A2, E11). Pedido do usuário: o fim do Single Shot é uma opção do chaser (apagar ou manter o último passo). |
 | 2026-10-18 | F7 entregue: chasers, sequências e coleções acendem; batidas do BPM no motor; cue list ligada ao chaser; projeto na versão 2 (A5). Um chaser sem passos fica rodando sem acender, e "anterior" no primeiro passo de um Single Shot não faz nada. |
 | 2026-10-19 | Pedido na validação da F7: o elemento "Tempos" ganha "Seguir o BPM" (ligada por padrão): tempos em batidas do BPM master, TAP único com o master, chasers da lista nas batidas, passos de fração de batida no tempo (E11, VC-3; projeto na versão 3, A5). |
+| 2026-10-19 | F7 concluída a pedido do usuário, sem a validação (exceção ao G1): os itens dela e os da F6 que ficaram serão testados junto com a F8. Início da F8 (estudo das referências e mini-plano). |
+| 2026-10-19 | Mini-plano da F8 aprovado: o EFX entra e sai como as cenas; o relativo desenha em volta das criações e da prévia; defasagem de 1/n da volta; editor de EFX sem "Aleatória", com largura e altura até 127 e grupos em "Adicionar fixture" (A2, E12). |
+| 2026-10-19 | F8 entregue: EFX no motor, nos chasers, nas coleções e no elemento "Tempos"; grupos de fixtures conferidos no servidor; projeto na versão 4 (A2, A5). |
+| 2026-10-19 | Pedido do usuário: os testes com os moving beams vão para um plano de validação final (`docs/validacao-final.md`), antes do release (G1). Para lá foram os da F6 (a posição entre cenas e os fades nos Beams), o deslizar dos Beams no chaser da F7 e os do EFX da F8. |
+| 2026-10-19 | F8 commitada a pedido do usuário, antes da validação. O que falta validar (com e sem os moving beams) está nas Pendências do `PLANO.md`; o que ficou de fora da F7 e da F8, no Backlog (só se o usuário pedir). |

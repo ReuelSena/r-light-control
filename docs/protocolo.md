@@ -83,16 +83,16 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `updateFixture` | `fixture` | Substitui a fixture (nome, cor, modo, universo, endereço) |
 | `removeFixtures` | `ids` | Remove fixtures e as referências a elas (grupos, cenas, sequências, EFX, console, palco) |
 | `autoAddress` | `ids, universe, start` | Endereça em sequência, sem buracos |
-| `saveFixtureGroup` / `removeFixtureGroup` | `group` / `id` | Cria ou substitui um grupo de fixtures (grade 2D); remove |
+| `saveFixtureGroup` / `removeFixtureGroup` | `group` / `id` | Cria ou substitui um grupo de fixtures (grade 2D, de 1 a 64 por lado; recusa célula fora da grade, duas cabeças na mesma célula, cabeça repetida ou que não existe); remove (e tira do RGB Matrix e dos botões de blackout) |
 | `saveChannelGroup` / `removeChannelGroup` | `group` / `id` | Cria ou substitui um grupo de canais; remove |
 | `saveFixtureDef` | `def` | Cria ou substitui uma definição na biblioteca (e no projeto, se ele a usa). O id só tem minúsculas, números e hífens (vira o nome do arquivo) |
 | `removeFixtureDef` | `id` | Tira a definição da biblioteca; o projeto continua com a cópia dele |
 | `importQxf` | `fileName, content` | Converte o `.qxf` (crate `rlc-qxf`) e põe na biblioteca, como um `saveFixtureDef`: a mesma fixture (fabricante e modelo) substitui a anterior. Resposta: `ImportReport`, com os avisos da conversão. Um arquivo que não é fixture é recusado |
 | `addUniverse` / `updateUniverse` / `removeUniverse` | — / `universe` / `id` | Universos e a interface de saída de cada um. Uma interface manda um universo só: escolhida num, sai do outro. Um universo com fixtures não é removido |
 | `setRemoteAccess` | `enabled, pin?` | Acesso pela rede local e PIN |
-| `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio (recusa a que contém a si mesma, direto ou por outra, como no QLC+); remove (e tira dos passos de chaser, das coleções e do console) |
+| `saveFunction` / `removeFunction` | `function` / `id` | Cria ou substitui uma criação do Studio (recusa a que contém a si mesma, direto ou por outra, como no QLC+; no EFX, recusa largura ou altura acima de 127, frequência acima de 32, ângulo acima de 359°, a ordem aleatória e fixture repetida ou sem pan e tilt); remove (e tira dos passos de chaser, das coleções e do console) |
 | `saveFolder` / `removeFolder` | `folder` / `id` | Pasta do Studio (de um tipo só); remover solta as criações dela. Mover uma criação de pasta é um `saveFunction` com outro `folder` |
-| `setFunctionRunning` | `id, running` | Roda ou para uma criação. A cena acende com o fade in e apaga com o fade out; o chaser e a sequência andam pelos passos; a coleção dispara as criações dela. O EFX e o RGB Matrix acendem a partir da F8 e da F9 |
+| `setFunctionRunning` | `id, running` | Roda ou para uma criação. A cena acende com o fade in e apaga com o fade out; o chaser e a sequência andam pelos passos; a coleção dispara as criações dela; o EFX move o pan e o tilt das fixtures dele. O RGB Matrix acende a partir da F9 |
 | `stepChaser` | `id, action` | Cue list: leva um chaser ou uma sequência a outro passo (`"next"`, `"previous"` ou `{ "go": passo }`, a partir de 0), na hora, com os fades do passo. Parado, ele passa a rodar: "próximo" no primeiro passo e "anterior" no último. A ordem (Loop, Ping Pong, Random) fica com o motor |
 | `stopAllFunctions` | — | Para todas as criações rodando, cada uma com o seu fade out ("Parar todas" do Studio e Stop All do console), e baixa os sliders de playback |
 | `panic` | `all` | Pânico: o mesmo do `stopAllFunctions`, mas na hora, sem fade out. Com `all` (o segundo toque), também zera a Mesa simples inteira e desliga o padrão de teste, a prévia e o "Localizar" |
@@ -134,13 +134,14 @@ Os controladores MIDI (`midiDevices`) continuam simulados, vindos do show de exe
 
 **Saída do motor:** camadas, de baixo para cima:
 1. o valor padrão dos canais;
-2. as criações rodando: cada cena acesa (sozinha, num passo de chaser ou numa coleção) com os fades dela; dimmer e cores pelo maior valor (HTP), o resto pela última iniciada (LTP). Na troca de passo, o que sai faz o fade out enquanto o que entra faz o fade in;
+2. as criações rodando: cada cena acesa (sozinha, num passo de chaser ou numa coleção) com os fades dela; dimmer e cores pelo maior valor (HTP), o resto pela última iniciada (LTP). Na troca de passo, o que sai faz o fade out enquanto o que entra faz o fade in. O pan e o tilt de cada fixture de um EFX entram na mesma mistura (LTP);
 3. a prévia;
-4. a Mesa simples;
-5. o "Localizar";
-6. o Grand Master (modo reduzir do QLC+) e o blackout, só nos canais de intensidade (dimmer e cores). Canais sem fixture contam como intensidade.
+4. os EFX relativos: o desenho somado ao que está embaixo (as criações e a prévia), com o zero em 127;
+5. a Mesa simples;
+6. o "Localizar";
+7. o Grand Master (modo reduzir do QLC+) e o blackout, só nos canais de intensidade (dimmer e cores). Canais sem fixture contam como intensidade.
 
-O padrão de teste substitui as camadas de 1 a 5. O EFX e o RGB Matrix entram na saída na F8 e na F9.
+O padrão de teste substitui as camadas de 1 a 6. O RGB Matrix entra na saída na F9.
 
 ## Janelas do mesmo aparelho
 

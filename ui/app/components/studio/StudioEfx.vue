@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-vue-next'
+import { ArrowDown, ArrowUp, Grid3x3, Plus, Trash2 } from 'lucide-vue-next'
 import type { Efx } from '~/types/generated/Efx'
 import type { EfxAlgorithm } from '~/types/generated/EfxAlgorithm'
 import type { EfxFixture } from '~/types/generated/EfxFixture'
+import type { FixtureGroup } from '~/types/generated/FixtureGroup'
 import type { Function } from '~/types/generated/Function'
 
 // Editor de EFX: desenho (algoritmo e parâmetros) com prévia animada, fixtures com ordem, sentido
@@ -13,12 +14,13 @@ const { state, send } = useEngine()
 const project = computed(() => state.value.project)
 const now = useClock(33)
 const adding = ref(false)
+const pickingGroup = ref(false)
 
 const algorithms: EfxAlgorithm[] = ['circle', 'eight', 'line', 'line2', 'diamond', 'square', 'squareChoppy', 'squareTrue', 'leaf', 'lissajous']
 type Param = 'width' | 'height' | 'xOffset' | 'yOffset' | 'rotation' | 'xFrequency' | 'yFrequency' | 'xPhase' | 'yPhase'
 const knobs: { key: Param; max: number; lissajous?: boolean }[] = [
-  { key: 'width', max: 255 },
-  { key: 'height', max: 255 },
+  { key: 'width', max: 127 },
+  { key: 'height', max: 127 },
   { key: 'xOffset', max: 255 },
   { key: 'yOffset', max: 255 },
   { key: 'rotation', max: 359 },
@@ -35,8 +37,14 @@ const path = computed(() =>
 const dots = computed(() => efxPositions(props.fn, now.value))
 const fixtureOf = (id: string) => project.value.fixtures.find((f) => f.id === id)
 const candidates = computed(() =>
-  project.value.fixtures.filter((f) => modeChannels(project.value, f).some((c) => c.attribute === 'pan') && !props.fn.fixtures.some((x) => x.fixture === f.id)),
+  project.value.fixtures.filter(
+    (f) => modeChannels(project.value, f).some((c) => c.attribute === 'pan' || c.attribute === 'tilt') && !props.fn.fixtures.some((x) => x.fixture === f.id),
+  ),
 )
+// Fixtures do grupo que podem entrar, na ordem da grade (linha por linha), que é a da propagação
+const groupFixtures = (g: FixtureGroup) =>
+  [...new Set([...g.cells].sort((a, b) => a.y - b.y || a.x - b.x).map((c) => c.fixture))].filter((id) => candidates.value.some((f) => f.id === id))
+const groups = computed(() => project.value.fixtureGroups.filter((g) => groupFixtures(g).length))
 
 function save(changes: Partial<Efx>) {
   send({ op: 'saveFunction', function: { ...props.fn, ...changes } })
@@ -44,6 +52,10 @@ function save(changes: Partial<Efx>) {
 
 function saveFixture(i: number, changes: Partial<EfxFixture>) {
   save({ fixtures: props.fn.fixtures.map((f, k) => (k === i ? { ...f, ...changes } : f)) })
+}
+
+function addFixtures(ids: string[]) {
+  save({ fixtures: [...props.fn.fixtures, ...ids.map((fixture) => ({ fixture, reverse: false, startOffset: 0 }))] })
 }
 
 function move(i: number, by: number) {
@@ -103,7 +115,7 @@ function move(i: number, by: number) {
         <span class="field-label">{{ t('chaser.runOrder') }}</span>
         <RlSegmented
           :model-value="fn.runOrder"
-          :options="(['loop', 'singleShot', 'pingPong', 'random'] as const).map((value) => ({ value, label: t(`runOrder.${value}`) }))"
+          :options="(['loop', 'singleShot', 'pingPong'] as const).map((value) => ({ value, label: t(`runOrder.${value}`) }))"
           @update:model-value="(runOrder) => save({ runOrder })"
         />
         <span class="field-label">{{ t('chaser.direction') }}</span>
@@ -150,8 +162,24 @@ function move(i: number, by: number) {
       <RlButton size="sm" :aria-label="t('common.remove')" @press="save({ fixtures: fn.fixtures.filter((_, k) => k !== i) })"><Trash2 :size="14" /></RlButton>
     </div>
 
-    <RlDialog v-model:open="adding" :title="t('efx.addFixture')" sheet>
+    <RlDialog v-model:open="adding" :title="t('efx.addFixture')" :info="t('efx.addFixtureInfo')" sheet>
       <p v-if="!candidates.length" class="text-sm text-fg-muted">{{ t('efx.noCandidates') }}</p>
+      <template v-else-if="groups.length">
+        <div>
+          <RlButton size="sm" highlight="led" :model-value="pickingGroup" @press="pickingGroup = !pickingGroup">{{ t('efx.pickGroup') }}</RlButton>
+        </div>
+        <div v-if="pickingGroup" class="flex flex-wrap gap-1.5">
+          <RlButton
+            v-for="g in groups"
+            :key="g.id"
+            size="sm"
+            @press="addFixtures(groupFixtures(g))"
+          >
+            <Grid3x3 :size="14" />
+            {{ g.name }}
+          </RlButton>
+        </div>
+      </template>
       <div class="flex flex-wrap gap-1.5">
         <RlButton
           v-for="f in candidates"
@@ -159,7 +187,7 @@ function move(i: number, by: number) {
           size="sm"
           highlight="led"
           :color="f.color"
-          @press="save({ fixtures: [...fn.fixtures, { fixture: f.id, reverse: false, startOffset: 0 }] })"
+          @press="addFixtures([f.id])"
         >
           {{ f.name }}
         </RlButton>

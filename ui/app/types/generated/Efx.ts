@@ -8,9 +8,13 @@ import type { Timing } from "./Timing";
 
 export type Efx = { algorithm: EfxAlgorithm, 
 /**
- * Tamanho e centro do desenho, de 0 a 255 (a escala do pan e do tilt).
+ * Tamanho do desenho para cada lado do centro, de 0 a 127 (127 = o curso inteiro), como no QLC+.
  */
-width: number, height: number, xOffset: number, yOffset: number, 
+width: number, height: number, 
+/**
+ * Centro do desenho, de 0 a 255 (a escala do pan e do tilt). No relativo, 127 não desloca.
+ */
+xOffset: number, yOffset: number, 
 /**
  * Graus.
  */
@@ -22,4 +26,8 @@ xFrequency: number, yFrequency: number, xPhase: number, yPhase: number,
 /**
  * Soma o desenho à posição que as fixtures já têm (de uma cena, por exemplo).
  */
-relative: boolean, propagation: Propagation, fixtures: Array<EfxFixture>, runOrder: RunOrder, direction: Direction, timing: Timing, };
+relative: boolean, propagation: Propagation, fixtures: Array<EfxFixture>, 
+/**
+ * Sem a ordem aleatória, como no QLC+.
+ */
+runOrder: RunOrder, direction: Direction, timing: Timing, };

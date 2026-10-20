@@ -3,7 +3,7 @@
 **Status:** mini-plano aprovado em 2026-10-18, com as decisões 1 a 5 como recomendado. A mudança:
 - **Decisão 6:** o fim do Single Shot vira uma opção em cada chaser (e sequência): apagar depois do último passo (o padrão, como no QLC+) ou manter o último passo aceso até alguém parar o chaser.
 
-Entregue em 2026-10-18, aguardando a sua validação.
+Entregue em 2026-10-18. Concluída em 2026-10-19, a seu pedido, sem a validação: os itens do checklist serão testados junto com a F8.
 
 **Ajuste pedido na validação (2026-10-19): o elemento "Tempos" segue o BPM master.** O BPM do master e os segundos do elemento, cada um com o seu TAP, confundiam.
 - **"Seguir o BPM":** chave nova nas propriedades do elemento, ligada por padrão (também no "Fades da frente" e nos outros que já existem).
@@ -16,7 +16,7 @@ Entregue em 2026-10-18, aguardando a sua validação.
 - **Testes:**
   - automáticos: passos de meia batida no tempo (12 e 13 quadros, sem deriva); o tap pouco antes de uma batida conta como ela; os tempos do elemento em batidas nas cenas e nos chasers (também nos em segundos); trocar a chave solta o valor; a migração das versões 1 e 2;
   - no navegador, contra o seu `pnpm dev`: o "Fades da frente" abriu seguindo o BPM; "1/2 bt" com os segundos embaixo; o TAP do master a cada 500 ms deu 113 BPM, e o "Tap BPM" do elemento a cada 1 s deu 60 BPM, com os segundos acompanhando; o "Troca de cores" andou a cada 502 ms em média (meia batida a 60 BPM); desligar a chave voltou o elemento aos segundos.
-- Entregue em 2026-10-19, aguardando a sua validação.
+- Entregue em 2026-10-19 (a validação vai junto com a F8).
 - **Em aberto (sugestão, sem decisão):** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual.
 
 **Entregue**
@@ -215,7 +215,7 @@ Antes de começar:
 - **"Fades da frente"** controla o "Troca de cores": com um valor no elemento, o chaser segue os tempos dele (em batidas do BPM); "Gravados" volta aos tempos do chaser.
 
 Com o rig e a Numbstar:
-- [ ] Chaser de 8 passos com crossfade de 2 s (fade in e fade out de 2 s), suave: o dimmer não pisca entre os passos, e os Beams deslizam de uma posição para a outra.
+- [ ] Chaser de 8 passos com crossfade de 2 s (fade in e fade out de 2 s), suave: o dimmer não pisca entre os passos. _Os Beams deslizando de uma posição para a outra: na [validação final](../validacao-final.md), com os moving beams._
 - [ ] Loop, Ping Pong (sem repetir as pontas) e Random (sem repetir o mesmo passo seguido).
 - [ ] Single Shot: sem a opção, apaga no fim e o LED do chaser apaga; com "Manter o último passo", o último fica aceso até você parar o chaser.
 - [ ] "Para trás" começa pelo último passo.

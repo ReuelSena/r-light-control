@@ -197,11 +197,11 @@ Antes de começar:
 
 Com o rig e a Numbstar:
 - [x] Duas cenas sobrepostas: vence o maior dimmer, e as cores se misturam (azul + vermelho = magenta); numa moldura solo, uma cor por vez.
-- [ ] Na posição dos Beams, vence a última cena iniciada; ao parar a última, eles voltam para a posição da anterior. _Ainda não testado._
+- [ ] Na posição dos Beams, vence a última cena iniciada; ao parar a última, eles voltam para a posição da anterior. _Na [validação final](../validacao-final.md), com os moving beams._
 - [x] Grand Master a 50% reduz só a intensidade; pan, tilt e gobo não mudam.
-- [ ] Fade in e fade out de 3 s suaves. Os Beams andam sem degraus, e a roda de cor e o gobo trocam de uma vez. _Ainda não testado._
+- [ ] Fade in e fade out de 3 s suaves. _Ainda não testado (nos ParLed). Os Beams sem degraus e a roda de cor e o gobo de uma vez: na [validação final](../validacao-final.md)._
 - [x] Editar uma cena rodando muda a luz na hora.
-- [ ] Parar a única cena de posição: os Beams voltam à posição padrão durante o fade out. _Ainda não testado._
+- [ ] Parar a única cena de posição: os Beams voltam à posição padrão durante o fade out. _Na [validação final](../validacao-final.md), com os moving beams._
 - [x] Stop All apaga com o fade out de cada cena; o pânico apaga na hora.
 - [x] Blackout instantâneo com cenas rodando; ao soltar, tudo volta.
 - [x] Um botão do console liga e desliga a cena, com os fades.

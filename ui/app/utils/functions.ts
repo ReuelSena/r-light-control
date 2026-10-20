@@ -36,8 +36,16 @@ function efxShape(efx: Efx, t: number): [number, number] {
     case 'squareChoppy': return [round(cos(t)), round(sin(t))]
     case 'squareTrue': return side([[1, 1], [1, -1], [-1, -1], [-1, 1]])
     case 'leaf': return [cos(t + PI / 2) ** 5, cos(t)]
-    case 'lissajous': return [cos(Math.max(1, efx.xFrequency) * t - (efx.xPhase * PI) / 180), cos(Math.max(1, efx.yFrequency) * t - (efx.yPhase * PI) / 180)]
+    case 'lissajous': return [wave(efx.xFrequency, efx.xPhase, t), wave(efx.yFrequency, efx.yPhase, t)]
   }
+}
+
+/** Um eixo do Lissajous; com a frequência 0, um vai e vem em linha reta, como no QLC+. */
+function wave(frequency: number, phase: number, t: number) {
+  const p = (phase * Math.PI) / 180
+  if (frequency > 0) return Math.cos(frequency * t - p)
+  const k = ((t + p) / Math.PI) % 2
+  return (k < 1 ? k : 2 - k) * 2 - 1
 }
 
 /** Ponto do EFX já girado, escalado e deslocado, na escala do pan/tilt (0 a 255). */
@@ -50,13 +58,21 @@ export function efxPoint(efx: Efx, t: number) {
   }
 }
 
-/** Posição de cada fixture do EFX no instante `ms`: propagação, deslocamento inicial e sentido. */
+/** Posição de cada fixture do EFX no instante `ms`, com as regras do motor (crates/rlc-engine/src/efx.rs):
+ * a propagação, o vai e volta, o sentido e o início. Na prévia, o desenho se repete sem parar. */
 export function efxPositions(efx: Efx, ms: number) {
-  const base = (ms / Math.max(efx.timing.holdMs, 100)) * TAU
+  const { PI } = Math
+  const turns = ms / Math.max(efx.timing.holdMs, 100)
+  const n = efx.fixtures.length
   return efx.fixtures.map((f, i) => {
-    const spread = efx.propagation === 'parallel' ? 0 : (i * TAU) / efx.fixtures.length
-    const t = base + spread + (f.startOffset * Math.PI) / 180
-    return efxPoint(efx, (efx.direction === 'backward') !== f.reverse ? -t : t)
+    // "Defasadas", cada uma 1/n da volta à frente; "Em sequência", 1/n atrás
+    const at = turns + (efx.propagation === 'asymmetric' ? i / n : efx.propagation === 'serial' ? -i / n : 0)
+    const lap = Math.floor(at)
+    let a = (at - lap) * TAU
+    if (efx.runOrder === 'pingPong' && lap % 2) a = TAU - a
+    // Ao contrário, a linha anda meia volta à frente (ida e volta passam pelos mesmos pontos)
+    if ((efx.direction === 'backward') !== f.reverse) a = efx.algorithm === 'line' ? (a > PI ? a - PI : a + PI) : TAU - a
+    return efxPoint(efx, a + (f.startOffset * PI) / 180)
   })
 }
 

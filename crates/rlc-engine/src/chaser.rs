@@ -245,6 +245,7 @@ fn fade_in(imposed: Option<Span>, program: &Program, beat: Duration) -> Duration
     match (imposed, program) {
         (Some(span), _) => span.duration(beat),
         (None, Program::Scene(scene)) => scene.fade_in.duration(beat),
+        (None, Program::Efx(efx)) => efx.fade_in.duration(beat),
         (None, Program::Collection(programs)) => programs
             .iter()
             .map(|p| fade_in(None, p, beat))

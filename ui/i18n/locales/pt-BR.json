@@ -436,10 +436,12 @@
     "cycle": "Duração da volta",
     "fixtures": "Fixtures ({n})",
     "addFixture": "Adicionar fixture",
+    "addFixtureInfo": "Toque numa fixture com pan ou tilt para incluir no EFX.\nSelecionar grupo: inclui as fixtures de um grupo de fixtures que têm pan ou tilt, na ordem da grade (linha por linha), que é a ordem da propagação.",
+    "pickGroup": "Selecionar grupo",
     "reverse": "Inverter",
     "startOffset": "Início (°)",
     "noCandidates": "Nenhuma outra fixture com pan/tilt.",
-    "relativeInfo": "Soma o desenho à posição que as fixtures já têm (de uma cena, por exemplo), em vez de usar o centro definido aqui."
+    "relativeInfo": "Soma o desenho à posição que as fixtures já têm (de uma cena rodando ou da prévia). O centro desloca o desenho em relação a essa posição; em 127, não desloca."
   },
   "efxAlgorithm": {
     "circle": "Círculo",

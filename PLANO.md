@@ -20,6 +20,32 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 5. Ajustar → validar de novo.
 6. Marcar a fase aqui e registrar as decisões novas no `DECISOES.md`. Commit se o usuário pedir.
 
+## Pendências (2026-10-19)
+
+O que falta validar ou decidir nas fases já entregues. O detalhe de cada item está no checklist da fase.
+
+**A validar sem os moving beams** (com os ParLed e a Numbstar):
+- **F6** ([fase-06.md](docs/fases/fase-06.md)):
+  - o tick abaixo de 2 ms com 4 universos (no Monitoramento);
+  - os fades de 3 s nos ParLed;
+  - o elemento "Tempos" nas cenas.
+- **F7** ([fase-07.md](docs/fases/fase-07.md)): o checklist inteiro, menos o deslizar dos Beams:
+  - o crossfade sem o dimmer piscar;
+  - as ordens, o Single Shot e "Para trás";
+  - os modos dos tempos e o tap a 120 BPM;
+  - a sequência, a coleção e a cue list;
+  - o "Tempos" com "Seguir o BPM";
+  - a edição com o chaser rodando, o Stop All e o pânico.
+- **F8** ([fase-08.md](docs/fases/fase-08.md)): "Selecionar grupo", em "Adicionar fixture", inclui as fixtures na ordem da grade.
+
+**Com os moving beams:** na [validação final](docs/validacao-final.md), antes do release: 3 itens da F6, 1 da F7 e 7 da F8 (o EFX).
+
+**Na F16:** o instalador num PC limpo (adiado da F3).
+
+**Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
+
+**O que ficou de fora da F7 e da F8** está no [Backlog](#backlog-v2), para entrar só se o usuário pedir.
+
 ## Arquitetura alvo
 
 ```
@@ -186,7 +212,7 @@ Validação (detalhada em [docs/fases/fase-05.md](docs/fases/fase-05.md)):
 
 ### F6 — Merge, fades e Cena · ✅
 
-Mini-plano: [docs/fases/fase-06.md](docs/fases/fase-06.md) (aprovado em 2026-10-17). Concluída em 2026-10-18, a pedido do usuário, com 8 itens validados. Os outros (a posição entre cenas, os fades nos Beams, o tick com 4 universos e o elemento "Tempos", ligado às cenas a pedido dele) ainda não foram testados e serão ajustados depois, se precisar.
+Mini-plano: [docs/fases/fase-06.md](docs/fases/fase-06.md) (aprovado em 2026-10-17). Concluída em 2026-10-18, a pedido do usuário, com 8 itens validados. Os outros (o tick com 4 universos e o elemento "Tempos", ligado às cenas a pedido dele) ainda não foram testados e serão ajustados depois, se precisar. A posição entre cenas e os fades nos Beams estão na [validação final](docs/validacao-final.md) (2026-10-19).
 
 - **Merge:** HTP na intensidade (dimmer e cores, como no QLC+) e LTP por ordem de início no resto. Ao parar, o LTP volta ao que está embaixo.
 - **Fades:** lineares em inteiros (os números do QLC+), do valor atual, com canais finos de 16 bits. Rodas, gobo, prisma e strobo mudam de uma vez.
@@ -198,14 +224,14 @@ Mini-plano: [docs/fases/fase-06.md](docs/fases/fase-06.md) (aprovado em 2026-10-
 - **Ref:** `engine/src/{universe,genericfader,fadechannel,function,scene}.cpp`
 
 Validação:
-- [x] Duas cenas sobrepostas: maior dimmer vence e as cores se misturam (HTP). _Na posição (vence a última iniciada), ainda não testado._
+- [x] Duas cenas sobrepostas: maior dimmer vence e as cores se misturam (HTP). _Na posição (vence a última iniciada): na [validação final](docs/validacao-final.md), com os moving beams._
 - [x] GM a 50% reduz só a intensidade.
 - [ ] Tick abaixo de 2 ms com 4 universos. _Ainda não testado (o teste automático mede 0,2 ms no app compilado)._
 - [ ] O elemento "Tempos" troca o fade in e o fade out das cenas da lista (ajuste pedido na validação). _Ainda não testado; dá para conferir na validação da F7._
 
-### F7 — Chaser, Sequência, Coleção e BPM · 🟡
+### F7 — Chaser, Sequência, Coleção e BPM · ✅
 
-Mini-plano: [docs/fases/fase-07.md](docs/fases/fase-07.md) (aprovado em 2026-10-18; entregue em 2026-10-18, aguardando a validação do usuário).
+Mini-plano: [docs/fases/fase-07.md](docs/fases/fase-07.md) (aprovado em 2026-10-18; entregue em 2026-10-18). Concluída em 2026-10-19, a pedido do usuário, sem a validação: os itens abaixo serão testados junto com a F8.
 
 - **Chaser:** modos de velocidade Default/Common/PerStep, crossfade, next/prev/goto, run order Loop/SingleShot/PingPong/Random.
 - **Sequência** e **Coleção.**
@@ -221,23 +247,25 @@ Validação (detalhada em [docs/fases/fase-07.md](docs/fases/fase-07.md)):
 - [ ] PingPong e Random corretos.
 - [ ] O TAP master muda os tempos de todos os elementos "Tempos" que seguem o BPM, e os chasers da lista acompanham (ajuste pedido na validação).
 
-### F8 — Grupos de fixtures e EFX · ⬜
+### F8 — Grupos de fixtures e EFX · 🟡
+
+Mini-plano: [docs/fases/fase-08.md](docs/fases/fase-08.md) (aprovado em 2026-10-19; entregue em 2026-10-19, aguardando a validação do usuário, junto com os itens da F7). Commitada em 2026-10-19, a pedido do usuário, antes da validação: o que falta está nas [Pendências](#pendências-2026-10-19). Os testes com os moving beams foram para a [validação final](docs/validacao-final.md) (2026-10-19, pedido do usuário).
 
 - **Grupos:** grupos 2D de cabeças.
 - **EFX:** os 10 algoritmos, modo absoluto e relativo, spread/offset, preview do caminho.
-- **Ponto de partida (F7):**
-  - O servidor manda ao motor as criações rodando como uma árvore (`Program` em `rlc-engine`: cena, chaser e coleção), traduzida em `running_programs` (`apply.rs`). O EFX entra como mais um tipo dessa árvore.
-  - Num passo de chaser ou numa coleção, o EFX já ocupa o lugar dele, mas ainda não acende.
+- **Decisões do mini-plano (2026-10-19):** o EFX entra e sai como as cenas (fade a partir da posição de antes, volta ao que está embaixo); o relativo desenha em volta das criações rodando e da prévia; "Defasadas" a 1/n da volta; editor sem "Aleatória", com largura e altura até 127 e "Selecionar grupo" em "Adicionar fixture".
 - **Ref:** `engine/src/{efx,efxfixture,fixturegroup,grouphead}.cpp`
 
-Validação:
-- [ ] Círculo em 4 moving heads com offset de 90°.
-- [ ] EFX relativo sobre uma posição do programador.
+Validação (detalhada em [docs/fases/fase-08.md](docs/fases/fase-08.md)):
+- [ ] Um grupo em "Adicionar fixture" inclui as fixtures na ordem da grade.
+- [ ] Os itens da F7, testados junto (pedido do usuário), menos o deslizar dos Beams.
+- Na [validação final](docs/validacao-final.md), com os moving beams: o círculo em 4 moving heads com offset de 90°, o EFX relativo sobre uma posição do programador (a prévia) e de uma cena, e os outros testes do EFX.
 
 ### F9 — RGB Matrix · ⬜
 
 - **Algoritmos nativos:** Plain, Text e Image em Rust.
 - **Scripts do QLC+:** rodando em rquickjs, numa thread separada com limite de tempo e cache dos passos.
+- **Ponto de partida (F8):** o RGB Matrix entra como mais um tipo da árvore `Program` do motor, como o EFX (`efx.rs`), traduzido em `running_programs` (`apply.rs`). Os grupos de fixtures já chegam conferidos pelo servidor (cada cabeça uma vez, dentro da grade).
 - **Ref:**
   - `engine/src/{rgbmatrix,rgbalgorithm,rgbscript,rgbscriptscache}.cpp`
   - `resources/rgbscripts/`
@@ -343,6 +371,7 @@ Validação:
 
 Validação:
 - [ ] Instalação limpa (inclui o teste do instalador num PC limpo, adiado da F3).
+- [ ] A [validação final](docs/validacao-final.md): os testes com os moving beams, adiados da F6, da F7 e da F8.
 - [ ] Show de 2 h sem falhas.
 - [ ] Desinstalação limpa.
 
@@ -357,6 +386,17 @@ Validação:
   - HTP/LTP forçado por canal;
   - fixtures que atravessam universos;
   - o "dump" do QLC+ (gravar a saída numa cena).
+- Ficou de fora da F7 (só se o usuário pedir):
+  - pausar um chaser;
+  - tempo em batidas nas cenas (o editor de cena só tem segundos);
+  - hold infinito (∞), para o chaser só andar no "próximo" da cue list: pode entrar na F11, com o resto da Cue List;
+  - BPM vindo de fora (MIDI clock ou áudio): pode entrar na F12.
+- Ficou de fora da F8 (só se o usuário pedir):
+  - os modos Dimmer e RGB do EFX (o desenho no dimmer ou nas cores) e o "controle do dimmer" do QLC+ 5.3;
+  - EFX em fixtures com várias cabeças de pan e tilt (hoje vale a primeira cabeça de cada uma);
+  - a volta do EFX em batidas no próprio editor (hoje, só pelo elemento "Tempos" com "Seguir o BPM");
+  - "Distribuir os inícios" do QLC+ 5 (0°, 90°, 180°… automático ou sorteado);
+  - o "Início" geral do EFX, além do de cada fixture.
 - RDM e o segundo universo da Enttec Pro Mk2.
 
 ## Pedidos de recursos do Virtual Console (G4)
@@ -389,5 +429,5 @@ Validação:
 ## Verificação
 
 - **Automática:** `pnpm check` (rustfmt, clippy `-D warnings`, `cargo test`, typecheck e lint da UI).
-- **Manual:** checklist da fase, rodando `pnpm dev` no desktop e no celular pelo QR. Hardware real a partir da F3.
+- **Manual:** checklist da fase, rodando `pnpm dev` no desktop e no celular pelo QR. Hardware real a partir da F3. Os testes com os moving beams ficam na [validação final](docs/validacao-final.md) enquanto o usuário não puder fazê-los (G1).
 - **Encerramento:** checklist completo e aprovação explícita do usuário.

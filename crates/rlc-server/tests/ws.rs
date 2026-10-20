@@ -257,3 +257,38 @@ async fn chasers_step_by_the_cue_list_and_by_themselves() {
     evt_until(&mut ws, "running", |d| *d == json!([])).await;
     frame_until(&mut out, "u1", |f| f[0] == 0).await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn efx_moves_pan_and_tilt_every_frame() {
+    let port = server().await;
+    let mut ws = connect(port).await;
+    assert_eq!(next_json(&mut ws).await["t"], "hello");
+    let snapshot = next_json(&mut ws).await;
+    let functions = snapshot["data"]["project"]["functions"].as_array().unwrap();
+    let mut efx = functions.iter().find(|f| f["id"] == "e1").unwrap().clone();
+    let mut out = connect(port).await;
+
+    // "Círculo nos MHs": o pan e o tilt do MH 1 (101 e 103) mudam de um quadro para o outro
+    let run = json!({ "op": "setFunctionRunning", "id": "e1", "running": true });
+    cmd(&mut ws, 1, run).await;
+    let last = std::cell::Cell::new([0, 0]);
+    frame_until(&mut out, "u1", |f| {
+        last.set([f[100], f[102]]);
+        true
+    })
+    .await;
+    for _ in 0..3 {
+        let before = last.get();
+        frame_until(&mut out, "u1", |f| {
+            last.set([f[100], f[102]]);
+            f[100] != before[0] && f[102] != before[1]
+        })
+        .await;
+    }
+
+    // "Uma vez", com a volta de 200 ms: termina e sai das criações rodando
+    efx["runOrder"] = json!("singleShot");
+    efx["timing"]["holdMs"] = json!(200);
+    cmd(&mut ws, 2, json!({ "op": "saveFunction", "function": efx })).await;
+    evt_until(&mut ws, "running", |d| *d == json!([])).await;
+}

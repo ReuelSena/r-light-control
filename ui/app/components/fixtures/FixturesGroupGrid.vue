@@ -2,8 +2,9 @@
 import { Eraser, Trash2, Wand2 } from 'lucide-vue-next'
 import type { FixtureGroup } from '~/types/generated/FixtureGroup'
 
-// Grupo de fixtures: grade 2D de cabeças, usada pelo RGB Matrix (F9). Escolha uma cabeça na
-// paleta e toque nas células; tocar numa célula sem cabeça escolhida a esvazia.
+// Grupo de fixtures: grade 2D de cabeças, usada pelo EFX (a ordem das fixtures) e pelo RGB Matrix
+// (F9). Escolha uma cabeça na paleta e toque nas células; tocar numa célula sem cabeça escolhida a
+// esvazia. Cada cabeça entra uma vez só: pintar uma que já está no grupo a muda de lugar.
 const props = defineProps<{ group: FixtureGroup }>()
 const { t } = useI18n()
 const { state, send } = useEngine()
@@ -31,7 +32,7 @@ function save(changes: Partial<FixtureGroup>) {
 }
 
 function tap(x: number, y: number) {
-  const cells = props.group.cells.filter((c) => c.x !== x || c.y !== y)
+  const cells = props.group.cells.filter((c) => (c.x !== x || c.y !== y) && !(brush.value && isBrush(c)))
   if (brush.value) cells.push({ x, y, ...brush.value })
   save({ cells })
 }
@@ -69,7 +70,7 @@ function remove() {
       </label>
     </div>
 
-    <div class="grid gap-1 overflow-x-auto" :style="{ gridTemplateColumns: `repeat(${group.width}, minmax(52px, 1fr))` }">
+    <div class="grid shrink-0 gap-1 overflow-x-auto" :style="{ gridTemplateColumns: `repeat(${group.width}, minmax(52px, 80px))` }">
       <template v-for="y in group.height" :key="y">
         <button
           v-for="x in group.width"

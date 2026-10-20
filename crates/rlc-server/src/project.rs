@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 3;
+const SCHEMA_VERSION: u32 = 4;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -113,6 +113,27 @@ fn migrate(project: &mut Value, version: u32) {
             }
         }
     }
+    // 3 → 4 (F8): o EFX ficou sem a ordem aleatória, e a largura e a altura vão até 127, como no QLC+
+    if version < 4 {
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+        {
+            if f.get("type").and_then(Value::as_str) != Some("efx") {
+                continue;
+            }
+            if f.get("runOrder").and_then(Value::as_str) == Some("random") {
+                f.insert("runOrder".into(), "loop".into());
+            }
+            for key in ["width", "height"] {
+                if f.get(key).and_then(Value::as_u64).is_some_and(|v| v > 127) {
+                    f.insert(key.into(), 127.into());
+                }
+            }
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -193,6 +214,33 @@ mod tests {
         let file = dir.join("antigo.rlc");
         let v1 = json!({ "format": FORMAT, "schemaVersion": 1, "project": old });
         std::fs::write(&file, v1.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_3_opens_the_efx_within_the_limits() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut project = crate::hub::example_snapshot(None).project;
+        // O "Círculo nos MHs" gravado com a ordem aleatória e o desenho maior que o curso
+        let mut old = serde_json::to_value(&project).unwrap();
+        let efx = old["functions"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|f| f["id"] == "e1")
+            .unwrap();
+        efx["runOrder"] = json!("random");
+        efx["width"] = json!(200);
+        let file = dir.join("antigo.rlc");
+        let v3 = json!({ "format": FORMAT, "schemaVersion": 3, "project": old });
+        std::fs::write(&file, v3.to_string()).unwrap();
+        for f in &mut project.functions {
+            if let rlc_core::FunctionKind::Efx(efx) = &mut f.kind {
+                efx.width = 127;
+            }
+        }
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

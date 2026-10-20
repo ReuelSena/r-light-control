@@ -12,7 +12,11 @@ forem adicionadas:
 
 - Algoritmos de desenho do EFX (Circle, Eight, Line, Line2, Diamond, Square,
   SquareChoppy, SquareTrue, Leaf, Lissajous), portados de engine/src/efx.cpp
-  (EFX::calculatePoint e rotateAndScale) para ui/app/utils/functions.ts.
+  (EFX::calculatePoint, rotateAndScale e calculateDirection) para
+  ui/app/utils/functions.ts e crates/rlc-engine/src/efx.rs; a volta de cada
+  fixture, o sentido, a propagação, a ordem e o canal fino seguindo
+  engine/src/efxfixture.cpp (nextStep e setPointPanTilt), e o zero dos canais
+  relativos de engine/src/universe.cpp (writeRelative).
 
 - Saídas Enttec DMX USB Pro e Open DMX: pacote, tempos de break e MAB,
   frequências e regra de detecção pelo nome, seguindo plugins/dmxusb

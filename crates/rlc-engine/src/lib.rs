@@ -1,13 +1,14 @@
 //! Motor (A1): uma thread a 50 Hz com prazo absoluto, dona do estado de execução. Os comandos chegam
 //! por canal e são aplicados no começo de cada tick, e cada tick publica o quadro de cada universo.
 //! Camadas de cada universo, de baixo para cima: o valor padrão dos canais, as criações rodando, a
-//! prévia (a cena em edição), a Mesa simples, o "Localizar" e, por fim, o Grand Master e o blackout. O
-//! padrão de teste substitui as camadas de baixo.
-//! Cada cena acesa por uma criação (sozinha, no passo de um chaser ou numa coleção) ganha um fader.
-//! Os faders se misturam como no QLC+: nos canais de intensidade (dimmer e cores) vence o maior valor
-//! (HTP); nos outros, o fader iniciado por último (LTP).
+//! prévia (a cena em edição), os EFX relativos, a Mesa simples, o "Localizar" e, por fim, o Grand
+//! Master e o blackout. O padrão de teste substitui as camadas de baixo.
+//! Cada cena acesa por uma criação (sozinha, no passo de um chaser ou numa coleção) ganha um fader, e
+//! cada fixture de um EFX também. Os faders se misturam como no QLC+: nos canais de intensidade
+//! (dimmer e cores) vence o maior valor (HTP); nos outros, o fader iniciado por último (LTP).
 
 mod chaser;
+mod efx;
 
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender, TryRecvError};
@@ -15,9 +16,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use arc_swap::ArcSwap;
-use rlc_core::{DeskLevel, Direction, Id, RunOrder, StepAction, TestPattern};
+use rlc_core::{DeskLevel, Direction, Efx, Id, RunOrder, StepAction, TestPattern};
 
 use chaser::Runner;
+use efx::EfxRunner;
 
 /// Período do tick: 50 Hz, como no QLC+.
 pub const TICK: Duration = Duration::from_millis(20);
@@ -72,6 +74,7 @@ pub enum Program {
     Chaser(ChaserProgram),
     /// Criações disparadas juntas (a coleção).
     Collection(Vec<Program>),
+    Efx(EfxProgram),
 }
 
 /// Uma cena nos endereços DMX (o motor não conhece fixtures), com os fades que valem. Um fade em
@@ -90,6 +93,21 @@ pub struct ChaserProgram {
     pub direction: Direction,
     /// No Single Shot, o último passo fica aceso até o chaser ser parado.
     pub keep_last: bool,
+}
+
+/// Um EFX com os endereços do pan e do tilt de cada fixture e os tempos que valem agora.
+#[derive(Clone)]
+pub struct EfxProgram {
+    /// O desenho, a propagação, a ordem e o sentido, como no projeto. As fixtures são só as que têm
+    /// pan ou tilt, e os tempos que valem são os de baixo.
+    pub efx: Efx,
+    /// Pan e tilt de cada fixture de `efx.fixtures`, na mesma ordem, nos endereços DMX (o valor não
+    /// conta). Sem um dos dois, a fixture só anda no outro.
+    pub heads: Vec<[Option<SceneLevel>; 2]>,
+    /// Duração de uma volta do desenho.
+    pub cycle: Span,
+    pub fade_in: Span,
+    pub fade_out: Span,
 }
 
 /// Um passo: o que ele dispara e os tempos dele. Sem fade, vale o da criação do passo; com fade, ele
@@ -215,7 +233,7 @@ fn next_deadline(previous: Instant, now: Instant) -> Instant {
     next
 }
 
-/// Uma cena acesa no motor: rodando ou, depois de parada, no fade out.
+/// Uma cena (ou uma fixture de um EFX) acesa no motor: rodando ou, depois de parada, no fade out.
 struct Fader {
     /// Número do fader, pelo qual a criação que o acendeu o encontra.
     serial: u64,
@@ -225,6 +243,8 @@ struct Fader {
     /// Quando a cena parou e o fade out dela, já em tempo: ela sai do motor no fim dele.
     stopped: Option<(Instant, Duration)>,
     channels: Vec<Fade>,
+    /// EFX relativo: os valores são somados ao que está embaixo, com o zero em 127 (no grosso).
+    relative: bool,
 }
 
 /// Um canal de uma cena: vai de `start` ao valor da cena em `time`, contado de `since`. Com a cena
@@ -271,6 +291,7 @@ enum Node {
     Scene(u64),
     Chaser(Box<Runner>),
     Collection(Vec<Node>),
+    Efx(Box<EfxRunner>),
 }
 
 impl Node {
@@ -280,6 +301,7 @@ impl Node {
             Node::Scene(_) => false,
             Node::Chaser(runner) => runner.done,
             Node::Collection(nodes) => !nodes.is_empty() && nodes.iter().all(Node::done),
+            Node::Efx(runner) => runner.done,
         }
     }
 }
@@ -299,49 +321,70 @@ struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
-    /// Cada cena ganha um fader, por último na mistura, partindo do valor que está saindo: um dimmer
-    /// já aceso não pisca, e a posição desliza da atual para a da cena.
+    /// Um fader novo, por último na mistura, partindo do valor que está saindo: um dimmer já aceso não
+    /// pisca, e a posição desliza da atual para a nova. No EFX relativo, parte do zero (sem
+    /// deslocamento).
+    fn push(
+        &mut self,
+        levels: impl Iterator<Item = SceneLevel>,
+        fade_in: Span,
+        fade_out: Span,
+        relative: bool,
+    ) -> u64 {
+        *self.serial += 1;
+        let channels = levels
+            .map(|level| Fade {
+                universe: position(self.universes, &level),
+                start: if relative {
+                    zero(&level)
+                } else {
+                    self.mixed
+                        .iter()
+                        .find(|(id, _)| *id == level.universe)
+                        .map_or(0, |(_, frame)| read(frame, &level))
+                },
+                level,
+                since: self.now,
+                time: fade_in.duration(self.beat),
+            })
+            .collect();
+        self.faders.push(Fader {
+            serial: *self.serial,
+            owner: self.owner.clone(),
+            fade_out,
+            stopped: None,
+            channels,
+            relative,
+        });
+        *self.serial
+    }
+
+    /// Cada cena ganha um fader; o EFX, um para cada fixture, quando chega a vez dela.
     fn start(&mut self, program: Program, fades: Fades) -> Node {
         match program {
             Program::Scene(scene) => {
-                *self.serial += 1;
-                let channels = valid(scene.levels)
-                    .map(|level| Fade {
-                        universe: position(self.universes, &level),
-                        start: self
-                            .mixed
-                            .iter()
-                            .find(|(id, _)| *id == level.universe)
-                            .map_or(0, |(_, frame)| read(frame, &level)),
-                        level,
-                        since: self.now,
-                        time: fades.0.unwrap_or(scene.fade_in).duration(self.beat),
-                    })
-                    .collect();
-                self.faders.push(Fader {
-                    serial: *self.serial,
-                    owner: self.owner.clone(),
-                    fade_out: fades.1.unwrap_or(scene.fade_out),
-                    stopped: None,
-                    channels,
-                });
-                Node::Scene(*self.serial)
+                let fade_in = fades.0.unwrap_or(scene.fade_in);
+                let fade_out = fades.1.unwrap_or(scene.fade_out);
+                Node::Scene(self.push(valid(scene.levels), fade_in, fade_out, false))
             }
             Program::Chaser(chaser) => Node::Chaser(Box::new(Runner::new(chaser, fades))),
             Program::Collection(programs) => {
                 Node::Collection(programs.into_iter().map(|p| self.start(p, fades)).collect())
             }
+            Program::Efx(efx) => Node::Efx(Box::new(EfxRunner::new(efx, fades, self))),
+        }
+    }
+
+    fn stop_fader(&mut self, serial: u64) {
+        if let Some(fader) = self.faders.iter_mut().find(|f| f.serial == serial) {
+            fader.stop(self.universes, self.now, self.beat);
         }
     }
 
     /// Cada cena acesa começa o fade out dela.
     fn stop(&mut self, node: &Node) {
         match node {
-            Node::Scene(serial) => {
-                if let Some(fader) = self.faders.iter_mut().find(|f| f.serial == *serial) {
-                    fader.stop(self.universes, self.now, self.beat);
-                }
-            }
+            Node::Scene(serial) => self.stop_fader(*serial),
             Node::Chaser(runner) => {
                 if let Some(active) = &runner.active {
                     self.stop(&active.node);
@@ -352,6 +395,7 @@ impl Ctx<'_> {
                     self.stop(node);
                 }
             }
+            Node::Efx(runner) => runner.stop(self),
         }
     }
 
@@ -379,6 +423,7 @@ impl Ctx<'_> {
                 fader.fade_out = fades.1.unwrap_or(scene.fade_out);
             }
             (Node::Chaser(runner), Program::Chaser(chaser)) => runner.update(chaser, fades, self),
+            (Node::Efx(runner), Program::Efx(efx)) => runner.update(efx, fades, self),
             (Node::Collection(nodes), Program::Collection(programs)) => {
                 for gone in nodes.split_off(programs.len().min(nodes.len())) {
                     self.stop(&gone);
@@ -400,11 +445,12 @@ impl Ctx<'_> {
         }
     }
 
-    /// Anda os chasers, também os de dentro de um passo ou de uma coleção.
+    /// Anda os chasers e os EFX, também os de dentro de um passo ou de uma coleção.
     fn tick(&mut self, node: &mut Node) {
         match node {
             Node::Scene(_) => {}
             Node::Chaser(runner) => runner.tick(self),
+            Node::Efx(runner) => runner.tick(self),
             Node::Collection(nodes) => {
                 for node in nodes {
                     self.tick(node);
@@ -605,8 +651,9 @@ impl State {
         let frames = self
             .universes
             .iter()
+            .enumerate()
             .zip(&mixed)
-            .map(|(u, mixed)| {
+            .map(|((index, u), mixed)| {
                 let mut frame = *mixed;
                 match self.test {
                     Some((pattern, since)) => {
@@ -622,12 +669,19 @@ impl State {
                         }
                     }
                     None => {
-                        let layers = self.preview.iter().chain(&self.desk).chain(&self.highlight);
-                        for l in layers.filter(|l| l.universe == u.id) {
-                            if let Some(v) = frame.get_mut(usize::from(l.channel).wrapping_sub(1)) {
-                                *v = l.value;
+                        let set = |frame: &mut Frame, levels: &[DeskLevel]| {
+                            for l in levels.iter().filter(|l| l.universe == u.id) {
+                                if let Some(v) =
+                                    frame.get_mut(usize::from(l.channel).wrapping_sub(1))
+                                {
+                                    *v = l.value;
+                                }
                             }
-                        }
+                        };
+                        set(&mut frame, &self.preview);
+                        self.relative(index, &mut frame, now);
+                        set(&mut frame, &self.desk);
+                        set(&mut frame, &self.highlight);
                     }
                 }
                 for (v, _) in frame
@@ -661,7 +715,7 @@ impl State {
     /// último (LTP).
     fn mix(&self, frames: &mut [Frame], now: Instant) {
         let mut taken = vec![[false; 512]; frames.len()];
-        for fader in &self.faders {
+        for fader in self.faders.iter().filter(|f| !f.relative) {
             let stopped = fader.stopped.is_some();
             for f in &fader.channels {
                 let Some(u) = f.universe else { continue };
@@ -692,6 +746,35 @@ impl State {
             }
         }
     }
+
+    /// EFX relativos, por cima da prévia: o desenho somado ao que está embaixo, em qualquer ordem de
+    /// início. Parados, voltam ao zero (sem deslocamento) no fade out.
+    fn relative(&self, universe: usize, frame: &mut Frame, now: Instant) {
+        for fader in self.faders.iter().filter(|f| f.relative) {
+            for f in fader
+                .channels
+                .iter()
+                .filter(|f| f.universe == Some(universe))
+            {
+                let zero = zero(&f.level);
+                let target = if fader.stopped.is_some() {
+                    zero
+                } else {
+                    f.level.value
+                };
+                let elapsed = now.saturating_duration_since(f.since) + TICK;
+                let offset = i32::from(fade(f.start, target, elapsed, f.time)) - i32::from(zero);
+                let max = if f.level.fine.is_some() { 0xFFFF } else { 0xFF };
+                let value = (i32::from(read(frame, &f.level)) + offset).clamp(0, max);
+                write(frame, &f.level, value as u16);
+            }
+        }
+    }
+}
+
+/// Zero do EFX relativo: 127 no canal grosso, como no QLC+.
+fn zero(level: &SceneLevel) -> u16 {
+    if level.fine.is_some() { 127 << 8 } else { 127 }
 }
 
 /// Valor de um fade linear depois de `elapsed`, em inteiros como no QLC+: a conta trunca para o lado
@@ -1108,6 +1191,38 @@ mod tests {
             };
             runs.push(run(&format!("c{n}"), Program::Chaser(chaser)));
         }
+        // E um EFX em 48 moving heads, 12 por universo, com pan e tilt em 16 bits
+        let heads: Vec<(Id, u16)> = ids
+            .iter()
+            .flat_map(|u| (0..12).map(move |k| (u.clone(), 1 + 4 * k)))
+            .collect();
+        let at = |(u, c): &(Id, u16), offset| SceneLevel {
+            universe: u.clone(),
+            channel: c + offset,
+            fine: Some(c + offset + 1),
+            value: 0,
+        };
+        let efx = Efx {
+            fixtures: (0..heads.len())
+                .map(|k| rlc_core::EfxFixture {
+                    fixture: format!("mh{k}"),
+                    reverse: false,
+                    start_offset: 0,
+                })
+                .collect(),
+            ..efx::tests::qlc(rlc_core::EfxAlgorithm::Lissajous)
+        };
+        let efx = EfxProgram {
+            efx,
+            heads: heads
+                .iter()
+                .map(|h| [Some(at(h, 0)), Some(at(h, 2))])
+                .collect(),
+            cycle: Span::Ms(2000),
+            fade_in: Span::Ms(1000),
+            fade_out: Span::Ms(1000),
+        };
+        runs.push(run("e", Program::Efx(efx)));
         s.apply(Command::Running(runs), t0);
         let started = Instant::now();
         for tick in 0..50 {

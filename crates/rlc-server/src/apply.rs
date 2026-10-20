@@ -4,7 +4,7 @@
 
 use rlc_core::*;
 use rlc_engine::{
-    ChaserProgram, Program, Run, SceneLevel, SceneProgram, Span, Step, UniversePatch,
+    ChaserProgram, EfxProgram, Program, Run, SceneLevel, SceneProgram, Span, Step, UniversePatch,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -324,6 +324,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Fixtures]
         }
         Op::SaveFixtureGroup { group } => {
+            check_group(p, &group)?;
             upsert(&mut p.fixture_groups, group, |g| &g.id)?;
             vec![T::FixtureGroups]
         }
@@ -334,7 +335,14 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     b.groups.retain(|g| *g != id);
                 }
             }
-            vec![T::FixtureGroups, T::Console]
+            for f in &mut p.functions {
+                if let FunctionKind::RgbMatrix(m) = &mut f.kind
+                    && m.group.as_ref() == Some(&id)
+                {
+                    m.group = None;
+                }
+            }
+            vec![T::FixtureGroups, T::Functions, T::Console]
         }
         Op::SaveChannelGroup { group } => {
             upsert(&mut p.channel_groups, group, |g| &g.id)?;
@@ -353,6 +361,9 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             // Como no QLC+, uma criação não contém a si mesma, direto ou por outra
             if contains(&p.functions, &function.kind, &function.id) {
                 return Err("Uma criação não pode conter a si mesma.".into());
+            }
+            if let FunctionKind::Efx(efx) = &function.kind {
+                check_efx(p, efx)?;
             }
             upsert(&mut p.functions, function, |f| &f.id)?;
             vec![T::Functions]
@@ -752,9 +763,9 @@ pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
         .collect()
 }
 
-/// Criações disparadas pelo usuário, na ordem de início, já resolvidas para o motor: as cenas nos
-/// endereços DMX, e os chasers e as coleções com o que disparam e os tempos que valem agora. O EFX e o
-/// RGB Matrix só acendem na F8 e na F9.
+/// Criações disparadas pelo usuário, na ordem de início, já resolvidas para o motor: as cenas e o pan
+/// e o tilt dos EFX nos endereços DMX, e os chasers e as coleções com o que disparam e os tempos que
+/// valem agora. O RGB Matrix só acende na F9.
 pub fn running_programs(s: &Snapshot) -> Vec<Run> {
     s.running
         .iter()
@@ -853,7 +864,27 @@ fn program(s: &Snapshot, id: &Id, dial: [Option<Span>; 3], path: &mut Vec<Id>) -
                 keep_last: c.keep_last,
             }))
         }
-        FunctionKind::Efx(_) | FunctionKind::RgbMatrix(_) => None,
+        // Só as fixtures com pan ou tilt andam no desenho; a duração do elemento "Tempos" é a da volta
+        FunctionKind::Efx(efx) => {
+            let mut efx = efx.clone();
+            let mut heads = vec![];
+            efx.fixtures.retain(|x| {
+                let head = pan_tilt(p, &x.fixture);
+                let moves = head.iter().any(Option::is_some);
+                if moves {
+                    heads.push(head);
+                }
+                moves
+            });
+            Some(Program::Efx(EfxProgram {
+                cycle: dial[2].unwrap_or(Span::Ms(efx.timing.hold_ms)),
+                fade_in: dial[0].unwrap_or(Span::Ms(efx.timing.fade_in_ms)),
+                fade_out: dial[1].unwrap_or(Span::Ms(efx.timing.fade_out_ms)),
+                heads,
+                efx,
+            }))
+        }
+        FunctionKind::RgbMatrix(_) => None,
     };
     path.pop();
     program
@@ -938,6 +969,90 @@ fn scene_program(p: &Project, values: &[SceneValue], fade_in: Span, fade_out: Sp
         fade_in,
         fade_out,
     })
+}
+
+/// Pan e tilt de uma fixture nos endereços DMX: o primeiro canal grosso de cada um, com o fino dele.
+fn pan_tilt(p: &Project, fixture: &Id) -> [Option<SceneLevel>; 2] {
+    let Some(f) = p.fixtures.iter().find(|f| f.id == *fixture) else {
+        return [None, None];
+    };
+    let channels: Vec<&Channel> = mode_channels(p, f).collect();
+    let address = |attribute, fine| {
+        let i = channels
+            .iter()
+            .position(|c| c.attribute == attribute && c.fine == fine)?;
+        channel_address(p, fixture, i as u16)
+    };
+    [Attribute::Pan, Attribute::Tilt].map(|attribute| {
+        let coarse = address(attribute, false)?;
+        Some(SceneLevel {
+            universe: coarse.universe,
+            channel: coarse.channel,
+            fine: address(attribute, true).map(|l| l.channel),
+            value: 0,
+        })
+    })
+}
+
+/// Os limites do QLC+ para o EFX e as ordens que um desenho tem; só fixtures com pan ou tilt, sem
+/// repetir.
+fn check_efx(p: &Project, efx: &Efx) -> Result<(), String> {
+    if efx.width > 127 || efx.height > 127 {
+        return Err("A largura e a altura do EFX vão até 127.".into());
+    }
+    if efx.x_frequency > 32 || efx.y_frequency > 32 {
+        return Err("As frequências do EFX vão até 32.".into());
+    }
+    let angles = [efx.rotation, efx.x_phase, efx.y_phase];
+    let starts = efx.fixtures.iter().map(|x| x.start_offset);
+    if angles.into_iter().chain(starts).any(|a| a > 359) {
+        return Err("Os ângulos do EFX vão até 359°.".into());
+    }
+    if efx.run_order == RunOrder::Random {
+        return Err("O EFX não tem a ordem aleatória.".into());
+    }
+    for (i, x) in efx.fixtures.iter().enumerate() {
+        if efx.fixtures[..i].iter().any(|o| o.fixture == x.fixture) {
+            return Err("Fixture repetida no EFX.".into());
+        }
+        if pan_tilt(p, &x.fixture) == [None, None] {
+            return Err("Só fixtures com pan ou tilt entram no EFX.".into());
+        }
+    }
+    Ok(())
+}
+
+/// Grade de 1 a 64 por lado, cada célula dentro dela com uma cabeça que existe, e cada cabeça uma vez
+/// só, como no QLC+.
+fn check_group(p: &Project, group: &FixtureGroup) -> Result<(), String> {
+    if !(1..=64).contains(&group.width) || !(1..=64).contains(&group.height) {
+        return Err("A grade do grupo vai de 1 a 64 células por lado.".into());
+    }
+    for (i, c) in group.cells.iter().enumerate() {
+        let before = &group.cells[..i];
+        if c.x >= group.width || c.y >= group.height {
+            return Err("Célula fora da grade do grupo.".into());
+        }
+        if before.iter().any(|o| (o.x, o.y) == (c.x, c.y)) {
+            return Err("Duas cabeças na mesma célula do grupo.".into());
+        }
+        if before
+            .iter()
+            .any(|o| o.fixture == c.fixture && o.head == c.head)
+        {
+            return Err("Cabeça repetida no grupo.".into());
+        }
+        // Fixture sem cabeças no modo conta como uma cabeça só
+        let heads = p.fixtures.iter().find(|f| f.id == c.fixture).and_then(|f| {
+            let def = p.fixture_defs.iter().find(|d| d.id == f.def_id)?;
+            let mode = def.modes.iter().find(|m| m.name == f.mode)?;
+            Some(mode.heads.len().max(1))
+        });
+        if heads.is_none_or(|n| usize::from(c.head) >= n) {
+            return Err("O grupo tem uma cabeça que não existe.".into());
+        }
+    }
+    Ok(())
 }
 
 /// Criações que uma criação dispara direto: os passos do chaser e as da coleção.
@@ -1427,8 +1542,7 @@ mod tests {
     #[test]
     fn running_scenes_go_to_dmx_addresses_in_start_order() {
         let mut s = example();
-        // O EFX só acende na F8
-        for id in ["s4", "e1", "s1"] {
+        for id in ["s4", "s1"] {
             run(&mut s, id);
         }
         let runs = running_programs(&s);
@@ -1632,12 +1746,12 @@ mod tests {
         assert_eq!(first.levels.len(), sequence.steps[0].values.len());
         assert_eq!(first.fade_in, Span::Ms(1000));
         assert_eq!(q1.steps[0].fade_in, Some(Span::Ms(800)));
-        // "Abertura": o chaser e as duas cenas; o EFX fica de fora até a F8
+        // "Abertura": o chaser, as duas cenas e o EFX
         let Program::Collection(k1) = &runs[1].program else {
             panic!("k1 não é coleção")
         };
-        assert_eq!(k1.len(), 3);
-        assert!(matches!(k1[0], Program::Chaser(_)));
+        assert_eq!(k1.len(), 4);
+        assert!(matches!(k1[0], Program::Chaser(_)) && matches!(k1[2], Program::Efx(_)));
     }
 
     #[test]
@@ -1673,6 +1787,117 @@ mod tests {
             c.functions.push("k1".into());
         }
         assert!(apply(&mut s, Op::SaveFunction { function: k1 }).is_err());
+    }
+
+    fn efx_mut<'a>(s: &'a mut Snapshot, id: &str) -> &'a mut Efx {
+        let f = s.project.functions.iter_mut().find(|f| f.id == id);
+        match f.map(|f| &mut f.kind) {
+            Some(FunctionKind::Efx(efx)) => efx,
+            _ => panic!("{id} não é EFX"),
+        }
+    }
+
+    #[test]
+    fn efx_goes_with_pan_and_tilt_addresses_and_the_live_times() {
+        let mut s = example();
+        run(&mut s, "e1");
+        let efx = |s: &Snapshot| match running_programs(s).remove(0).program {
+            Program::Efx(efx) => efx,
+            _ => panic!("e1 não é EFX"),
+        };
+        // "Círculo nos MHs": os 4 MHs, o MH 1 no 101 com pan, pan fino, tilt e tilt fino
+        let e = efx(&s);
+        assert_eq!(e.heads.len(), 4);
+        let at = |channel, fine| SceneLevel {
+            universe: "u1".into(),
+            channel,
+            fine: Some(fine),
+            value: 0,
+        };
+        assert_eq!(e.heads[0], [Some(at(101, 102)), Some(at(103, 104))]);
+        assert_eq!((e.cycle, e.fade_in), (Span::Ms(4000), Span::Ms(0)));
+        // Uma fixture que perdeu o pan e o tilt (outro modo) fica fora do desenho
+        s.project.fixtures[7].mode = "inexistente".into();
+        assert_eq!(efx(&s).efx.fixtures.len(), 3);
+
+        // Um elemento "Tempos" que segue o BPM: a volta em batidas
+        let mut dial = s.project.console.widgets[0].clone();
+        dial.id = "sd-efx".into();
+        dial.kind = VcWidgetKind::SpeedDial(VcSpeedDial {
+            functions: vec!["e1".into()],
+            fade_in: true,
+            fade_out: true,
+            hold: true,
+            beats: true,
+        });
+        s.project.console.widgets.push(dial);
+        let op = Op::SetWidgetValue {
+            widget: "sd-efx".into(),
+            value: vec![1000, 0, 8000],
+        };
+        apply(&mut s, op).unwrap();
+        let e = efx(&s);
+        assert_eq!((e.cycle, e.fade_in), (Span::Beats(8000), Span::Beats(1000)));
+    }
+
+    #[test]
+    fn efx_is_checked_when_saved() {
+        let mut s = example();
+        let save = |s: &mut Snapshot, change: fn(&mut Efx)| {
+            let mut copy = s.clone();
+            change(efx_mut(&mut copy, "e1"));
+            let function = copy.project.functions.into_iter().find(|f| f.id == "e1");
+            apply(
+                s,
+                Op::SaveFunction {
+                    function: function.unwrap(),
+                },
+            )
+        };
+        assert!(save(&mut s, |e| e.width = 127).is_ok());
+        let refused: [fn(&mut Efx); 6] = [
+            |e| e.width = 128,
+            |e| e.y_frequency = 33,
+            |e| e.fixtures[0].start_offset = 360,
+            |e| e.run_order = RunOrder::Random,
+            |e| e.fixtures[1].fixture = "mh1".into(),
+            // O PAR não tem pan nem tilt
+            |e| e.fixtures[0].fixture = "par1".into(),
+        ];
+        for change in refused {
+            assert!(save(&mut s, change).is_err());
+        }
+        assert_eq!(efx_mut(&mut s, "e1").width, 127);
+    }
+
+    #[test]
+    fn fixture_groups_are_checked_and_removing_one_cleans_the_matrix() {
+        let mut s = example();
+        let groups = s.project.fixture_groups.clone();
+        for group in groups.clone() {
+            apply(&mut s, Op::SaveFixtureGroup { group }).unwrap();
+        }
+        // A barra de 8 pixels tem as cabeças 0 a 7
+        let refused: [fn(&mut FixtureGroup); 5] = [
+            |g| g.width = 0,
+            |g| g.cells[0].x = g.width,
+            |g| g.cells[1].x = g.cells[0].x,
+            |g| g.cells[1].head = g.cells[0].head,
+            |g| g.cells[0].head = 8,
+        ];
+        for change in refused {
+            let mut group = groups[1].clone();
+            change(&mut group);
+            assert!(apply(&mut s, Op::SaveFixtureGroup { group }).is_err());
+        }
+        assert_eq!(s.project.fixture_groups, groups);
+        // "Degradê nas barras" usava o grupo removido
+        apply(&mut s, Op::RemoveFixtureGroup { id: "g2".into() }).unwrap();
+        let matrix = s.project.functions.iter().find(|f| f.id == "r1");
+        let Some(FunctionKind::RgbMatrix(m)) = matrix.map(|f| &f.kind) else {
+            panic!("r1 não é RGB Matrix")
+        };
+        assert_eq!(m.group, None);
     }
 
     #[test]

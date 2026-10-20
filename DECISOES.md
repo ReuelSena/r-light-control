@@ -102,6 +102,7 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
     - Aba **Elementos** (2026-10-16): elementos de palco que complementam a prévia (box truss de 1, 1,5 e 3 m, praticável 2 × 1 m, escada, painel LED, tela de projeção, caixa de grave, caixa ativa, retorno, pedestal de microfone, pessoa, bateria, teclado, púlpito e planta). Com um elemento escolhido, Ctrl + D duplica ao lado (na direção da largura dele) e Del o exclui; os botões Duplicar e Excluir fazem o mesmo no toque.
     - O toque e o arrasto valem só para o que é da aba aberta: fixtures na aba Fixtures, elementos na aba Elementos (na aba Palco, nenhum dos dois).
     - O tamanho do palco, as posições e os elementos ficam no projeto; a qualidade do desenho e a fumaça, em cada aparelho.
+    - **Só o 3D (2026-10-19, pedido do usuário):** o botão "Só o 3D" esconde o painel de fixtures, elementos e palco e deixa a visualização ocupando a tela toda.
   - **Mesa simples:** banco de faders, como no QLC+, para mexer em canais DMX específicos ou grupos de canais fora do console.
     - Em tela larga (a partir de 1024 px), como no QLC+: faders de canal em cima e a faixa dos grupos de canais embaixo. No celular, os grupos ficam numa aba.
     - O fader de um grupo grava nos canais do grupo, e os faders desses canais acompanham. O "Zerar" dos grupos solta os canais deles.
@@ -276,3 +277,4 @@ Regras e decisões que valem entre sessões. Toda decisão nova entra aqui com d
 | 2026-10-19 | F8 entregue: EFX no motor, nos chasers, nas coleções e no elemento "Tempos"; grupos de fixtures conferidos no servidor; projeto na versão 4 (A2, A5). |
 | 2026-10-19 | Pedido do usuário: os testes com os moving beams vão para um plano de validação final (`docs/validacao-final.md`), antes do release (G1). Para lá foram os da F6 (a posição entre cenas e os fades nos Beams), o deslizar dos Beams no chaser da F7 e os do EFX da F8. |
 | 2026-10-19 | F8 commitada a pedido do usuário, antes da validação. O que falta validar (com e sem os moving beams) está nas Pendências do `PLANO.md`; o que ficou de fora da F7 e da F8, no Backlog (só se o usuário pedir). |
+| 2026-10-19 | 3D View: botão "Só o 3D", que esconde o painel de fixtures, elementos e palco e deixa a visualização na tela toda (E12, pedido do usuário). |

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Copy, Move3d, Plus, Trash2 } from 'lucide-vue-next'
+import { Copy, Maximize2, Minimize2, Move3d, Plus, Trash2 } from 'lucide-vue-next'
 import type { Stage } from '~/types/generated/Stage'
 import type { StageElement } from '~/types/generated/StageElement'
 import type { StageElementKind } from '~/types/generated/StageElementKind'
@@ -14,6 +14,8 @@ const project = computed(() => state.value.project)
 const stage = computed(() => project.value.stage)
 const view = ref<'perspective' | 'top' | 'front' | 'side'>('perspective')
 const editingPosition = ref(false)
+// Só a visualização, sem o painel de fixtures, elementos e palco
+const only3d = ref(false)
 const tab = ref('fixtures')
 const layer = computed(() => (tab.value === 'fixtures' || tab.value === 'elements' ? tab.value : undefined))
 // Cada aba guarda a sua escolha
@@ -80,7 +82,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div class="grid h-full grid-rows-[minmax(260px,1fr)_auto] gap-2 p-2 @5xl:grid-cols-[1fr_380px] @5xl:grid-rows-1">
+  <div
+    class="grid h-full gap-2 p-2"
+    :class="only3d ? 'grid-rows-1' : 'grid-rows-[minmax(260px,1fr)_auto] @5xl:grid-cols-[1fr_380px] @5xl:grid-rows-1'"
+  >
     <div class="relative min-h-0">
       <View3dStage v-model:selected="selection[tab]" :view="view" :editing="editingPosition" :layer="layer" class="absolute! inset-0" />
       <div class="pointer-events-none absolute inset-x-2 top-2 flex flex-wrap items-start gap-2">
@@ -92,10 +97,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           </RlButton>
           <RlInfo :text="t('view3d.info')" />
         </div>
+        <RlButton v-model="only3d" mode="toggle" highlight="led" size="sm" class="pointer-events-auto ml-auto" :title="t('view3d.only3d')" :aria-label="t('view3d.only3d')">
+          <component :is="only3d ? Minimize2 : Maximize2" :size="16" />
+          {{ t('view3d.only3d') }}
+        </RlButton>
       </div>
     </div>
 
-    <section class="panel min-h-0 overflow-y-auto @max-5xl:max-h-[45vh]">
+    <section v-if="!only3d" class="panel min-h-0 overflow-y-auto @max-5xl:max-h-[45vh]">
       <RlTabs v-model="tab" :tabs="tabs">
         <template #fixtures>
           <div class="flex flex-col gap-3">

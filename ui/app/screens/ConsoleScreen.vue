@@ -171,7 +171,7 @@ function place(w: VcWidget) {
   const inner: Rect[] = []
   const box = placedWidget.layouts[format.value]!
   const placedChildren = children.map((c) => {
-    const r = layoutFormats.map((f) => c.layouts[f]).find(Boolean) ?? { w: 8, h: 8 }
+    const r = layoutFormats.map((f) => c.layouts[f]).find(Boolean) ?? { w: 16, h: 16 }
     const rect = freeSpot(inner, r.w, r.h, box.w, frameHeader)
     inner.push(rect)
     return { ...c, layouts: { ...c.layouts, [format.value]: rect } }
@@ -192,7 +192,7 @@ const shortcuts: Record<string, () => unknown> = {
 }
 
 // Na edição, atalhos dos elementos escolhidos: Delete remove; Ctrl + D duplica; Ctrl + C e Ctrl + V copiam
-// e colam; as setas deslocam 2 células (com Shift, 4; com Ctrl, 1, o menor passo da grade)
+// e colam; as setas deslocam 4 células (com Shift, 8; com Ctrl, 1, o menor passo da grade)
 const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
 const editShortcuts: Record<string, () => unknown> = {
   Delete: () => selection.value.length && removeNow(),
@@ -204,7 +204,7 @@ const editShortcuts: Record<string, () => unknown> = {
 function editKey(e: KeyboardEvent) {
   const arrow = arrows[e.key]
   if (e.altKey || (arrow && !selection.value.length)) return false
-  const step = e.ctrlKey ? 1 : e.shiftKey ? 4 : 2
+  const step = e.ctrlKey ? 1 : e.shiftKey ? 8 : 4
   const action = arrow ? () => canvas.value?.nudge(arrow[0] * step, arrow[1] * step) : editShortcuts[keyCombo(e)]
   if (!action) return false
   e.preventDefault()

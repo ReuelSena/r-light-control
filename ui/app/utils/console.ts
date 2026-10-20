@@ -13,22 +13,22 @@ export type ConsoleFormat = keyof VcLayouts
 export const layoutFormats: ConsoleFormat[] = ['phone', 'tablet', 'desktop']
 
 /** Colunas da grade de cada formato. A célula é quadrada e acompanha a largura da tela. */
-export const formatColumns: Record<ConsoleFormat, number> = { phone: 32, tablet: 64, desktop: 96 }
+export const formatColumns: Record<ConsoleFormat, number> = { phone: 64, tablet: 128, desktop: 192 }
 
 /** Linhas do cabeçalho de uma moldura, onde os elementos de dentro não entram. */
-export const frameHeader = 2
+export const frameHeader = 4
 
 /** Ícone, tamanho inicial (em células) e entradas externas de cada tipo; `keys`: aceita tecla do teclado. */
 export const widgetKinds: Record<WidgetType, { icon: Component; size: [number, number]; inputs: InputControl[]; keys: boolean }> = {
-  button: { icon: RectangleHorizontal, size: [8, 8], inputs: ['main'], keys: true },
-  slider: { icon: SlidersVertical, size: [8, 24], inputs: ['main'], keys: false },
-  cueList: { icon: ListOrdered, size: [32, 24], inputs: ['main', 'previous', 'next', 'stop'], keys: true },
-  xyPad: { icon: Move, size: [16, 24], inputs: ['x', 'y'], keys: false },
-  speedDial: { icon: Timer, size: [24, 16], inputs: ['tap'], keys: true },
-  frame: { icon: SquareDashed, size: [32, 24], inputs: [], keys: false },
-  clock: { icon: Clock, size: [16, 8], inputs: [], keys: false },
-  animation: { icon: Sparkles, size: [24, 24], inputs: ['main'], keys: false },
-  label: { icon: Type, size: [16, 4], inputs: [], keys: false },
+  button: { icon: RectangleHorizontal, size: [16, 16], inputs: ['main'], keys: true },
+  slider: { icon: SlidersVertical, size: [16, 48], inputs: ['main'], keys: false },
+  cueList: { icon: ListOrdered, size: [64, 48], inputs: ['main', 'previous', 'next', 'stop'], keys: true },
+  xyPad: { icon: Move, size: [32, 48], inputs: ['x', 'y'], keys: false },
+  speedDial: { icon: Timer, size: [48, 32], inputs: ['tap'], keys: true },
+  frame: { icon: SquareDashed, size: [64, 48], inputs: [], keys: false },
+  clock: { icon: Clock, size: [32, 16], inputs: [], keys: false },
+  animation: { icon: Sparkles, size: [48, 48], inputs: ['main'], keys: false },
+  label: { icon: Type, size: [32, 8], inputs: [], keys: false },
 }
 export const widgetTypes = Object.keys(widgetKinds) as WidgetType[]
 

@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 5;
+const SCHEMA_VERSION: u32 = 6;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -134,9 +134,9 @@ fn migrate(project: &mut Value, version: u32) {
             }
         }
     }
-    // 4 → 5: a grade do console ficou com o dobro de colunas (células pela metade); as posições e os
-    // tamanhos dos elementos dobram, e eles continuam do mesmo jeito na tela
-    if version < 5 {
+    // 4 → 5 e 5 → 6: a grade do console ganhou o dobro de colunas (células pela metade), duas vezes; as
+    // posições e os tamanhos dos elementos dobram a cada uma, e eles continuam do mesmo jeito na tela
+    for _ in version.max(4)..SCHEMA_VERSION {
         let widgets = project
             .pointer_mut("/console/widgets")
             .and_then(Value::as_array_mut);
@@ -217,8 +217,9 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
-    /// O projeto como as versões até a 4 gravavam o console: a grade com a metade das colunas.
-    fn halve_console_grid(old: &mut Value) {
+    /// O console como uma versão antiga o gravava: a grade com `divisor` vezes menos colunas (2 na
+    /// versão 5, 4 até a 4).
+    fn shrink_console_grid(old: &mut Value, divisor: u64) {
         for w in old["console"]["widgets"].as_array_mut().unwrap() {
             for rect in w["layouts"].as_object_mut().unwrap().values_mut() {
                 for cells in rect
@@ -226,7 +227,7 @@ mod tests {
                     .into_iter()
                     .flat_map(|r| r.values_mut())
                 {
-                    *cells = json!(cells.as_u64().unwrap() / 2);
+                    *cells = json!(cells.as_u64().unwrap() / divisor);
                 }
             }
         }
@@ -246,7 +247,7 @@ mod tests {
         for w in old["console"]["widgets"].as_array_mut().unwrap() {
             w.as_object_mut().unwrap().remove("beats");
         }
-        halve_console_grid(&mut old);
+        shrink_console_grid(&mut old, 4);
         let file = dir.join("antigo.rlc");
         let v1 = json!({ "format": FORMAT, "schemaVersion": 1, "project": old });
         std::fs::write(&file, v1.to_string()).unwrap();
@@ -269,7 +270,7 @@ mod tests {
             .unwrap();
         efx["runOrder"] = json!("random");
         efx["width"] = json!(200);
-        halve_console_grid(&mut old);
+        shrink_console_grid(&mut old, 4);
         let file = dir.join("antigo.rlc");
         let v3 = json!({ "format": FORMAT, "schemaVersion": 3, "project": old });
         std::fs::write(&file, v3.to_string()).unwrap();
@@ -283,15 +284,29 @@ mod tests {
     }
 
     #[test]
-    fn version_4_opens_with_the_console_grid_doubled() {
+    fn version_4_opens_with_the_console_grid_doubled_twice() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
         let project = crate::hub::example_snapshot(None).project;
         let mut old = serde_json::to_value(&project).unwrap();
-        halve_console_grid(&mut old);
+        shrink_console_grid(&mut old, 4);
         let file = dir.join("antigo.rlc");
         let v4 = json!({ "format": FORMAT, "schemaVersion": 4, "project": old });
         std::fs::write(&file, v4.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_5_opens_with_the_console_grid_doubled_once() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = crate::hub::example_snapshot(None).project;
+        let mut old = serde_json::to_value(&project).unwrap();
+        shrink_console_grid(&mut old, 2);
+        let file = dir.join("antigo.rlc");
+        let v5 = json!({ "format": FORMAT, "schemaVersion": 5, "project": old });
+        std::fs::write(&file, v5.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

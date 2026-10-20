@@ -30,11 +30,11 @@ watch(area, (el) => el && (observer ??= new ResizeObserver(([entry]) => (width.v
 onBeforeUnmount(() => observer?.disconnect())
 // Na edição a célula guarda o tamanho da operação: o painel de propriedades não aperta os elementos
 // (a grade rola para o lado), e o que se vê editando é o que se vê operando
-const fit = computed(() => Math.max(6, Math.floor(width.value / cols.value)))
+const fit = computed(() => Math.max(4, Math.floor(width.value / cols.value)))
 const operating = ref(0)
 watchEffect(() => !props.editing && (operating.value = fit.value))
 // O zoom do console (ao lado do Editar) aumenta ou diminui a célula; a grade rola se passar da tela
-const cell = computed(() => Math.max(6, Math.floor((props.editing ? Math.max(fit.value, operating.value) : fit.value) * props.zoom)))
+const cell = computed(() => Math.max(4, Math.floor((props.editing ? Math.max(fit.value, operating.value) : fit.value) * props.zoom)))
 
 const byId = computed(() => new Map(props.widgets.map((w) => [w.id, w])))
 const rectOf = (w: VcWidget) => w.layouts[props.format]
@@ -48,7 +48,7 @@ function absolute(w: VcWidget): Rect | undefined {
 }
 // Molduras primeiro, para ficarem por baixo dos filhos
 const placed = computed(() => props.widgets.filter((w) => absolute(w)).sort((a, b) => Number(b.type === 'frame') - Number(a.type === 'frame')))
-const rows = computed(() => Math.max(0, ...placed.value.map((w) => absolute(w)!.y + absolute(w)!.h)) + (props.editing ? 16 : 0))
+const rows = computed(() => Math.max(0, ...placed.value.map((w) => absolute(w)!.y + absolute(w)!.h)) + (props.editing ? 32 : 0))
 const px = (r: Rect) => ({ left: `${r.x * cell.value}px`, top: `${r.y * cell.value}px`, width: `${r.w * cell.value}px`, height: `${r.h * cell.value}px` })
 
 // ---------- Edição ----------
@@ -79,12 +79,14 @@ function down(e: PointerEvent, w: VcWidget, resize = false) {
       toggle(w)
     }, 500)
   }
-  if (!selection.value.includes(w.id)) {
+  // O model só muda depois que a tela se refaz: o arrasto de um elemento ainda não escolhido já leva só ele
+  const chosen = selection.value.includes(w.id)
+  if (!chosen) {
     if (touch) return (pending = w.id)
     selection.value = [w.id]
   }
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  drag.value = { ids: resize ? [w.id] : [...selection.value], resize, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false }
+  drag.value = { ids: resize || !chosen ? [w.id] : [...selection.value], resize, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false }
 }
 
 function move(e: PointerEvent) {
@@ -125,9 +127,9 @@ function planFor(ids: string[], cx: number, cy: number, resize: boolean) {
   for (const w of moving) {
     const r = rectOf(w)!
     let frame = w.frame
-    // Mínimo de 4 × 4 células, para caber um botão de toque; o texto pode ter 2 de altura
-    const minH = w.type === 'label' ? 2 : 4
-    let next = resize ? { ...r, w: Math.max(4, r.w + cx), h: Math.max(minH, r.h + cy) } : { ...r, x: r.x + cx, y: r.y + cy }
+    // Mínimo de 8 × 8 células, para caber um botão de toque; o texto pode ter 4 de altura
+    const minH = w.type === 'label' ? 4 : 8
+    let next = resize ? { ...r, w: Math.max(8, r.w + cx), h: Math.max(minH, r.h + cy) } : { ...r, x: r.x + cx, y: r.y + cy }
     // Sozinho, um elemento entra na moldura onde é solto, ou sai dela
     if (!resize && moving.length === 1 && w.type !== 'frame') {
       const abs = { ...absolute(w)!, x: absolute(w)!.x + cx, y: absolute(w)!.y + cy }
@@ -213,14 +215,14 @@ function itemStyle(w: VcWidget) {
   min-height: 100%;
 }
 
-/* Em edição, a grade aparece: um filete fraco a cada célula e um mais forte a cada duas */
+/* Em edição, a grade aparece: um filete fraco a cada célula e um mais forte a cada quatro */
 .editing {
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px),
     linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px),
     linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
-  background-size: calc(var(--cell) * 2) calc(var(--cell) * 2), calc(var(--cell) * 2) calc(var(--cell) * 2), var(--cell) var(--cell), var(--cell) var(--cell);
+  background-size: calc(var(--cell) * 4) calc(var(--cell) * 4), calc(var(--cell) * 4) calc(var(--cell) * 4), var(--cell) var(--cell), var(--cell) var(--cell);
 }
 
 .item {
@@ -252,7 +254,7 @@ function itemStyle(w: VcWidget) {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: calc(var(--cell) * 2 - 6px);
+  height: calc(var(--cell) * 4 - 6px);
   padding: 0 10px;
   color: var(--color-fg-muted);
   font-size: 11px;

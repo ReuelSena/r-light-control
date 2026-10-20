@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Trash2 } from 'lucide-vue-next'
+import { Copy, Trash2 } from 'lucide-vue-next'
 import type { Attribute } from '~/types/generated/Attribute'
 import type { ChannelGroup } from '~/types/generated/ChannelGroup'
 
 // Grupo de canais: toque nos canais de cada fixture para incluir ou tirar do grupo. Os atalhos
 // por atributo incluem (ou tiram) de uma vez esse atributo em todas as fixtures, sem os canais finos.
 const props = defineProps<{ group: ChannelGroup }>()
+const emit = defineEmits<{ duplicated: [id: string] }>()
 const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
@@ -36,6 +37,12 @@ function toggleAttribute(a: Attribute) {
   save({ channels: hasAll(a) ? rest : [...rest, ...all] })
 }
 
+async function duplicate() {
+  const id = uuidv7()
+  await send({ op: 'saveChannelGroup', group: { ...props.group, id, name: t('studio.copyName', { name: props.group.name }) } })
+  emit('duplicated', id)
+}
+
 function remove() {
   if (!confirmRemove.value) return (confirmRemove.value = true)
   send({ op: 'removeChannelGroup', id: props.group.id })
@@ -49,6 +56,10 @@ function remove() {
         {{ t('fixtures.name') }}
         <input class="field" :value="group.name" @change="save({ name: ($event.target as HTMLInputElement).value })">
       </label>
+      <RlButton @press="duplicate">
+        <Copy :size="16" />
+        {{ t('common.duplicate') }}
+      </RlButton>
       <RlButton :model-value="confirmRemove" color="var(--color-danger)" @press="remove">
         <Trash2 :size="16" />
         {{ confirmRemove ? t('common.confirmRemove') : t('common.remove') }}

@@ -263,13 +263,15 @@ pub struct Function {
     pub kind: FunctionKind,
 }
 
-/// Pasta do Studio: agrupa criações de um tipo só.
+/// Pasta do Studio: agrupa criações (e outras pastas) de um tipo só.
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Folder {
     pub id: Id,
     pub name: String,
     pub kind: FunctionType,
+    /// Pasta que contém esta (do mesmo tipo); `None` fica solta no tipo.
+    pub parent: Option<Id>,
 }
 
 /// Os tipos de criação, iguais ao campo `type` de [`Function`].
@@ -945,11 +947,21 @@ pub enum Op {
     RemoveFixtureGroup {
         id: Id,
     },
+    /// Leva o grupo para a posição `to` da lista (a partir de 0). A ordem vale em todas as telas.
+    MoveFixtureGroup {
+        id: Id,
+        to: usize,
+    },
     SaveChannelGroup {
         group: ChannelGroup,
     },
     RemoveChannelGroup {
         id: Id,
+    },
+    /// Leva o grupo de canais para a posição `to` da lista (a partir de 0).
+    MoveChannelGroup {
+        id: Id,
+        to: usize,
     },
     SaveFunction {
         function: Function,
@@ -961,7 +973,7 @@ pub enum Op {
     SaveFolder {
         folder: Folder,
     },
-    /// Remove a pasta; as criações dela ficam soltas no tipo.
+    /// Remove a pasta; as criações e as pastas dela passam para a pasta de cima (ou ficam soltas no tipo).
     RemoveFolder {
         id: Id,
     },

@@ -8,7 +8,8 @@ import type { VcWidget } from '~/types/generated/VcWidget'
 // - o toque escolhe; Ctrl + clique ou toque longo soma outros do mesmo nível;
 // - arrastar move os escolhidos (no toque, só depois de escolhidos) e o canto redimensiona;
 // - um elemento solto dentro de uma moldura passa a ser dela (e sai ao ser solto fora);
-// - o destino aparece antes de soltar: verde se livre, vermelho se sobrepõe ou sai da grade.
+// - o destino aparece antes de soltar: verde se livre, vermelho se sobrepõe ou sai da grade;
+// - as setas do teclado deslocam os escolhidos (`nudge`, chamado pela tela com as mesmas regras do arrasto).
 const props = defineProps<{ widgets: VcWidget[]; format: ConsoleFormat; editing: boolean; zoom: number }>()
 const selection = defineModel<string[]>('selection', { required: true })
 const { send } = useEngine()
@@ -29,11 +30,11 @@ watch(area, (el) => el && (observer ??= new ResizeObserver(([entry]) => (width.v
 onBeforeUnmount(() => observer?.disconnect())
 // Na edição a célula guarda o tamanho da operação: o painel de propriedades não aperta os elementos
 // (a grade rola para o lado), e o que se vê editando é o que se vê operando
-const fit = computed(() => Math.max(12, Math.floor(width.value / cols.value)))
+const fit = computed(() => Math.max(6, Math.floor(width.value / cols.value)))
 const operating = ref(0)
 watchEffect(() => !props.editing && (operating.value = fit.value))
 // O zoom do console (ao lado do Editar) aumenta ou diminui a célula; a grade rola se passar da tela
-const cell = computed(() => Math.max(12, Math.floor((props.editing ? Math.max(fit.value, operating.value) : fit.value) * props.zoom)))
+const cell = computed(() => Math.max(6, Math.floor((props.editing ? Math.max(fit.value, operating.value) : fit.value) * props.zoom)))
 
 const byId = computed(() => new Map(props.widgets.map((w) => [w.id, w])))
 const rectOf = (w: VcWidget) => w.layouts[props.format]
@@ -47,7 +48,7 @@ function absolute(w: VcWidget): Rect | undefined {
 }
 // Molduras primeiro, para ficarem por baixo dos filhos
 const placed = computed(() => props.widgets.filter((w) => absolute(w)).sort((a, b) => Number(b.type === 'frame') - Number(a.type === 'frame')))
-const rows = computed(() => Math.max(0, ...placed.value.map((w) => absolute(w)!.y + absolute(w)!.h)) + (props.editing ? 8 : 0))
+const rows = computed(() => Math.max(0, ...placed.value.map((w) => absolute(w)!.y + absolute(w)!.h)) + (props.editing ? 16 : 0))
 const px = (r: Rect) => ({ left: `${r.x * cell.value}px`, top: `${r.y * cell.value}px`, width: `${r.w * cell.value}px`, height: `${r.h * cell.value}px` })
 
 // ---------- Edição ----------
@@ -57,7 +58,7 @@ let holdTimer: ReturnType<typeof setTimeout> | undefined
 let held = false
 let pending: string | undefined // toque num elemento ainda não escolhido: escolhe ao soltar
 
-const inside = (r: Rect, f: Rect) => r.x >= f.x && r.x + r.w <= f.x + f.w && r.y >= f.y + 1 && r.y + r.h <= f.y + f.h
+const inside = (r: Rect, f: Rect) => r.x >= f.x && r.x + r.w <= f.x + f.w && r.y >= f.y + frameHeader && r.y + r.h <= f.y + f.h
 
 // Ctrl + clique e toque longo somam ou tiram; só elementos do mesmo nível (mesma moldura) andam juntos
 function toggle(w: VcWidget) {
@@ -114,25 +115,21 @@ function cancel() {
   drag.value = undefined
 }
 
-// Destino do arrasto, em células, e se ele é válido
-const plan = computed(() => {
-  const d = drag.value
-  if (!d?.moved) return
-  const cx = Math.round(d.dx / cell.value)
-  const cy = Math.round(d.dy / cell.value)
+// Destino de mover (ou redimensionar) os elementos `ids` em `cx` × `cy` células, e se ele é válido
+function planFor(ids: string[], cx: number, cy: number, resize: boolean) {
   // Filhos de uma moldura que também está andando vão junto com ela
-  const moving = d.ids.map((id) => byId.value.get(id)!).filter((w) => w && rectOf(w) && !d.ids.includes(w.frame ?? ''))
+  const moving = ids.map((id) => byId.value.get(id)!).filter((w) => w && rectOf(w) && !ids.includes(w.frame ?? ''))
   const widgets: VcWidget[] = []
   const ghosts: Rect[] = []
   let ok = true
   for (const w of moving) {
     const r = rectOf(w)!
     let frame = w.frame
-    // Mínimo de 2 × 2 células, para caber um botão de toque; o texto pode ter 1 de altura
-    const minH = w.type === 'label' ? 1 : 2
-    let next = d.resize ? { ...r, w: Math.max(2, r.w + cx), h: Math.max(minH, r.h + cy) } : { ...r, x: r.x + cx, y: r.y + cy }
+    // Mínimo de 4 × 4 células, para caber um botão de toque; o texto pode ter 2 de altura
+    const minH = w.type === 'label' ? 2 : 4
+    let next = resize ? { ...r, w: Math.max(4, r.w + cx), h: Math.max(minH, r.h + cy) } : { ...r, x: r.x + cx, y: r.y + cy }
     // Sozinho, um elemento entra na moldura onde é solto, ou sai dela
-    if (!d.resize && moving.length === 1 && w.type !== 'frame') {
+    if (!resize && moving.length === 1 && w.type !== 'frame') {
       const abs = { ...absolute(w)!, x: absolute(w)!.x + cx, y: absolute(w)!.y + cy }
       const host = placed.value.find((f) => f.type === 'frame' && inside(abs, rectOf(f)!))
       frame = host?.id ?? null
@@ -141,7 +138,7 @@ const plan = computed(() => {
     const box = frame ? rectOf(byId.value.get(frame)!)! : undefined
     const children = placed.value.filter((c) => c.frame === w.id).map((c) => rectOf(c)!)
     const fits = box ? inside({ ...next, x: box.x + next.x, y: box.y + next.y }, box) : next.x >= 0 && next.y >= 0 && next.x + next.w <= cols.value
-    const free = !placed.value.some((s) => s.frame === frame && s.id !== w.id && !d.ids.includes(s.id) && overlaps(rectOf(s)!, next))
+    const free = !placed.value.some((s) => s.frame === frame && s.id !== w.id && !ids.includes(s.id) && overlaps(rectOf(s)!, next))
     // Uma moldura não pode encolher por cima dos filhos
     const holds = children.every((c) => c.x + c.w <= next.w && c.y + c.h <= next.h)
     ok &&= fits && free && holds
@@ -149,7 +146,19 @@ const plan = computed(() => {
     widgets.push({ ...w, frame, layouts: { ...w.layouts, [props.format]: next } })
   }
   return { ok, widgets, ghosts }
+}
+
+const plan = computed(() => {
+  const d = drag.value
+  return d?.moved ? planFor(d.ids, Math.round(d.dx / cell.value), Math.round(d.dy / cell.value), d.resize) : undefined
 })
+
+// Teclado: desloca os escolhidos em `cx` × `cy` células; fica onde está se o destino não for válido
+function nudge(cx: number, cy: number) {
+  const { ok, widgets } = planFor(selection.value, cx, cy, false)
+  if (ok && widgets.length) send({ op: 'saveWidgets', widgets })
+}
+defineExpose({ nudge })
 
 // Durante o arrasto, os elementos (e os filhos das molduras) seguem o dedo; o destino é o contorno
 function itemStyle(w: VcWidget) {
@@ -204,12 +213,14 @@ function itemStyle(w: VcWidget) {
   min-height: 100%;
 }
 
-/* Em edição, a grade aparece */
+/* Em edição, a grade aparece: um filete fraco a cada célula e um mais forte a cada duas */
 .editing {
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
-  background-size: var(--cell) var(--cell);
+    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: calc(var(--cell) * 2) calc(var(--cell) * 2), calc(var(--cell) * 2) calc(var(--cell) * 2), var(--cell) var(--cell), var(--cell) var(--cell);
 }
 
 .item {
@@ -241,7 +252,7 @@ function itemStyle(w: VcWidget) {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: calc(var(--cell) - 6px);
+  height: calc(var(--cell) * 2 - 6px);
   padding: 0 10px;
   color: var(--color-fg-muted);
   font-size: 11px;

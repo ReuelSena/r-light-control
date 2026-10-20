@@ -70,7 +70,7 @@ Para montar telas:
 | `RlSegmented` | Escolher uma entre poucas opções (ordem, sentido, propagação) | Mesmo trilho das abas, sem conteúdo embaixo. Sempre há uma opção escolhida. Com `size="sm"`, fica da altura de um botão pequeno (36 px), para barras ao lado de botões `sm` (ex.: vistas e "Editar posição" da 3D View). |
 | `RlStepper` | Valor numa escala fixa (zoom) | − e + andam pelos degraus (`steps`); toque duplo no display volta ao padrão. |
 | `RlTimeField` | Tempos (fade, hold, duração) | Mostra segundos (ou batidas, com `beats`) e guarda milissegundos. |
-| `RlList` | Listas selecionáveis (bibliotecas, funções) | Linhas de 48 px; `v-model` é o id selecionado. O slot `item` personaliza a linha. |
+| `RlList` | Listas selecionáveis (bibliotecas, funções) | Linhas de 48 px; `v-model` é o id selecionado. O slot `item` personaliza a linha. Com `reorderable`, arrastar uma linha a leva para outra posição (mouse: clicar e arrastar; toque: segurar e arrastar) e o evento `reorder` traz o id e a posição final. |
 | `RlSwatches` | Escolher uma cor de uma paleta curta (etiqueta de fixture) | `v-model` com a cor; `colors` com as opções. |
 | `RlSwitch` | Opções liga/desliga em configurações | Alavanca com texto ao lado. |
 | `RlInfo` | Explicar uma seção, página ou diálogo | Ícone "i" ao lado do título; tocar abre um balão com o texto. É o único lugar para explicações (E6). |
@@ -119,7 +119,7 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 | Animation | `Sparkles` | 12 × 12 |
 | Texto | `Type` | 8 × 2 |
 
-- **Grade (VC-2):** 16 colunas no celular, 32 no tablet e 48 no desktop, para ajuste fino. A célula é quadrada e acompanha a largura; o elemento ocupa o retângulo dele com 3 px de folga e tem no mínimo 2 × 2 células (o Texto pode ter 1 de altura). Na moldura, a primeira linha é do cabeçalho.
+- **Grade (VC-2):** 32 colunas no celular, 64 no tablet e 96 no desktop, para ajuste fino. A célula é quadrada e acompanha a largura; o elemento ocupa o retângulo dele com 3 px de folga e tem no mínimo 4 × 4 células (o Texto pode ter 2 de altura). Na moldura, as duas primeiras linhas são do cabeçalho.
 - **Cores (`widgetColors`):** cada cor viva com a versão escura dela (25% do brilho, para fundo de texto na cor viva) e sete cinzas do branco ao preto. O campo de cor (`ConsoleColor`) mostra a cor escolhida e abre a paleta; com `none`, oferece "Sem cor" (fundo e borda do Texto).
 - **Edição:** a grade aparece, e o painel de propriedades fica sempre no lugar em telas largas (vazio, com um aviso, quando nada está escolhido), para escolher um elemento não mexer no layout. A célula guarda o tamanho da operação (o painel de propriedades faz a grade rolar para o lado, sem apertar os elementos). Elementos com controle MIDI mostram um ícone de teclado musical no canto.
 - **Etiqueta de tecla:** o elemento acionado por tecla mostra a tecla (ou a combinação) numa etiqueta no canto superior direito, na operação e na edição. O botão de dicas de atalho (teclado, ao lado do "Editar", ou Alt + I) mostra ou esconde as etiquetas do console, inclusive as da seção master. Setas e espaço viram símbolos (← → ↑ ↓ ␣).

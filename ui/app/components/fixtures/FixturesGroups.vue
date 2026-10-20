@@ -31,7 +31,13 @@ async function createChannelGroup() {
         <h2 class="heading">{{ t('groups.fixtureGroups') }}</h2>
         <RlButton size="sm" :aria-label="t('groups.newFixtureGroup')" @press="createFixtureGroup"><Plus :size="16" /></RlButton>
       </div>
-      <RlList v-model="selectedId" class="shrink-0" :items="project.fixtureGroups.map((g) => ({ id: g.id, label: g.name, detail: `${g.width}×${g.height}` }))">
+      <RlList
+        v-model="selectedId"
+        reorderable
+        class="shrink-0"
+        :items="project.fixtureGroups.map((g) => ({ id: g.id, label: g.name, detail: `${g.width}×${g.height}` }))"
+        @reorder="(id, to) => send({ op: 'moveFixtureGroup', id, to })"
+      >
         <template #item="{ item }">
           <Grid3x3 :size="18" class="shrink-0 text-fg-muted" />
           <span class="flex-1 truncate">{{ item.label }}</span>
@@ -45,8 +51,10 @@ async function createChannelGroup() {
       </div>
       <RlList
         v-model="selectedId"
+        reorderable
         class="shrink-0"
         :items="project.channelGroups.map((g) => ({ id: g.id, label: g.name, detail: t('groups.channelCount', g.channels.length), look: channelGroupLook(project, g) }))"
+        @reorder="(id, to) => send({ op: 'moveChannelGroup', id, to })"
       >
         <template #item="{ item }">
           <component :is="item.look.icon" :size="18" class="shrink-0" :style="{ color: item.look.color }" />
@@ -56,8 +64,8 @@ async function createChannelGroup() {
       </RlList>
     </section>
 
-    <FixturesGroupGrid v-if="fixtureGroup" :group="fixtureGroup" />
-    <FixturesChannelGroup v-else-if="channelGroup" :group="channelGroup" />
+    <FixturesGroupGrid v-if="fixtureGroup" :group="fixtureGroup" @duplicated="selectedId = $event" />
+    <FixturesChannelGroup v-else-if="channelGroup" :group="channelGroup" @duplicated="selectedId = $event" />
     <section v-else class="panel justify-center text-center text-fg-muted">{{ t('groups.selectHint') }}</section>
   </div>
 </template>

@@ -411,6 +411,8 @@ Validação:
 - **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Os elementos são os mesmos em todos os formatos (só a posição muda), e o formato vem da largura da tela, com troca no ⚙ (E11). Protótipo na F2 (rodada 3); implementação na F10.
 - **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3). O fade in e o fade out das cenas foram ligados na F6 (2026-10-18, pedido do usuário); a duração entrou na F7, com os chasers. Na validação da F7 (2026-10-19), o elemento passou a seguir o BPM master ("Seguir o BPM"), com os tempos em batidas e o TAP do master (E11).
 
+- **VC-4 (2026-10-20): atalhos do teclado na edição.** Com elementos escolhidos: Delete remove, Ctrl + D duplica, Ctrl + C e Ctrl + V copiam e colam, e as setas deslocam (2 células; com Shift, 4; com Ctrl, 1). Ver E12. Pedidos da mesma data, fora do console (E12): grupos de fixtures e de canais reordenáveis por arrasto e duplicáveis; pastas dentro de pastas no Studio.
+
 ---
 
 ## Riscos

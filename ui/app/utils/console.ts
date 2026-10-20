@@ -13,19 +13,22 @@ export type ConsoleFormat = keyof VcLayouts
 export const layoutFormats: ConsoleFormat[] = ['phone', 'tablet', 'desktop']
 
 /** Colunas da grade de cada formato. A célula é quadrada e acompanha a largura da tela. */
-export const formatColumns: Record<ConsoleFormat, number> = { phone: 16, tablet: 32, desktop: 48 }
+export const formatColumns: Record<ConsoleFormat, number> = { phone: 32, tablet: 64, desktop: 96 }
+
+/** Linhas do cabeçalho de uma moldura, onde os elementos de dentro não entram. */
+export const frameHeader = 2
 
 /** Ícone, tamanho inicial (em células) e entradas externas de cada tipo; `keys`: aceita tecla do teclado. */
 export const widgetKinds: Record<WidgetType, { icon: Component; size: [number, number]; inputs: InputControl[]; keys: boolean }> = {
-  button: { icon: RectangleHorizontal, size: [4, 4], inputs: ['main'], keys: true },
-  slider: { icon: SlidersVertical, size: [4, 12], inputs: ['main'], keys: false },
-  cueList: { icon: ListOrdered, size: [16, 12], inputs: ['main', 'previous', 'next', 'stop'], keys: true },
-  xyPad: { icon: Move, size: [8, 12], inputs: ['x', 'y'], keys: false },
-  speedDial: { icon: Timer, size: [12, 8], inputs: ['tap'], keys: true },
-  frame: { icon: SquareDashed, size: [16, 12], inputs: [], keys: false },
-  clock: { icon: Clock, size: [8, 4], inputs: [], keys: false },
-  animation: { icon: Sparkles, size: [12, 12], inputs: ['main'], keys: false },
-  label: { icon: Type, size: [8, 2], inputs: [], keys: false },
+  button: { icon: RectangleHorizontal, size: [8, 8], inputs: ['main'], keys: true },
+  slider: { icon: SlidersVertical, size: [8, 24], inputs: ['main'], keys: false },
+  cueList: { icon: ListOrdered, size: [32, 24], inputs: ['main', 'previous', 'next', 'stop'], keys: true },
+  xyPad: { icon: Move, size: [16, 24], inputs: ['x', 'y'], keys: false },
+  speedDial: { icon: Timer, size: [24, 16], inputs: ['tap'], keys: true },
+  frame: { icon: SquareDashed, size: [32, 24], inputs: [], keys: false },
+  clock: { icon: Clock, size: [16, 8], inputs: [], keys: false },
+  animation: { icon: Sparkles, size: [24, 24], inputs: ['main'], keys: false },
+  label: { icon: Type, size: [16, 4], inputs: [], keys: false },
 }
 export const widgetTypes = Object.keys(widgetKinds) as WidgetType[]
 
@@ -76,7 +79,7 @@ export function copyLayout(widgets: VcWidget[], from: ConsoleFormat, to: Console
     const inner: Rect[] = []
     for (const child of placed.filter((x) => x.frame === w.id)) {
       const rect = child.layouts[from]!
-      child.layouts[to] = freeSpot(inner, rect.w, rect.h, Math.min(width, cols), 1)
+      child.layouts[to] = freeSpot(inner, rect.w, rect.h, Math.min(width, cols), frameHeader)
       inner.push(child.layouts[to]!)
     }
     // A moldura cresce se os filhos não couberem

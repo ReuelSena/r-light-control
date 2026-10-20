@@ -26,6 +26,9 @@ const page = ref(project.value.console.pages[0]?.id ?? '')
 const editing = useState('consoleEditing', () => false)
 onBeforeUnmount(() => (editing.value = false))
 const selection = ref<string[]>([])
+// Copiados com Ctrl + C, para colar com Ctrl + V (também em outra página ou formato)
+const clipboard = useState<VcWidget[]>('consoleClipboard', () => [])
+const canvas = ref<{ nudge: (cx: number, cy: number) => void }>()
 const propsOpen = ref(false)
 const renaming = ref(false)
 const copying = ref(false)
@@ -52,11 +55,11 @@ const say = (text: string) => {
   setTimeout(() => notice.value === text && (notice.value = ''), 3000)
 }
 
-// Lugar livre na página ou dentro de uma moldura (abaixo do cabeçalho)
-function spot(frame: string | null, w: number, h: number): Rect {
+// Lugar livre na página ou dentro de uma moldura (abaixo do cabeçalho); `reserved`: o que já foi separado
+function spot(frame: string | null, w: number, h: number, reserved: Rect[] = []): Rect {
   const box = frame ? rectIn(widgets.value.find((f) => f.id === frame)!) : undefined
   const taken = widgets.value.filter((x) => x.frame === frame && rectIn(x)).map((x) => rectIn(x)!)
-  return freeSpot(taken, w, h, box?.w ?? cols.value, box ? 1 : 0)
+  return freeSpot([...taken, ...reserved], w, h, box?.w ?? cols.value, box ? frameHeader : 0)
 }
 
 // ---------- Paleta ----------
@@ -85,20 +88,31 @@ function add(type: WidgetType) {
 }
 
 // ---------- Escolhidos ----------
-function duplicate() {
+// Põe cópias dos elementos nesta página e neste formato, cada uma no primeiro lugar livre. Dentro de uma
+// moldura só se a moldura estiver nesta página; senão a cópia fica solta. Na duplicação, o tamanho vem do
+// formato aberto; um elemento copiado de outro formato (ou escondido em todos) usa o tamanho que tiver.
+function paste(sources: VcWidget[]) {
   const copies: VcWidget[] = []
-  for (const w of selected.value) {
-    const r = rectIn(w)!
-    copies.push({ ...clone(w), id: uuidv7(), caption: t('studio.copyName', { name: w.caption }), layouts: { phone: null, tablet: null, desktop: null, [format.value]: spot(w.frame, r.w, r.h) } })
+  for (const w of sources) {
+    const r = rectIn(w) ?? layoutFormats.map((f) => w.layouts[f]).find(Boolean) ?? { w: widgetKinds[w.type].size[0], h: widgetKinds[w.type].size[1] }
+    const frame = widgets.value.some((f) => f.id === w.frame && rectIn(f)) ? w.frame : null
+    const reserved = copies.filter((c) => c.frame === frame).map((c) => c.layouts[format.value]!)
+    copies.push({ ...clone(w), id: uuidv7(), page: page.value, frame, layouts: { phone: null, tablet: null, desktop: null, [format.value]: spot(frame, r.w, r.h, reserved) } })
   }
   send({ op: 'saveWidgets', widgets: copies })
   selection.value = copies.map((c) => c.id)
 }
 
-function remove() {
-  if (confirmRemove.value !== 'widgets') return (confirmRemove.value = 'widgets')
+const duplicate = () => paste(selected.value.map((w) => ({ ...w, caption: t('studio.copyName', { name: w.caption }) })))
+
+function removeNow() {
   send({ op: 'removeWidgets', ids: selection.value })
   selection.value = []
+}
+
+function remove() {
+  if (confirmRemove.value !== 'widgets') return (confirmRemove.value = 'widgets')
+  removeNow()
 }
 
 // Só sai deste formato; nos outros continua onde está (VC-2)
@@ -157,8 +171,8 @@ function place(w: VcWidget) {
   const inner: Rect[] = []
   const box = placedWidget.layouts[format.value]!
   const placedChildren = children.map((c) => {
-    const r = layoutFormats.map((f) => c.layouts[f]).find(Boolean) ?? { w: 4, h: 4 }
-    const rect = freeSpot(inner, r.w, r.h, box.w, 1)
+    const r = layoutFormats.map((f) => c.layouts[f]).find(Boolean) ?? { w: 8, h: 8 }
+    const rect = freeSpot(inner, r.w, r.h, box.w, frameHeader)
     inner.push(rect)
     return { ...c, layouts: { ...c.layouts, [format.value]: rect } }
   })
@@ -177,9 +191,35 @@ const shortcuts: Record<string, () => unknown> = {
   'Alt+I': () => (prefs.value.keyHints = !prefs.value.keyHints),
 }
 
+// Na edição, atalhos dos elementos escolhidos: Delete remove; Ctrl + D duplica; Ctrl + C e Ctrl + V copiam
+// e colam; as setas deslocam 2 células (com Shift, 4; com Ctrl, 1, o menor passo da grade)
+const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
+const editShortcuts: Record<string, () => unknown> = {
+  Delete: () => selection.value.length && removeNow(),
+  'Ctrl+D': () => selection.value.length && duplicate(),
+  'Ctrl+C': () => selection.value.length && (clipboard.value = clone(selected.value)),
+  'Ctrl+V': () => clipboard.value.length && paste(clipboard.value),
+}
+
+function editKey(e: KeyboardEvent) {
+  const arrow = arrows[e.key]
+  if (e.altKey || (arrow && !selection.value.length)) return false
+  const step = e.ctrlKey ? 1 : e.shiftKey ? 4 : 2
+  const action = arrow ? () => canvas.value?.nudge(arrow[0] * step, arrow[1] * step) : editShortcuts[keyCombo(e)]
+  if (!action) return false
+  e.preventDefault()
+  // Só as setas repetem enquanto a tecla fica apertada
+  if (arrow || !e.repeat) action()
+  return true
+}
+
 function onKey(e: KeyboardEvent, down: boolean) {
+  const target = e.target as HTMLElement
   // Digitando num campo, só valem as combinações com Alt (que não escrevem nada)
-  if (e.repeat || (!e.altKey && (e.target as HTMLElement).closest('input, textarea, select'))) return
+  if (!e.altKey && target.closest('input, textarea, select')) return
+  // Atrás de um diálogo aberto, o teclado não mexe nos elementos
+  if (down && editing.value && !target.closest('[role="dialog"]') && editKey(e)) return
+  if (e.repeat) return
   // Teclas reservadas nunca acionam elementos (o zoom com Ctrl fica no app.vue)
   if (isReservedKey(e)) {
     const action = down && shortcuts[keyCombo(e)]
@@ -289,7 +329,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="min-h-0 flex-1 overflow-auto">
-            <ConsoleCanvas v-model:selection="selection" :widgets="widgets" :format="format" :editing="editing" :zoom="prefs.consoleZoom" />
+            <ConsoleCanvas ref="canvas" v-model:selection="selection" :widgets="widgets" :format="format" :editing="editing" :zoom="prefs.consoleZoom" />
             <p v-if="!widgets.some(rectIn)" class="p-4 text-sm text-fg-muted">{{ editing ? t('vc.emptyEditing') : t('vc.empty') }}</p>
           </div>
         </div>

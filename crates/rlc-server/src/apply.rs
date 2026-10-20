@@ -344,8 +344,16 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             }
             vec![T::FixtureGroups, T::Functions, T::Console]
         }
+        Op::MoveFixtureGroup { id, to } => {
+            move_to(&mut p.fixture_groups, &id, to, |g| &g.id)?;
+            vec![T::FixtureGroups]
+        }
         Op::SaveChannelGroup { group } => {
             upsert(&mut p.channel_groups, group, |g| &g.id)?;
+            vec![T::ChannelGroups]
+        }
+        Op::MoveChannelGroup { id, to } => {
+            move_to(&mut p.channel_groups, &id, to, |g| &g.id)?;
             vec![T::ChannelGroups]
         }
         Op::RemoveChannelGroup { id } => {
@@ -399,14 +407,26 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Functions, T::Console, T::Running, T::Preview]
         }
         Op::SaveFolder { folder } => {
+            check_folder(p, &folder)?;
             upsert(&mut p.folders, folder, |d| &d.id)?;
             vec![T::Folders]
         }
+        // O que estava dentro sobe para a pasta de cima
         Op::RemoveFolder { id } => {
+            let parent = p
+                .folders
+                .iter()
+                .find(|d| d.id == id)
+                .and_then(|d| d.parent.clone());
             p.folders.retain(|d| d.id != id);
+            for d in &mut p.folders {
+                if d.parent.as_ref() == Some(&id) {
+                    d.parent = parent.clone();
+                }
+            }
             for f in &mut p.functions {
                 if f.folder.as_ref() == Some(&id) {
-                    f.folder = None;
+                    f.folder = parent.clone();
                 }
             }
             vec![T::Folders, T::Functions]
@@ -1055,6 +1075,26 @@ fn check_group(p: &Project, group: &FixtureGroup) -> Result<(), String> {
     Ok(())
 }
 
+/// A pasta de cima existe, é do mesmo tipo e a pasta não acaba dentro de si mesma.
+fn check_folder(p: &Project, folder: &Folder) -> Result<(), String> {
+    let mut up = folder.parent.as_ref();
+    while let Some(id) = up {
+        if *id == folder.id {
+            return Err("Uma pasta não pode ficar dentro de si mesma.".into());
+        }
+        let parent = p
+            .folders
+            .iter()
+            .find(|d| d.id == *id)
+            .ok_or("A pasta de cima não existe.")?;
+        if parent.kind != folder.kind {
+            return Err("A pasta de cima é de outro tipo.".into());
+        }
+        up = parent.parent.as_ref();
+    }
+    Ok(())
+}
+
 /// Criações que uma criação dispara direto: os passos do chaser e as da coleção.
 fn members(kind: &FunctionKind) -> Vec<&Id> {
     match kind {
@@ -1223,6 +1263,22 @@ fn upsert<T>(list: &mut Vec<T>, item: T, id: impl Fn(&T) -> &Id) -> Result<(), S
     Ok(())
 }
 
+/// Leva o item de id `id` para a posição `to` (no fim, se passar do tamanho da lista).
+fn move_to<T>(
+    list: &mut Vec<T>,
+    id: &Id,
+    to: usize,
+    key: impl Fn(&T) -> &Id,
+) -> Result<(), String> {
+    let from = list
+        .iter()
+        .position(|x| key(x) == id)
+        .ok_or("Grupo não encontrado.")?;
+    let item = list.remove(from);
+    list.insert(to.min(list.len()), item);
+    Ok(())
+}
+
 /// Recusa uma lista com ids repetidos (A4).
 fn unique<'a>(ids: impl Iterator<Item = &'a Id>) -> Result<(), String> {
     let mut seen = std::collections::HashSet::new();
@@ -1257,6 +1313,92 @@ mod tests {
         assert_eq!(channels, vec![1, 8, 15, 22, 29, 36]);
         apply(&mut s, Op::ResetDesk { universe: None }).unwrap();
         assert!(s.desk.levels.is_empty() && s.desk.groups.is_empty());
+    }
+
+    #[test]
+    fn groups_are_reordered_in_the_list() {
+        let mut s = example();
+        let ids = |s: &Snapshot| -> Vec<Id> {
+            s.project
+                .channel_groups
+                .iter()
+                .map(|g| g.id.clone())
+                .collect()
+        };
+        let before = ids(&s);
+        assert!(before.len() >= 2);
+        let first = before[0].clone();
+        let (topics, _) = apply(
+            &mut s,
+            Op::MoveChannelGroup {
+                id: first.clone(),
+                to: 1,
+            },
+        )
+        .unwrap();
+        assert_eq!(topics, vec![Topic::ChannelGroups]);
+        assert_eq!(ids(&s)[1], first);
+        // Passar do fim leva para o último lugar; um id que não existe é recusado
+        apply(
+            &mut s,
+            Op::MoveChannelGroup {
+                id: first.clone(),
+                to: 99,
+            },
+        )
+        .unwrap();
+        assert_eq!(ids(&s).last(), Some(&first));
+        assert!(
+            apply(
+                &mut s,
+                Op::MoveFixtureGroup {
+                    id: "nao-existe".into(),
+                    to: 0
+                }
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn folders_nest_and_removing_one_lifts_its_content() {
+        let mut s = example();
+        let folder = |id: &str, kind, parent: Option<&str>| Folder {
+            id: id.into(),
+            name: id.into(),
+            kind,
+            parent: parent.map(Into::into),
+        };
+        let save = |s: &mut Snapshot, f: Folder| apply(s, Op::SaveFolder { folder: f });
+        save(&mut s, folder("a", FunctionType::Scene, Some("d1"))).unwrap();
+        save(&mut s, folder("b", FunctionType::Scene, Some("a"))).unwrap();
+        // Recusadas: dentro de si mesma, dentro de uma descendente, pai que não existe, pai de outro tipo
+        assert!(save(&mut s, folder("a", FunctionType::Scene, Some("a"))).is_err());
+        assert!(save(&mut s, folder("d1", FunctionType::Scene, Some("b"))).is_err());
+        assert!(save(&mut s, folder("c", FunctionType::Scene, Some("x"))).is_err());
+        assert!(save(&mut s, folder("c", FunctionType::Chaser, Some("a"))).is_err());
+
+        // Remover "a" leva "b" e as criações dela para "d1"
+        let scene = s
+            .project
+            .functions
+            .iter_mut()
+            .find(|f| f.id == "s4")
+            .unwrap();
+        scene.folder = Some("a".into());
+        apply(&mut s, Op::RemoveFolder { id: "a".into() }).unwrap();
+        let parent_of = |id: &str| {
+            s.project
+                .folders
+                .iter()
+                .find(|d| d.id == id)
+                .unwrap()
+                .parent
+                .clone()
+        };
+        assert_eq!(parent_of("b"), Some("d1".into()));
+        let scene = s.project.functions.iter().find(|f| f.id == "s4").unwrap();
+        assert_eq!(scene.folder, Some("d1".into()));
     }
 
     #[test]

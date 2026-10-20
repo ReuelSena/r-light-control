@@ -2,6 +2,10 @@
 import type { FunctionType } from "./FunctionType";
 
 /**
- * Pasta do Studio: agrupa criações de um tipo só.
+ * Pasta do Studio: agrupa criações (e outras pastas) de um tipo só.
  */
-export type Folder = { id: string, name: string, kind: FunctionType, };
+export type Folder = { id: string, name: string, kind: FunctionType, 
+/**
+ * Pasta que contém esta (do mesmo tipo); `None` fica solta no tipo.
+ */
+parent: string | null, };

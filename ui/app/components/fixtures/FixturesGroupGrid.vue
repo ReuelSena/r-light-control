@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Eraser, Trash2, Wand2 } from 'lucide-vue-next'
+import { Copy, Eraser, Trash2, Wand2 } from 'lucide-vue-next'
 import type { FixtureGroup } from '~/types/generated/FixtureGroup'
 
 // Grupo de fixtures: grade 2D de cabeças, usada pelo EFX (a ordem das fixtures) e pelo RGB Matrix
 // (F9). Escolha uma cabeça na paleta e toque nas células; tocar numa célula sem cabeça escolhida a
 // esvazia. Cada cabeça entra uma vez só: pintar uma que já está no grupo a muda de lugar.
 const props = defineProps<{ group: FixtureGroup }>()
+const emit = defineEmits<{ duplicated: [id: string] }>()
 const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
@@ -45,6 +46,12 @@ function fillInOrder() {
 
 function resize(width: number, height: number) {
   save({ width, height, cells: props.group.cells.filter((c) => c.x < width && c.y < height) })
+}
+
+async function duplicate() {
+  const id = uuidv7()
+  await send({ op: 'saveFixtureGroup', group: { ...props.group, id, name: t('studio.copyName', { name: props.group.name }) } })
+  emit('duplicated', id)
 }
 
 function remove() {
@@ -96,7 +103,11 @@ function remove() {
         {{ t('groups.eraser') }}
       </RlButton>
       <RlButton size="sm" @press="save({ cells: [] })">{{ t('groups.clear') }}</RlButton>
-      <RlButton size="sm" class="ml-auto" :model-value="confirmRemove" color="var(--color-danger)" @press="remove">
+      <RlButton size="sm" class="ml-auto" @press="duplicate">
+        <Copy :size="16" />
+        {{ t('common.duplicate') }}
+      </RlButton>
+      <RlButton size="sm" :model-value="confirmRemove" color="var(--color-danger)" @press="remove">
         <Trash2 :size="16" />
         {{ confirmRemove ? t('common.confirmRemove') : t('common.remove') }}
       </RlButton>

@@ -20,25 +20,13 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 5. Ajustar → validar de novo.
 6. Marcar a fase aqui e registrar as decisões novas no `DECISOES.md`. Commit se o usuário pedir.
 
-## Pendências (2026-10-19)
+## Pendências (2026-10-20)
 
-O que falta validar ou decidir nas fases já entregues. O detalhe de cada item está no checklist da fase.
+O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
-**A validar sem os moving beams** (com os ParLed e a Numbstar):
-- **F6** ([fase-06.md](docs/fases/fase-06.md)):
-  - o tick abaixo de 2 ms com 4 universos (no Monitoramento);
-  - os fades de 3 s nos ParLed;
-  - o elemento "Tempos" nas cenas.
-- **F7** ([fase-07.md](docs/fases/fase-07.md)): o checklist inteiro, menos o deslizar dos Beams:
-  - o crossfade sem o dimmer piscar;
-  - as ordens, o Single Shot e "Para trás";
-  - os modos dos tempos e o tap a 120 BPM;
-  - a sequência, a coleção e a cue list;
-  - o "Tempos" com "Seguir o BPM";
-  - a edição com o chaser rodando, o Stop All e o pânico.
-- **F8** ([fase-08.md](docs/fases/fase-08.md)): "Selecionar grupo", em "Adicionar fixture", inclui as fixtures na ordem da grade.
-
-**Com os moving beams:** na [validação final](docs/validacao-final.md), antes do release: 3 itens da F6, 1 da F7 e 7 da F8 (o EFX).
+**Na [validação final](docs/validacao-final.md)**, antes do release:
+- com os moving beams: 3 itens da F6, 1 da F7 e 7 da F8 (o EFX);
+- adiados por escolha dele, sem precisar dos Beams: o tick com 4 universos (F6), a sequência e a coleção (F7).
 
 **Na F16:** o instalador num PC limpo (adiado da F3).
 
@@ -226,12 +214,12 @@ Mini-plano: [docs/fases/fase-06.md](docs/fases/fase-06.md) (aprovado em 2026-10-
 Validação:
 - [x] Duas cenas sobrepostas: maior dimmer vence e as cores se misturam (HTP). _Na posição (vence a última iniciada): na [validação final](docs/validacao-final.md), com os moving beams._
 - [x] GM a 50% reduz só a intensidade.
-- [ ] Tick abaixo de 2 ms com 4 universos. _Ainda não testado (o teste automático mede 0,2 ms no app compilado)._
-- [ ] O elemento "Tempos" troca o fade in e o fade out das cenas da lista (ajuste pedido na validação). _Ainda não testado; dá para conferir na validação da F7._
+- [ ] Tick abaixo de 2 ms com 4 universos. _Na [validação final](docs/validacao-final.md) (o teste automático mede 0,68 ms no app compilado)._
+- [x] O elemento "Tempos" troca o fade in e o fade out das cenas da lista (ajuste pedido na validação). _Validado em 2026-10-20._
 
 ### F7 — Chaser, Sequência, Coleção e BPM · ✅
 
-Mini-plano: [docs/fases/fase-07.md](docs/fases/fase-07.md) (aprovado em 2026-10-18; entregue em 2026-10-18). Concluída em 2026-10-19, a pedido do usuário, sem a validação: os itens abaixo serão testados junto com a F8.
+Mini-plano: [docs/fases/fase-07.md](docs/fases/fase-07.md) (aprovado em 2026-10-18; entregue em 2026-10-18). Concluída em 2026-10-19, a pedido do usuário, sem a validação. Validada em 2026-10-20, junto com a F8, menos o deslizar dos Beams, a sequência e a coleção, que estão na [validação final](docs/validacao-final.md).
 
 - **Chaser:** modos de velocidade Default/Common/PerStep, crossfade, next/prev/goto, run order Loop/SingleShot/PingPong/Random.
 - **Sequência** e **Coleção.**
@@ -242,14 +230,14 @@ Mini-plano: [docs/fases/fase-07.md](docs/fases/fase-07.md) (aprovado em 2026-10-
 - **Ref:** `engine/src/{chaser,chaserrunner,chaserstep,sequence,collection,mastertimer}.cpp`
 
 Validação (detalhada em [docs/fases/fase-07.md](docs/fases/fase-07.md)):
-- [ ] Chaser de 8 passos com crossfade de 2 s, suave.
-- [ ] Tap a 120 BPM mantém o tempo.
-- [ ] PingPong e Random corretos.
-- [ ] O TAP master muda os tempos de todos os elementos "Tempos" que seguem o BPM, e os chasers da lista acompanham (ajuste pedido na validação).
+- [x] Chaser de 8 passos com crossfade de 2 s, suave. _Os Beams deslizando: na [validação final](docs/validacao-final.md)._
+- [x] Tap a 120 BPM mantém o tempo.
+- [x] PingPong e Random corretos.
+- [x] O TAP master muda os tempos de todos os elementos "Tempos" que seguem o BPM, e os chasers da lista acompanham (ajuste pedido na validação).
 
-### F8 — Grupos de fixtures e EFX · 🟡
+### F8 — Grupos de fixtures e EFX · ✅
 
-Mini-plano: [docs/fases/fase-08.md](docs/fases/fase-08.md) (aprovado em 2026-10-19; entregue em 2026-10-19, aguardando a validação do usuário, junto com os itens da F7). Commitada em 2026-10-19, a pedido do usuário, antes da validação: o que falta está nas [Pendências](#pendências-2026-10-19). Os testes com os moving beams foram para a [validação final](docs/validacao-final.md) (2026-10-19, pedido do usuário).
+Mini-plano: [docs/fases/fase-08.md](docs/fases/fase-08.md) (aprovado em 2026-10-19; entregue em 2026-10-19; validada pelo usuário em 2026-10-20, sem os Beams). Os testes que faltam estão na [validação final](docs/validacao-final.md). Os testes com os moving beams foram para a [validação final](docs/validacao-final.md) (2026-10-19, pedido do usuário).
 
 - **Grupos:** grupos 2D de cabeças.
 - **EFX:** os 10 algoritmos, modo absoluto e relativo, spread/offset, preview do caminho.
@@ -257,8 +245,8 @@ Mini-plano: [docs/fases/fase-08.md](docs/fases/fase-08.md) (aprovado em 2026-10-
 - **Ref:** `engine/src/{efx,efxfixture,fixturegroup,grouphead}.cpp`
 
 Validação (detalhada em [docs/fases/fase-08.md](docs/fases/fase-08.md)):
-- [ ] Um grupo em "Adicionar fixture" inclui as fixtures na ordem da grade.
-- [ ] Os itens da F7, testados junto (pedido do usuário), menos o deslizar dos Beams.
+- [x] Um grupo em "Adicionar fixture" inclui as fixtures na ordem da grade.
+- [x] Os itens da F7, testados junto (pedido do usuário), menos o deslizar dos Beams, a sequência e a coleção, que estão na validação final.
 - Na [validação final](docs/validacao-final.md), com os moving beams: o círculo em 4 moving heads com offset de 90°, o EFX relativo sobre uma posição do programador (a prévia) e de uma cena, e os outros testes do EFX.
 
 ### F9 — RGB Matrix · ⬜

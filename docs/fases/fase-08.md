@@ -1,6 +1,6 @@
 # F8 — Grupos de fixtures e EFX
 
-**Status:** mini-plano aprovado em 2026-10-19, com as quatro decisões como recomendado (na 4, os três ajustes). Entregue em 2026-10-19, aguardando a sua validação. Commitada em 2026-10-19, a seu pedido, antes da validação. O que falta está nas pendências do [PLANO.md](../../PLANO.md#pendências-2026-10-19).
+**Status:** mini-plano aprovado em 2026-10-19, com as quatro decisões como recomendado (na 4, os três ajustes). Entregue em 2026-10-19 e validada por você em 2026-10-20, sem os Beams (os testes deles ficam na validação final). Commitada em 2026-10-19, a seu pedido, antes da validação. O que falta está nas pendências do [PLANO.md](../../PLANO.md#pendências-2026-10-20).
 
 A F7 foi concluída a seu pedido sem a validação. Os itens dela, e os da F6 que ficaram, entram no teste junto com esta fase (ver "Validação").
 
@@ -177,15 +177,11 @@ A prévia do editor passa a seguir as regras do motor: o sentido da Linha e a pr
 
 **Os testes do EFX com os moving beams (2026-10-19, o seu pedido)** foram para a [validação final](../validacao-final.md): você ainda não pode testar com os Beams. São o círculo a 90°, o relativo, os desenhos, os fades, as ordens e a propagação, o EFX no chaser e na coleção, e o elemento "Tempos" com "Seguir o BPM".
 
-Fica para agora:
-- [ ] Um grupo em "Adicionar fixture" inclui as fixtures na ordem da grade.
-- [ ] `pnpm check` passa.
+Validado por você em 2026-10-20, sem os Beams:
+- [x] Um grupo em "Adicionar fixture" inclui as fixtures na ordem da grade.
+- [x] `pnpm check` passa.
 
-Pendentes da F7, para testar junto (o seu pedido):
-- os itens de [fase-07.md](fase-07.md#validação-com-você), menos o deslizar dos Beams;
-- da F6, o tick com 4 universos, os fades de 3 s nos ParLed e o elemento "Tempos" nas cenas.
-
-A posição dos Beams entre cenas e os fades nos Beams, da F6, também estão na validação final.
+Os itens da F7 e da F6 que ficaram para testar junto também foram validados, menos o tick com 4 universos, a sequência e a coleção, que você deixou para a [validação final](../validacao-final.md), com os testes dos Beams.
 
 ## Referências estudadas
 

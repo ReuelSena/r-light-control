@@ -1,8 +1,8 @@
 # Validação final
 
-Os testes que dependem dos moving beams (os 4 Beam 7R do Rig RSena). O usuário ainda não pode fazer testes com eles, então esses testes ficam todos para uma rodada só, antes do release (F16). A regra está no G1 do [DECISOES.md](../DECISOES.md) (2026-10-19).
+Os testes que dependem dos moving beams (os 4 Beam 7R do Rig RSena), que o usuário ainda não pode fazer, e os que ele deixou para o fim por escolha própria. Ficam todos para uma rodada só, antes do release (F16). A regra está no G1 do [DECISOES.md](../DECISOES.md) (2026-10-19).
 
-**Status:** aguardando os moving beams.
+**Status:** aguardando os moving beams. Os três itens que não dependem deles podem ser feitos antes.
 
 Quando uma fase nova tiver um teste que depende dos moving beams (ex.: o "pan e tilt conferem com a fixture real" da F15), o teste sai do checklist da fase e entra aqui.
 
@@ -11,6 +11,13 @@ Quando uma fase nova tiver um teste que depende dos moving beams (ex.: o "pan e 
 - O app (o `pnpm dev` ou o instalador) com o projeto do rig e a Numbstar no universo "Rig RSena".
 - Duas cenas que posicionam os Beams em lugares diferentes, com o dimmer aceso e fade de 3 s.
 - Um EFX com os 4 Beams, ou com um grupo deles. O EFX só mexe no pan e no tilt: rode junto uma cena com o dimmer dos Beams aceso.
+
+## Adiados por escolha do usuário (2026-10-20)
+
+Não dependem dos Beams: podem ser feitos nos ParLed e na Numbstar.
+- [ ] **F6:** o tick abaixo de 2 ms com 4 universos. No Monitoramento, com um quarto universo criado no In/Out e cenas e chasers rodando. O usuário não pôde testar em 2026-10-20 (o teste automático mede 0,68 ms no app compilado, com 48 moving heads no EFX).
+- [ ] **F7:** a sequência, com cada passo acendendo os seus valores.
+- [ ] **F7:** a coleção, que dispara e para tudo junto, cada criação com os seus fades.
 
 ## F6 — Cenas
 

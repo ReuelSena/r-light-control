@@ -199,16 +199,16 @@ Com o rig e a Numbstar:
 - [x] Duas cenas sobrepostas: vence o maior dimmer, e as cores se misturam (azul + vermelho = magenta); numa moldura solo, uma cor por vez.
 - [ ] Na posição dos Beams, vence a última cena iniciada; ao parar a última, eles voltam para a posição da anterior. _Na [validação final](../validacao-final.md), com os moving beams._
 - [x] Grand Master a 50% reduz só a intensidade; pan, tilt e gobo não mudam.
-- [ ] Fade in e fade out de 3 s suaves. _Ainda não testado (nos ParLed). Os Beams sem degraus e a roda de cor e o gobo de uma vez: na [validação final](../validacao-final.md)._
+- [x] Fade in e fade out de 3 s suaves nos ParLed. _Os Beams sem degraus e a roda de cor e o gobo de uma vez: na [validação final](../validacao-final.md)._
 - [x] Editar uma cena rodando muda a luz na hora.
 - [ ] Parar a única cena de posição: os Beams voltam à posição padrão durante o fade out. _Na [validação final](../validacao-final.md), com os moving beams._
 - [x] Stop All apaga com o fade out de cada cena; o pânico apaga na hora.
 - [x] Blackout instantâneo com cenas rodando; ao soltar, tudo volta.
 - [x] Um botão do console liga e desliga a cena, com os fades.
 - [x] Celular e desktop sincronizados.
-- [ ] Tick abaixo de 2 ms com 4 universos (no Monitoramento). _Ainda não testado._
+- [ ] Tick abaixo de 2 ms com 4 universos (no Monitoramento). _Na [validação final](../validacao-final.md): o usuário não pôde testar em 2026-10-20._
 - [x] `pnpm check` passa.
-- [ ] O elemento "Tempos" troca o fade in e o fade out das cenas da lista, na entrada, na saída e na troca de cenas. "Gravados" volta aos tempos da cena. _Ajuste pedido na validação._
+- [x] O elemento "Tempos" troca o fade in e o fade out das cenas da lista, na entrada, na saída e na troca de cenas. "Gravados" volta aos tempos da cena. _Ajuste pedido na validação._
 
 ## Referências estudadas
 

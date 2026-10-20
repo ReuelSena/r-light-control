@@ -215,20 +215,20 @@ Antes de começar:
 - **"Fades da frente"** controla o "Troca de cores": com um valor no elemento, o chaser segue os tempos dele (em batidas do BPM); "Gravados" volta aos tempos do chaser.
 
 Com o rig e a Numbstar:
-- [ ] Chaser de 8 passos com crossfade de 2 s (fade in e fade out de 2 s), suave: o dimmer não pisca entre os passos. _Os Beams deslizando de uma posição para a outra: na [validação final](../validacao-final.md), com os moving beams._
-- [ ] Loop, Ping Pong (sem repetir as pontas) e Random (sem repetir o mesmo passo seguido).
-- [ ] Single Shot: sem a opção, apaga no fim e o LED do chaser apaga; com "Manter o último passo", o último fica aceso até você parar o chaser.
-- [ ] "Para trás" começa pelo último passo.
-- [ ] Tempos Padrão (os da cena), Comum e Por passo.
-- [ ] Tap a 120 BPM: um chaser em batidas (1 batida por passo) acompanha o tap e mantém o tempo.
-- [ ] Sequência: cada passo com os seus valores.
-- [ ] Coleção: dispara e para tudo junto, cada criação com os seus fades.
-- [ ] Cue list: play, stop, anterior, próximo e toque num passo; o passo atual igual no celular, no desktop e no Studio.
-- [ ] Elemento "Tempos": o fade in, o fade out e a duração valem nos chasers da lista; "Gravados" volta aos tempos deles. Dá para conferir junto o item da F6 que ficou (os fades das cenas).
-- [ ] "Seguir o BPM": o TAP do master (ou o do elemento) muda o BPM, os segundos embaixo dos knobs acompanham, e o chaser da lista anda nas batidas, também com 1/2 batida por passo. Com a chave desligada, o elemento volta aos segundos. _Ajuste pedido na validação._
-- [ ] Editar um chaser rodando vale sem ele recomeçar.
-- [ ] Stop All apaga com os fades; o pânico corta na hora.
-- [ ] `pnpm check` passa.
+- [x] Chaser de 8 passos com crossfade de 2 s (fade in e fade out de 2 s), suave: o dimmer não pisca entre os passos. _Os Beams deslizando de uma posição para a outra: na [validação final](../validacao-final.md), com os moving beams._
+- [x] Loop, Ping Pong (sem repetir as pontas) e Random (sem repetir o mesmo passo seguido).
+- [x] Single Shot: sem a opção, apaga no fim e o LED do chaser apaga; com "Manter o último passo", o último fica aceso até você parar o chaser.
+- [x] "Para trás" começa pelo último passo.
+- [x] Tempos Padrão (os da cena), Comum e Por passo.
+- [x] Tap a 120 BPM: um chaser em batidas (1 batida por passo) acompanha o tap e mantém o tempo.
+- [ ] Sequência: cada passo com os seus valores. _Na [validação final](../validacao-final.md), a pedido do usuário (2026-10-20)._
+- [ ] Coleção: dispara e para tudo junto, cada criação com os seus fades. _Na [validação final](../validacao-final.md), a pedido do usuário (2026-10-20)._
+- [x] Cue list: play, stop, anterior, próximo e toque num passo; o passo atual igual no celular, no desktop e no Studio.
+- [x] Elemento "Tempos": o fade in, o fade out e a duração valem nos chasers da lista; "Gravados" volta aos tempos deles. Dá para conferir junto o item da F6 que ficou (os fades das cenas).
+- [x] "Seguir o BPM": o TAP do master (ou o do elemento) muda o BPM, os segundos embaixo dos knobs acompanham, e o chaser da lista anda nas batidas, também com 1/2 batida por passo. Com a chave desligada, o elemento volta aos segundos. _Ajuste pedido na validação._
+- [x] Editar um chaser rodando vale sem ele recomeçar.
+- [x] Stop All apaga com os fades; o pânico corta na hora.
+- [x] `pnpm check` passa.
 
 ## Referências estudadas
 

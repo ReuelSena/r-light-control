@@ -30,6 +30,10 @@ O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Na F16:** o instalador num PC limpo (adiado da F3).
 
+**Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
+
+**Ordem de execução (aprovada em 2026-10-21):** Ajustes rápidos → F10 → F10b → F10c → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). O próximo passo é o mini-plano dos [ajustes rápidos](docs/fases/ajustes-rapidos.md), aguardando a aprovação.
+
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
 **O que ficou de fora da F7 e da F8** está no [Backlog](#backlog-v2), para entrar só se o usuário pedir.
@@ -249,6 +253,18 @@ Validação (detalhada em [docs/fases/fase-08.md](docs/fases/fase-08.md)):
 - [x] Os itens da F7, testados junto (pedido do usuário), menos o deslizar dos Beams, a sequência e a coleção, que estão na validação final.
 - Na [validação final](docs/validacao-final.md), com os moving beams: o círculo em 4 moving heads com offset de 90°, o EFX relativo sobre uma posição do programador (a prévia) e de uma cena, e os outros testes do EFX.
 
+### Ajustes rápidos · ⬜
+
+Mini-plano: [docs/fases/ajustes-rapidos.md](docs/fases/ajustes-rapidos.md) (escrito em 2026-10-21, aguardando a aprovação). Dois pedidos do usuário, da pesquisa da grandMA, antes da F10.
+
+- **Localizar (P6):** enquanto ligado, as outras fixtures ficam com a intensidade reduzida (padrão 20%, ajustável no ⚙; com 0% vira um "solo") e só as localizadas ficam em 100%.
+- **Fader de BPM (E3):** na seção master, ao lado do TAP, com o FINO. O celular e o tablet ganham um knob.
+
+Validação:
+- [ ] O Localizar deixa só a fixture escolhida em 100% e as outras na intensidade ajustada.
+- [ ] O fader de BPM ajusta (também o FINO), e o TAP move o fader.
+- [ ] `pnpm check` passa.
+
 ### F9 — RGB Matrix · ⬜
 
 - **Algoritmos nativos:** Plain, Text e Image em Rust.
@@ -263,6 +279,17 @@ Validação:
 - [ ] Preview 8×8 bate com o devtool do QLC+.
 - [ ] Um script em loop infinito é abortado sem derrubar o motor.
 
+### F9b — Efeitos por passos · ⬜ (nova, 2026-10-21)
+
+- **P4 (da pesquisa da grandMA):** um efeito em loop que mexe em **qualquer atributo** (dimmer, cor, pan, tilt, gobo, zoom). Escolhe-se a forma (seno, dente de serra, pulso, círculo), a velocidade (em BPM, seguindo o master) e a fase de cada fixture (o deslocamento dentro do ciclo). Cada passo pode ter valores absolutos ou relativos.
+- **Como entra:** um tipo novo de criação do Studio, com ícone próprio, na árvore `Program` do motor e reaproveitando a defasagem do EFX. Não muda o desenho da F9. Aponta para grupos de fixtures (F10b).
+- **Ref:** `engine/src/efx.rs` e a base do EFX do projeto (`efx.rs`); o catálogo em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P4).
+
+Validação:
+- [ ] Uma onda de dimmer nos ParLeds, cada um deslocado no ciclo.
+- [ ] O TAP do BPM muda a velocidade.
+- [ ] Pan e tilt: na [validação final](docs/validacao-final.md), com os Beams.
+
 ## Etapa D — Operação ao vivo
 
 ### F10 — Virtual Console I · ⬜
@@ -271,6 +298,11 @@ Validação:
 - **Edição:** grade com snap e edição por toque, modos Edição e Operação, páginas e frames.
 - **Widgets:** Button (Toggle/Flash/Blackout/StopAll), Slider (Level/Playback/Submaster), Label.
 - **Entradas externas:** modelo `InputRef` (controle MIDI ou tecla do teclado), definido na edição de cada elemento.
+- **Da pesquisa da grandMA (2026-10-21):**
+  - **E1:** mais funções nos botões (voltar, pausar, "Temp", "Kill").
+  - **E2:** o fader de Master e o de **Rate**, que acelera ou desacelera todos os fades e delays ao vivo sem mudar o gravado.
+  - **R7:** ligar e desligar a criação pelo fader (sai do zero, liga; volta a zero, desliga).
+  - Os sliders (nível, playback e submaster) e o blackout de fixtures passam a acender de verdade.
 - **Ref:**
   - `qmlui/virtualconsole/{vcwidget,vcbutton,vcslider,vcframe,vcpage,vclabel}.cpp`
   - `engine/src/qlcinputsource.cpp`
@@ -279,11 +311,43 @@ Validação:
 - [ ] Console de 2 páginas montado no desktop e operado no celular.
 - [ ] Flash solta ao levantar o dedo e ao cair a conexão.
 - [ ] Submaster escala uma cena.
+- [ ] Rate acelera e desacelera os fades de uma cena rodando, sem mudar os gravados.
+- [ ] Ligar e desligar uma criação pelo fader.
+
+### F10b — Rig flexível · ⬜ (nova, 2026-10-21)
+
+- **N1 (pedido do usuário):** as criações deixam de depender de quantas fixtures há. As cenas, os EFX e os grupos de canais passam a apontar para **grupos de fixtures**: o valor gravado para "ParLeds" vale para quem está no grupo agora. Um valor de uma fixture específica continua possível e vence o do grupo. O RGB Matrix já funciona assim.
+- **Resultado:** ir de 8 para 12 ParLeds é patchar as 4 e pô-las no grupo, sem editar as criações.
+- **Onde mexe:** o contrato (nova versão do projeto, com migração), a tradução em `running_programs` e `scene_program` (`apply.rs`) e os editores de cena e de EFX. O motor a 50 Hz não muda.
+- Detalhes: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (N1). As cenas atuais podem ser convertidas automaticamente se as ParLeds tiverem o mesmo valor.
+
+Validação:
+- [ ] De 8 para 12 ParLeds: patchar as 4 novas e pô-las no grupo faz as cenas e os EFX acenderem as 12, sem edição.
+- [ ] Um valor de uma fixture específica vence o do grupo.
+- [ ] Os projetos antigos abrem (migração).
+- [ ] `pnpm check` passa.
+
+### F10c — Tempos, cue list e prioridade · ⬜ (nova, 2026-10-21)
+
+- **R1:** cue list com Go, voltar, ir para, **pausar** e **carregar a próxima**; gatilhos por passo (manual, depois de X segundos, quando o anterior termina, nas batidas); **hold infinito** (o passo espera o Go); Off no fim e volta ao começo.
+- **R2:** **delay** de entrada e de saída em cada passo e em cada cena, e curvas além da linear (lenta, rápida, S). Muda a decisão da F6 (fades lineares).
+- **R3:** tempos por tipo de atributo na mesma cena ou passo (posição lenta, cor rápida).
+- **R6:** **prioridade por criação**: a de nível maior ganha da menor quando disputam o mesmo canal, não importa quem começou por último (uma cena base nunca cobre um efeito). Sem prioridade escolhida, vale a regra de hoje (HTP e LTP).
+- **Onde mexe:** o contrato (nova versão do projeto, com migração), o motor (`chaser.rs`, os fades e a mistura), o elemento Cue List e o elemento "Tempos".
+- **Ref:** `engine/src/{chaser,chaserrunner,chaserstep,fadechannel}.cpp` e o catálogo ([docs/pesquisa-grandma.md](docs/pesquisa-grandma.md): R1, R2, R3 e R6).
+
+Validação:
+- [ ] Um passo espera o Go (hold infinito), e o Pause segura um fade.
+- [ ] Delay de saída diferente do de entrada; a curva S se vê no fade.
+- [ ] Cor e dimmer com tempos diferentes na mesma cena.
+- [ ] Uma cena de prioridade baixa nunca cobre uma de prioridade alta no mesmo canal.
+- [ ] Posição lenta com cor rápida: na [validação final](docs/validacao-final.md), com os Beams.
 
 ### F11 — Virtual Console II, multi-cliente e segurança · ⬜
 
 - **Widgets:** XYPad, SoloFrame, SpeedDial, CueList, Clock, Animation.
 - **Acesso:** papéis admin/operador/visualizador, PIN → token, checagem de Origin.
+- **Da pesquisa da grandMA (2026-10-21):** **E6**, as macros: um botão que executa uma lista de ações em ordem, com espera entre elas.
 - **Ref:**
   - `qmlui/virtualconsole/{vcxypad,vcsoloframe,vcspeeddial,vccuelist,vcclock,vcanimation}.cpp`
   - `webaccess/src/webaccessauth.cpp`
@@ -299,6 +363,7 @@ Validação:
 - **Base:** midir com hot-plug e learn.
 - **Mapeamento:** na edição de cada elemento do console (E12), com "aprender", como no QLC+. O mesmo vale para as teclas do teclado.
 - **Mensagens:** CC, Note, Program Change, Pitch Bend.
+- **Da pesquisa da grandMA (2026-10-21):** **S6**, o MIDI Show Control (MSC): outro equipamento manda GO, STOP e RESUME por uma mensagem MIDI padrão, e o app os leva às criações e às cue lists.
 - **Feedback:** LEDs e faders motorizados.
 - **Opcional:** importar perfis .qxi.
 - **Ref:**
@@ -309,6 +374,35 @@ Validação:
 - [ ] Learn em menos de 10 s.
 - [ ] LED acompanha um toggle acionado pelo celular.
 - [ ] Mapeamentos sobrevivem a replugar.
+- [ ] Um MSC "GO" de um programa de teste dispara a criação ligada.
+
+### F12b — Paletas e gravação · ⬜ (nova, 2026-10-21)
+
+- **P1, as paletas:** uma "receita" com nome (uma cor, uma posição, um gobo). As cenas guardam a referência: corrigir a paleta uma vez corrige todas as cenas que a usam. Paleta por fixture, por modelo e universal.
+- **P5, gravar a partir da saída e "Update":** gravar numa cena o que está saindo na luz agora (criações, Mesa simples e o resto juntos), o "dump" que estava no Backlog. O "Update" grava de volta, na criação que está rodando, um ajuste feito ao vivo. Ao gravar sobre algo que já existe: perguntar, sobrescrever, mesclar ou remover.
+- **P7, filtros de atributo:** ao gravar ou aplicar, escolher quais tipos de atributo valem (só a posição, só a cor). Sem os "Worlds", que dependiam do multiusuário.
+- **Onde mexe:** o contrato (nova versão do projeto, com migração), o editor de cena e o Studio.
+- Catálogo: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P1, P5 e P7).
+
+Validação:
+- [ ] Mudar uma paleta muda todas as cenas que a usam.
+- [ ] Gravar numa cena o que está saindo, com cenas e a Mesa simples juntas.
+- [ ] O "Update" grava um ajuste ao vivo na cena que está rodando.
+- [ ] Um filtro "só posição" não mexe nas cores da cena.
+
+### F12c — Seleção · ⬜ (nova, 2026-10-21)
+
+- **P2, a ordem de seleção e o leque:** a ordem em que as fixtures foram escolhidas passa a contar, e o leque distribui um valor (pan, intensidade, cor) entre dois extremos ao longo dessa ordem.
+- **P3, a divisão da seleção:** "as duas metades", "asas" (de cada ponta para o centro), "uma por vez" (próxima e anterior), embaralhar de forma repetível e deslocar. Também espalhar tempo ou fase pela seleção (cada fixture começa um pouco depois da anterior).
+- **P9, o ID numérico:** cada fixture ganha um número, e se escolhem fixtures por faixa ("1 até 12").
+- **Onde mexe:** o editor de cena (a seleção) e o contrato (o número da fixture, com migração).
+- Catálogo: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P2, P3 e P9).
+
+Validação:
+- [ ] Um leque de intensidade e de cor nos ParLeds.
+- [ ] As "asas" e o "uma por vez" percorrem a seleção.
+- [ ] Escolher "1 até 12" pelo número.
+- [ ] O leque de pan: na [validação final](docs/validacao-final.md), com os Beams.
 
 ## Etapa E — Ferramentas e visualização
 
@@ -320,10 +414,25 @@ Validação:
 Validação:
 - [ ] Criar do zero um par RGBW de 7 canais, patchar e controlar.
 
+### F13b — Intercâmbio: GDTF, MVR e importação parcial · ⬜ (nova, 2026-10-21)
+
+- **S2, GDTF:** importar fixtures em **GDTF**, o formato aberto de fixture do mercado, para a biblioteca, além do `.qxf` (muda a decisão E3).
+- **S2, MVR:** importar o patch e as posições de um desenho de palco (Vectorworks e similares): cria as fixtures, os endereços e as posições da 3D View. O MVR traz as fixtures em GDTF.
+- **S4, importação parcial:** trazer só partes de outro show (patch, criações, grupos, console), com regras para o que já existe, no lugar do "Abrir", que troca o projeto inteiro.
+- **Ref:** as páginas de GDTF, MVR e importação parcial da grandMA não foram lidas na pesquisa; o mini-plano estuda os formatos antes. Catálogo: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (S2 e S4).
+
+Validação:
+- [ ] Importar uma fixture em GDTF e controlá-la.
+- [ ] Importar um MVR com fixtures e posições.
+- [ ] Trazer só as cenas de outro show para o projeto aberto.
+
 ### F14 — Visualização 2D · ⬜
 
 - **Vistas:** topo, frente e lateral, com posições salvas no projeto.
 - **Dados:** o servidor calcula o estado visual de cada cabeça e envia em binário a 30 Hz. O mesmo adaptador serve ao 3D.
+- **Da pesquisa da grandMA (2026-10-21):**
+  - **E5**, o mapa do palco clicável: tocar nas fixtures e nos grupos do desenho 2D para escolhê-los.
+  - **P8**, a planilha de fixtures: tabela de fixtures por atributos (dimmer, cores, pan, tilt…), com os valores ao vivo e edição direta. Usa o mesmo cálculo do estado de cada cabeça.
 - **Ref:**
   - `qmlui/{mainview2d,previewcontext}.cpp`
   - `ui/src/monitor/monitorfixtureitem.cpp`
@@ -331,6 +440,8 @@ Validação:
 Validação:
 - [ ] Um chaser aparece corretamente.
 - [ ] 100 fixtures a 30 fps no celular.
+- [ ] Tocar numa fixture do mapa a escolhe no editor de cena.
+- [ ] A planilha mostra os valores ao vivo e edita um valor.
 
 ### F15 — Visualização 3D · ⬜
 
@@ -368,7 +479,7 @@ Validação:
 - Android como host USB.
 - Art-Net/sACN e OSC.
 - Show/timeline com áudio.
-- Paletas.
+- Paletas: saíram do Backlog e entram na F12b (2026-10-21).
 - Só se o usuário pedir (explicados a ele na F5):
   - modificadores de canal (curvas por canal);
   - HTP/LTP forçado por canal;
@@ -386,6 +497,7 @@ Validação:
   - "Distribuir os inícios" do QLC+ 5 (0°, 90°, 180°… automático ou sorteado);
   - o "Início" geral do EFX, além do de cada fixture.
 - RDM e o segundo universo da Enttec Pro Mk2.
+- **Fora por ora (2026-10-21; catálogo em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md)):** a Art-Net e a sACN (S1: a saída é um `Device` em `rlc-dmx`, então entra depois sem mexer na estrutura), as páginas do console (E4), a linha de comando (E7), o multiusuário (S3), o tracking e as partes de cue (R4 e R5), o backup entre máquinas (S5), o timecode (S6), os plugins em Lua (S7) e o RDM (S8).
 
 ## Pedidos de recursos do Virtual Console (G4)
 

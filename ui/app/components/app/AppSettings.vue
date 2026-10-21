@@ -7,7 +7,8 @@ import { renderSVG } from 'uqr'
 const open = defineModel<boolean>('open', { default: false })
 const { t } = useI18n()
 const prefs = usePrefs()
-const { mode } = useValueFormat()
+const { mode, format } = useValueFormat()
+const locateSteps = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1]
 const { state, send, clientId } = useEngine()
 const wide = useMediaQuery('(min-width: 1024px)')
 // O zoom geral existe no app desktop (zoom nativo da janela) e no celular e no tablet (largura do viewport,
@@ -34,6 +35,10 @@ const qr = computed(() => (remote.value.enabled && lanUrl.value ? renderSVG(lanU
         <p v-else class="text-sm text-flash">{{ t('settings.zoomBrowser') }}</p>
       </div>
       <RlSwitch v-model="dmx">{{ t('settings.dmxValues') }}</RlSwitch>
+      <div class="field-label">
+        <span class="flex items-center gap-1">{{ t('settings.locateOthers') }} <RlInfo :text="t('settings.locateOthersInfo')" /></span>
+        <RlStepper v-model="prefs.locateOthers" :steps="locateSteps" :default="0.2" :format="format" />
+      </div>
       <RlSwitch v-if="wide" v-model="prefs.modular">{{ t('settings.modular') }}</RlSwitch>
       <label class="field-label">
         {{ t('settings.consoleFormat') }}

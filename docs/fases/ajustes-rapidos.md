@@ -1,6 +1,35 @@
 # Ajustes rápidos: Localizar com as outras mais fracas e fader de BPM
 
-**Status:** mini-plano escrito em 2026-10-21, **aguardando a sua aprovação**. Dois pedidos seus (2026-10-21), da pesquisa da grandMA ([pesquisa-grandma.md](../pesquisa-grandma.md): P6 e E3). Vêm antes da F10.
+**Status:** mini-plano aprovado em 2026-10-21, com as duas decisões como recomendado (a intensidade das outras ajustável no ⚙, com padrão de 20%; o BPM num knob no celular e no tablet). Em implementação. Dois pedidos seus (2026-10-21), da pesquisa da grandMA ([pesquisa-grandma.md](../pesquisa-grandma.md): P6 e E3). Vêm antes da F10.
+
+**Entregue e validado por você em 2026-10-21.**
+
+**Entregue**
+- **Motor (`rlc-engine`):**
+  - o `Highlight` leva os valores, os canais das fixtures localizadas e a intensidade das outras;
+  - a intensidade (dimmer e cores) das outras cai pela conta do Grand Master, depois do Localizar e antes do Grand Master e do blackout;
+  - o comando `Tempo` muda o BPM sem recomeçar a batida.
+- **Servidor:**
+  - `setHighlight` com `others`, e o estado `highlight` com as `fixtures` e o `others`;
+  - a operação nova `setTempo`, com os mesmos limites do `setBpm` (30 a 300).
+- **Telas:**
+  - o fader de BPM ao lado do GM na coluna master, com a escala em BPM e o FINO de 1 BPM;
+  - o knob de BPM na faixa do celular;
+  - "Localizar: intensidade das outras" no ⚙ (padrão 20%, de 0 a 100%, em % ou DMX);
+  - o `RlFader` ganhou `marks` e `fineStep`.
+- **Diferença do plano:** o `setBpm` é o tap e recomeça a batida a cada chamada. Isso faria os chasers em batidas engasgarem enquanto o fader é arrastado. O fader usa uma operação própria, `setTempo`, que muda a velocidade sem recomeçar a batida (a parte da batida que falta continua a mesma). O tap segue como era.
+- **Testes:**
+  - automáticos:
+    - no motor: as outras a 20%, a 0% e a 100%, a localizada inteira (também os canais que o Localizar não mexe), o pan e o strobo iguais, o Grand Master por cima, o Localizar desligado; o `Tempo` mantendo a fase da batida, e o tap recomeçando;
+    - no servidor: todos os canais do Beam vão ao motor, o `others` chega, e o tap e o fader ficam entre 30 e 300;
+  - de ponta a ponta, contra o `pnpm dev` com o seu "RSena Palco" (a Numbstar estava desplugada, nada acendeu de verdade):
+    - pelo WebSocket: a ParLed localizada a 255 e as outras (ParLed e Beam) a 40 de 200; a 0% e a 100%; o Grand Master a 50% por cima; a roda de cor e o pan do Beam sem mudança; o Beam localizado; o pânico desligando;
+    - no navegador (desktop): os dois faders, a escala do BPM, o arrasto, a roda (2,7 BPM; com FINO, exatamente 1), o toque duplo (120) e o TAP movendo o fader;
+    - no celular (390, 360 e 320 px): a faixa cabe sem rolagem, e o knob muda o BPM; no tablet (768 px), a coluna master;
+    - na tela Fixtures: o Localizar liga com 20%, o ⚙ muda para 25% e 0% na hora, o toque duplo volta a 20%;
+  - `pnpm check` passa.
+  - Depois do teste, o `settings.json`, a recuperação, a biblioteca e os projetos ficaram iguais aos de antes, e o projeto aberto não mudou.
+- **Ficou para depois:** refazer os prints congelados da seção master e do ⚙ em `docs/telas/`. Eles foram tirados com o show de exemplo, e abri-lo no servidor apagaria a sua cópia de recuperação (o trabalho não salvo do "RSena Palco"). Dá para fazer depois que você salvar o projeto.
 
 ## Objetivo
 
@@ -69,14 +98,14 @@ Muda a seção master (tela congelada da F2) e o painel ⚙. Atualizo `docs/desi
 
 ## Validação (com você)
 
-Não precisa dos Beams.
-- [ ] Localizar uma ParLed com uma cena rodando: ela fica em 100% e as outras a 20%. Desligar volta tudo.
-- [ ] Trocar a escolha: o foco acompanha.
-- [ ] Mudar a intensidade das outras no ⚙: vale na hora, e 0% deixa só a localizada acesa.
-- [ ] O Grand Master e o blackout continuam por cima.
-- [ ] Fader de BPM: arrasta, o FINO ajusta de 1 em 1, e o TAP move o fader.
-- [ ] Celular: a faixa do master mostra o controle de BPM sem apertar o resto.
-- [ ] `pnpm check` passa.
+Não precisa dos Beams. Validado por você em 2026-10-21.
+- [x] Localizar uma ParLed com uma cena rodando: ela fica em 100% e as outras a 20%. Desligar volta tudo.
+- [x] Trocar a escolha: o foco acompanha.
+- [x] Mudar a intensidade das outras no ⚙: vale na hora, e 0% deixa só a localizada acesa.
+- [x] O Grand Master e o blackout continuam por cima.
+- [x] Fader de BPM: arrasta, o FINO ajusta de 1 em 1, e o TAP move o fader.
+- [x] Celular: a faixa do master mostra o controle de BPM sem apertar o resto.
+- [x] `pnpm check` passa.
 
 ## Referências estudadas
 

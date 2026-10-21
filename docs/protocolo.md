@@ -41,7 +41,7 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 - **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`.
 - **Arquivo e biblioteca:** `projectPath`, `dirty`, `recovered`, `projects` (os projetos da pasta, relidos a cada segundo) e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
-- **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (as fixtures do "Localizar").
+- **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (o "Localizar": as `fixtures` acesas e a intensidade `others` das outras, de 0 a 255).
 
 `stats` e `interfaces` chegam a cada segundo, com os números do Monitoramento.
 
@@ -104,10 +104,10 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `saveWidgets` | `widgets` | Cria ou substitui vários elementos do console de uma vez (mover, alinhar, colar, copiar layout) |
 | `removeWidgets` | `ids` | Remove elementos; os filhos de uma moldura removida vão junto |
 | `setWidgetValue` | `widget, value` | Valor ao vivo de um elemento (ver `widgetValues` abaixo); `value` vazio solta o valor |
-| `setGrandMaster` / `setBlackout` / `setBpm` | `value` / `on` / `bpm` | Seção master do console e o BPM global (de 30 a 300). O `setBpm` é o tap: a batida do motor recomeça na hora dele, e o toque conta como a batida mais perto dele |
+| `setGrandMaster` / `setBlackout` / `setBpm` / `setTempo` | `value` / `on` / `bpm` / `bpm` | Seção master do console e o BPM global (de 30 a 300). O `setBpm` é o tap: a batida do motor recomeça na hora dele, e o toque conta como a batida mais perto dele. O `setTempo` é o fader: muda o BPM sem recomeçar a batida (a parte da batida que falta continua a mesma) |
 | `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
 | `setPreview` | `function?` | Cena em prévia na luz (só cenas); sem `function`, desliga. Uma por vez, acima das criações rodando e abaixo da Mesa simples |
-| `setHighlight` | `fixtures` | Fixtures do "Localizar": dimmer e RGBW a 100%, shutter no padrão, acima da Mesa simples; vazio apaga |
+| `setHighlight` | `fixtures`, `others` | Fixtures do "Localizar": dimmer e RGBW a 100%, shutter no padrão, acima da Mesa simples; sem fixtures, apaga. `others` (0 a 255, como o Grand Master) é a intensidade (dimmer e cores) de todas as outras fixtures enquanto algo está localizado: 255 não reduz nada e 0 deixa só as localizadas acesas. Pan, tilt e gobo não mudam |
 | `setTestPattern` | `pattern?` | Padrão de teste da saída (`ramp` ou `chase`; sem ele, desliga). Página `/dev/dmx` |
 | `setInterfaceKind` | `interface, kind?` | Tipo de uma interface USB (`enttecPro` ou `openDmx`) escolhido à mão e guardado no `settings.json`; sem `kind`, volta ao automático. A saída reabre no protocolo novo |
 

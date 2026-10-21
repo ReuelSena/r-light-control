@@ -157,6 +157,7 @@ pub fn is_live(op: &Op) -> bool {
             | Op::SetGrandMaster { .. }
             | Op::SetBlackout { .. }
             | Op::SetBpm { .. }
+            | Op::SetTempo { .. }
             | Op::SetRemoteAccess { .. }
             | Op::SetTestPattern { .. }
             | Op::SetInterfaceKind { .. }
@@ -184,7 +185,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 groups: vec![],
             };
             s.preview = None;
-            s.highlight.clear();
+            s.highlight.fixtures.clear();
             vec![
                 T::Project,
                 T::ProjectPath,
@@ -293,7 +294,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             p.stage.fixtures.retain(|x| !gone(&x.fixture));
-            s.highlight.retain(|id| !gone(id));
+            s.highlight.fixtures.retain(|id| !gone(id));
             vec![
                 T::Fixtures,
                 T::FixtureGroups,
@@ -474,7 +475,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 };
                 s.test_pattern = None;
                 s.preview = None;
-                s.highlight.clear();
+                s.highlight.fixtures.clear();
                 topics.extend([T::Desk, T::TestPattern, T::Preview, T::Highlight]);
             }
             topics
@@ -491,9 +492,12 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             s.preview = function;
             vec![T::Preview]
         }
-        Op::SetHighlight { mut fixtures } => {
+        Op::SetHighlight {
+            mut fixtures,
+            others,
+        } => {
             fixtures.retain(|id| p.fixtures.iter().any(|f| &f.id == id));
-            s.highlight = fixtures;
+            s.highlight = Locate { fixtures, others };
             vec![T::Highlight]
         }
         Op::SetDeskLevel {
@@ -594,8 +598,8 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             s.master.blackout = on;
             vec![T::Master]
         }
-        // O BPM vai ao motor no hub, para a batida recomeçar só no tap (e não a cada mudança do master)
-        Op::SetBpm { bpm } => {
+        // O BPM vai ao motor no hub: o tap recomeça a batida, e o fader (`SetTempo`) não
+        Op::SetBpm { bpm } | Op::SetTempo { bpm } => {
             if !(30..=300).contains(&bpm) {
                 return Err("BPM fora de 30 a 300.".into());
             }
@@ -1202,26 +1206,38 @@ pub fn preview_levels(s: &Snapshot) -> Vec<DeskLevel> {
         .collect()
 }
 
-/// Valores do "Localizar": dimmer e RGBW a 100% e o shutter no padrão (o strobo em "luz ativa");
-/// o resto (pan, tilt, gobo…) fica como está.
-pub fn highlight_levels(s: &Snapshot) -> Vec<DeskLevel> {
+/// O "Localizar" para o motor: dimmer e RGBW a 100% e o shutter no padrão (o strobo em "luz ativa");
+/// o resto (pan, tilt, gobo…) fica como está. Os canais de todas as fixtures localizadas vão à parte,
+/// para o motor reduzir só a intensidade das outras.
+pub fn highlight(s: &Snapshot) -> rlc_engine::Highlight {
     use Attribute::*;
     let p = &s.project;
-    let mut levels = Vec::new();
-    for f in p.fixtures.iter().filter(|f| s.highlight.contains(&f.id)) {
+    let mut highlight = rlc_engine::Highlight {
+        others: s.highlight.others,
+        ..Default::default()
+    };
+    for f in p
+        .fixtures
+        .iter()
+        .filter(|f| s.highlight.fixtures.contains(&f.id))
+    {
         for (i, channel) in mode_channels(p, f).enumerate() {
+            let Some(level) = channel_address(p, &f.id, i as u16) else {
+                continue;
+            };
+            highlight
+                .located
+                .push((level.universe.clone(), level.channel));
             let value = match channel.attribute {
                 _ if channel.fine => continue,
                 Dimmer | Red | Green | Blue | White => 255,
                 Shutter => channel.default,
                 _ => continue,
             };
-            if let Some(level) = channel_address(p, &f.id, i as u16) {
-                levels.push(DeskLevel { value, ..level });
-            }
+            highlight.levels.push(DeskLevel { value, ..level });
         }
     }
-    levels
+    highlight
 }
 
 fn set_desk_level(desk: &mut Desk, universe: Id, channel: u16, value: u8) {
@@ -1635,19 +1651,38 @@ mod tests {
         apply(
             &mut s,
             Op::SetHighlight {
-                fixtures: vec![beam, "nao-existe".into()],
+                fixtures: vec![beam.clone(), "nao-existe".into()],
+                others: 51,
             },
         )
         .unwrap();
-        assert_eq!(s.highlight.len(), 1);
-        let channels: Vec<_> = highlight_levels(&s)
-            .iter()
-            .map(|l| (l.channel, l.value))
-            .collect();
+        assert_eq!(s.highlight.fixtures.len(), 1);
+        let h = highlight(&s);
+        let channels: Vec<_> = h.levels.iter().map(|l| (l.channel, l.value)).collect();
         assert_eq!(channels, [(2, 255), (3, 255)]);
+        // A intensidade das outras vai ao motor, junto de todos os canais do Beam (não só os acesos)
+        let beam = s.project.fixtures.iter().find(|f| f.id == beam).unwrap();
+        let count = usize::from(channel_count(&s.project, beam));
+        assert_eq!(h.others, 51);
+        assert_eq!(h.located.len(), count);
+        assert!(count > channels.len());
+        assert!(h.located.iter().all(|(universe, _)| universe == "u3"));
+        assert_eq!(h.located[0].1, 1);
         // O segundo toque do pânico desliga os dois
         apply(&mut s, Op::Panic { all: true }).unwrap();
-        assert!(s.preview.is_none() && s.highlight.is_empty());
+        assert!(s.preview.is_none() && s.highlight.fixtures.is_empty());
+    }
+
+    #[test]
+    fn the_bpm_of_the_tap_and_of_the_fader_stays_within_30_and_300() {
+        let mut s = example();
+        let ops: [fn(u16) -> Op; 2] = [|bpm| Op::SetBpm { bpm }, |bpm| Op::SetTempo { bpm }];
+        for op in ops {
+            apply(&mut s, op(90)).unwrap();
+            assert_eq!(s.master.bpm, 90);
+            assert!(apply(&mut s, op(29)).is_err() && apply(&mut s, op(301)).is_err());
+            assert_eq!(s.master.bpm, 90);
+        }
     }
 
     fn run(s: &mut Snapshot, id: &str) {

@@ -1,8 +1,9 @@
 //! Motor (A1): uma thread a 50 Hz com prazo absoluto, dona do estado de execução. Os comandos chegam
 //! por canal e são aplicados no começo de cada tick, e cada tick publica o quadro de cada universo.
 //! Camadas de cada universo, de baixo para cima: o valor padrão dos canais, as criações rodando, a
-//! prévia (a cena em edição), os EFX relativos, a Mesa simples, o "Localizar" e, por fim, o Grand
-//! Master e o blackout. O padrão de teste substitui as camadas de baixo.
+//! prévia (a cena em edição), os EFX relativos, a Mesa simples, o "Localizar" (que também deixa a
+//! intensidade das outras fixtures mais fraca) e, por fim, o Grand Master e o blackout. O padrão de
+//! teste substitui as camadas de baixo.
 //! Cada cena acesa por uma criação (sozinha, no passo de um chaser ou numa coleção) ganha um fader, e
 //! cada fixture de um EFX também. Os faders se misturam como no QLC+: nos canais de intensidade
 //! (dimmer e cores) vence o maior valor (HTP); nos outros, o fader iniciado por último (LTP).
@@ -148,6 +149,18 @@ pub struct SceneLevel {
     pub value: u16,
 }
 
+/// O "Localizar": os valores das fixtures localizadas e quanto as outras ficam acesas.
+#[derive(Default)]
+pub struct Highlight {
+    /// Valores das fixtures localizadas, já nos endereços DMX.
+    pub levels: Vec<DeskLevel>,
+    /// Todos os canais (universo e endereço) das fixtures localizadas: a intensidade deles não é
+    /// reduzida. Vazio = nada localizado.
+    pub located: Vec<(Id, u16)>,
+    /// Intensidade das outras fixtures, como o Grand Master (255 não reduz nada).
+    pub others: u8,
+}
+
 pub enum Command {
     /// Universos do projeto, na ordem.
     Patch(Vec<UniversePatch>),
@@ -159,12 +172,15 @@ pub enum Command {
     Step(Id, StepAction),
     /// BPM global. A batida recomeça agora: no tap, ela cai no último toque.
     Bpm(u16),
+    /// Muda o BPM sem recomeçar a batida (o fader do master): a parte da batida que falta continua a
+    /// mesma, e os chasers e EFX em batidas seguem sem salto.
+    Tempo(u16),
     /// Níveis da Mesa simples de todos os universos.
     Desk(Vec<DeskLevel>),
     /// Valores da cena em prévia, já nos endereços DMX.
     Preview(Vec<DeskLevel>),
-    /// Valores do "Localizar", acima da Mesa simples.
-    Highlight(Vec<DeskLevel>),
+    /// O "Localizar", acima da Mesa simples.
+    Highlight(Highlight),
     GrandMaster(u8),
     Blackout(bool),
     Test(Option<TestPattern>),
@@ -483,7 +499,7 @@ struct State {
     mixed: Vec<(Id, Frame)>,
     desk: Vec<DeskLevel>,
     preview: Vec<DeskLevel>,
-    highlight: Vec<DeskLevel>,
+    highlight: Highlight,
     grand_master: u8,
     blackout: bool,
     test: Option<(TestPattern, Instant)>,
@@ -504,7 +520,7 @@ impl Default for State {
             mixed: Vec::new(),
             desk: Vec::new(),
             preview: Vec::new(),
-            highlight: Vec::new(),
+            highlight: Highlight::default(),
             grand_master: 255,
             blackout: false,
             test: None,
@@ -545,9 +561,15 @@ impl State {
                 self.beat = Duration::from_secs(60) / u32::from(bpm.max(1));
                 self.next_beat = now + self.beat;
             }
+            Command::Tempo(bpm) => {
+                let beat = Duration::from_secs(60) / u32::from(bpm.max(1));
+                let left = self.next_beat.saturating_duration_since(now);
+                self.next_beat = now + left.mul_f64(beat.as_secs_f64() / self.beat.as_secs_f64());
+                self.beat = beat;
+            }
             Command::Desk(levels) => self.desk = levels,
             Command::Preview(levels) => self.preview = levels,
-            Command::Highlight(levels) => self.highlight = levels,
+            Command::Highlight(highlight) => self.highlight = highlight,
             Command::GrandMaster(value) => self.grand_master = value,
             Command::Blackout(on) => self.blackout = on,
             // Trocar de padrão recomeça a rampa do zero
@@ -681,7 +703,25 @@ impl State {
                         set(&mut frame, &self.preview);
                         self.relative(index, &mut frame, now);
                         set(&mut frame, &self.desk);
-                        set(&mut frame, &self.highlight);
+                        set(&mut frame, &self.highlight.levels);
+                        // As outras fixtures ficam mais fracas enquanto algo está localizado
+                        if self.highlight.others < 255 && !self.highlight.located.is_empty() {
+                            let mut located = [false; 512];
+                            for (_, channel) in
+                                self.highlight.located.iter().filter(|(id, _)| *id == u.id)
+                            {
+                                if let Some(l) =
+                                    located.get_mut(usize::from(*channel).wrapping_sub(1))
+                                {
+                                    *l = true;
+                                }
+                            }
+                            for (i, v) in frame.iter_mut().enumerate() {
+                                if u.intensity[i] && !located[i] {
+                                    *v = reduce(*v, self.highlight.others);
+                                }
+                            }
+                        }
                     }
                 }
                 for (v, _) in frame
@@ -922,11 +962,47 @@ mod tests {
         // A prévia fica por cima da cena e embaixo da mesa
         s.apply(Command::Preview(vec![level(1, 50), level(5, 20)]), now);
         assert_eq!(frame(&mut s)[..5], [255, 100, 200, 255, 20]);
-        s.apply(Command::Highlight(vec![level(2, 255)]), now);
+        let highlight = Highlight {
+            levels: vec![level(2, 255)],
+            ..Highlight::default()
+        };
+        s.apply(Command::Highlight(highlight), now);
         assert_eq!(frame(&mut s)[1], 255);
         // O blackout vale também para o "Localizar"
         s.apply(Command::Blackout(true), now);
         assert_eq!(frame(&mut s)[..2], [0, 0]);
+    }
+
+    #[test]
+    fn highlight_dims_the_other_fixtures_and_keeps_the_located_one() {
+        let mut s = state();
+        let now = Instant::now();
+        let desk = vec![level(1, 255), level(2, 100), level(3, 200), level(8, 200)];
+        s.apply(Command::Desk(desk), now);
+        s.apply(Command::Running(vec![run("a", scene(&[(5, 77)], 0))]), now);
+        // Localizada: o canal 1 vai a 100%; o 2 também é dela, mas o Localizar não mexe nele
+        let highlight = |others| {
+            Command::Highlight(Highlight {
+                levels: vec![level(1, 255)],
+                located: vec![("u1".into(), 1), ("u1".into(), 2)],
+                others,
+            })
+        };
+        s.apply(highlight(255), now);
+        assert_eq!(frame(&mut s)[..8], [255, 100, 200, 255, 77, 0, 0, 200]);
+        // A 20%, só a intensidade das outras cai (o 5, da cena, e o 8, da mesa); o pan (3) não
+        s.apply(highlight(51), now);
+        assert_eq!(frame(&mut s)[..8], [255, 100, 200, 255, 15, 0, 0, 40]);
+        // O Grand Master vale por cima de tudo
+        s.apply(Command::GrandMaster(128), now);
+        assert_eq!(frame(&mut s)[..8], [128, 50, 200, 255, 8, 0, 0, 20]);
+        // A 0%, só a localizada fica acesa
+        s.apply(Command::GrandMaster(255), now);
+        s.apply(highlight(0), now);
+        assert_eq!(frame(&mut s)[..8], [255, 100, 200, 255, 0, 0, 0, 0]);
+        // Desligado, tudo volta
+        s.apply(Command::Highlight(Highlight::default()), now);
+        assert_eq!(frame(&mut s)[..8], [255, 100, 200, 255, 77, 0, 0, 200]);
     }
 
     #[test]
@@ -1139,6 +1215,21 @@ mod tests {
         s.apply(Command::Bpm(120), tap);
         let next = (3011..4000).find(|&k| s.on_beat(t0 + TICK * k));
         assert_eq!(next, Some(3035));
+    }
+
+    #[test]
+    fn tempo_changes_the_speed_without_restarting_the_beat() {
+        let mut s = State::default();
+        let t0 = Instant::now();
+        s.apply(Command::Bpm(120), t0);
+        // Na metade da batida de 500 ms, o fader vai a 60 BPM (1 s): falta a metade da batida nova
+        let now = t0 + Duration::from_millis(250);
+        s.apply(Command::Tempo(60), now);
+        assert_eq!(s.beat, Duration::from_secs(1));
+        assert_eq!(s.next_beat, now + Duration::from_millis(500));
+        // O tap, ao contrário, recomeça: a próxima batida só viria um intervalo inteiro depois
+        s.apply(Command::Bpm(60), now);
+        assert_eq!(s.next_beat, now + Duration::from_secs(1));
     }
 
     #[test]

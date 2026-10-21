@@ -42,8 +42,18 @@ pub struct Snapshot {
     pub test_pattern: Option<TestPattern>,
     /// Cena em prévia: os valores dela vão para a luz enquanto ela é editada (o programador, E12).
     pub preview: Option<Id>,
-    /// Fixtures acesas pelo "Localizar".
-    pub highlight: Vec<Id>,
+    /// O "Localizar": as fixtures acesas e quanto as outras ficam.
+    pub highlight: Locate,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Locate {
+    /// Fixtures acesas; vazio = o Localizar está desligado.
+    pub fixtures: Vec<Id>,
+    /// Intensidade (dimmer e cores) das outras fixtures, de 0 a 255 como o Grand Master: 255 não
+    /// reduz nada e 0 deixa só as localizadas acesas.
+    pub others: u8,
 }
 
 /// Padrões de teste gerados pelo motor em todos os canais, para conferir a saída DMX.
@@ -1032,7 +1042,12 @@ pub enum Op {
     SetBlackout {
         on: bool,
     },
+    /// BPM do tap: a batida do motor recomeça na hora dele.
     SetBpm {
+        bpm: u16,
+    },
+    /// BPM do fader do master: muda a velocidade sem recomeçar a batida.
+    SetTempo {
         bpm: u16,
     },
     SaveStage {
@@ -1076,9 +1091,10 @@ pub enum Op {
     SetPreview {
         function: Option<Id>,
     },
-    /// Fixtures acesas pelo "Localizar"; vazio apaga.
+    /// Fixtures acesas pelo "Localizar", com a intensidade das outras; sem fixtures, apaga.
     SetHighlight {
         fixtures: Vec<Id>,
+        others: u8,
     },
 }
 

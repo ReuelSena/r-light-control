@@ -58,7 +58,7 @@ Para montar telas:
 |---|---|---|
 | `RlButton` | Qualquer ação | `mode`: `action`, `toggle` ou `flash`. `highlight`: `face` (o botão inteiro acende, padrão) ou `led` (só o filete acende e o botão fica afundado). `color`: cor do destaque e do filete. `size`: `sm`, `md` ou `lg`. Emite `press` com o evento (para ler `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`. |
 | `RlLcd` | Mostrar valores e estados | Texto ciano por padrão; `color` muda a cor (ex.: blackout em vermelho). |
-| `RlFader` | Nível contínuo (intensidade, submaster, GM) | Arrasto relativo, botão FINO (×0,1), toque duplo volta ao `default`, roda do mouse, setas e PageUp/PageDown. `meter` opcional; `cap="red"` para o master. |
+| `RlFader` | Nível contínuo (intensidade, submaster, GM) | Arrasto relativo, botão FINO (×0,1), toque duplo volta ao `default`, roda do mouse, setas e PageUp/PageDown. `meter` opcional; `cap="red"` para o master. `marks`: a escala ao lado do trilho (rótulo e posição de 0 a 1; sem ela, 0 a 100%). `fineStep`: o passo da roda e das setas com o FINO (padrão 0,001, ou 0,1% do curso). |
 | `RlKnob` | Parâmetros secundários (zoom, foco, velocidade) | Arrasto vertical relativo (150 px = curso todo), roda do mouse, toque duplo volta ao padrão. |
 | `RlXYPad` | Pan/tilt | Arrasto relativo em X e Y, FINO, toque duplo centraliza. |
 | `RlColorPicker` | Cor de fixtures RGB | Roda de matiz/saturação (toque absoluto, brilho máximo), amostras de gelatina, campos R, G e B. |
@@ -124,7 +124,7 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 - **Edição:** a grade aparece, e o painel de propriedades fica sempre no lugar em telas largas (vazio, com um aviso, quando nada está escolhido), para escolher um elemento não mexer no layout. A célula guarda o tamanho da operação (o painel de propriedades faz a grade rolar para o lado, sem apertar os elementos). Elementos com controle MIDI mostram um ícone de teclado musical no canto.
 - **Etiqueta de tecla:** o elemento acionado por tecla mostra a tecla (ou a combinação) numa etiqueta no canto superior direito, na operação e na edição. O botão de dicas de atalho (teclado, ao lado do "Editar", ou Alt + I) mostra ou esconde as etiquetas do console, inclusive as da seção master. Setas e espaço viram símbolos (← → ↑ ↓ ␣).
 - **Zoom do console:** `RlStepper` ao lado do "Editar", com os degraus do navegador (50% a 200%). Multiplica a célula da grade, guardado por aparelho.
-- **Seção master:** coluna à direita, com o GM num fader de cap vermelho; em espaço estreito, faixa em cima com o GM num knob.
+- **Seção master:** coluna à direita, com o GM num fader de cap vermelho e o BPM num fader ao lado (de 30 a 300, escala em BPM, FINO de 1 BPM), cada um com o seu FINO e o seu display; abaixo, blackout, parar tudo e o TAP. Em espaço estreito, faixa em cima com o GM e o BPM em knobs (o BPM, ao lado do número e do TAP).
 
 ## Regras de interação
 

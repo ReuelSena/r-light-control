@@ -12,6 +12,8 @@ type Prefs = {
   consoleZoom: number
   /** Console: etiquetas com as teclas de atalho nos botões e elementos. */
   keyHints: boolean
+  /** Localizar: intensidade das outras fixtures, de 0 a 1 (0 deixa só a localizada acesa). */
+  locateOthers: number
 }
 
 /** Degraus de zoom, como os do navegador. */
@@ -28,7 +30,7 @@ let saving = false
 
 export function usePrefs() {
   const prefs = useState<Prefs>('prefs', () => {
-    const defaults: Prefs = { valueFormat: 'percent', modular: false, consoleFormat: 'auto', quality: 'medium', smoke: 0.6, uiZoom: 1, consoleZoom: 1, keyHints: true }
+    const defaults: Prefs = { valueFormat: 'percent', modular: false, consoleFormat: 'auto', quality: 'medium', smoke: 0.6, uiZoom: 1, consoleZoom: 1, keyHints: true, locateOthers: 0.2 }
     try {
       return { ...defaults, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
     } catch {

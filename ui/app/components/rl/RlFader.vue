@@ -7,7 +7,18 @@ const props = withDefaults(defineProps<{
   meter?: number
   meterColor?: string
   cap?: 'silver' | 'red'
-}>(), { default: 0, meter: undefined, meterColor: undefined, cap: 'silver' })
+  /** Escala ao lado do trilho: o rótulo e a posição (0–1). Sem ela, vai de 0 a 100%. */
+  marks?: { label: number; at: number }[]
+  /** Passo da roda e das setas com o FINO, de 0 a 1 (0,1% do curso). */
+  fineStep?: number
+}>(), {
+  default: 0,
+  meter: undefined,
+  meterColor: undefined,
+  cap: 'silver',
+  marks: () => [100, 75, 50, 25, 0].map((label) => ({ label, at: label / 100 })),
+  fineStep: 0.001,
+})
 
 const model = defineModel<number>({ required: true })
 // Otimista sob o dedo: o gesto não espera a volta do servidor
@@ -15,7 +26,6 @@ const value = useOptimistic(model)
 const { t } = useI18n()
 const fine = ref(false)
 const track = ref<HTMLElement>()
-const marks = [100, 75, 50, 25, 0]
 
 // Curso total = altura do trilho; no modo fino o mesmo gesto anda 10× menos.
 const drag = useDrag(
@@ -23,20 +33,22 @@ const drag = useDrag(
   () => (value.value = props.default),
 )
 
+// Com FINO, a roda e as setas andam `fineStep` por passo de 1%
+const fineScale = () => (fine.value ? props.fineStep / 0.01 : 1)
 const keySteps: Record<string, number> = { ArrowUp: 0.01, ArrowDown: -0.01, PageUp: 0.1, PageDown: -0.1 }
 
 function key(e: KeyboardEvent) {
   const step = keySteps[e.key]
   if (step === undefined) return
   e.preventDefault()
-  value.value = clamp01(value.value + step * (fine.value ? 0.1 : 1))
+  value.value = clamp01(value.value + step * fineScale())
 }
 
 // Roda do mouse: cada clique (100 px, ou 3 linhas no Firefox) anda 1%; com FINO, 0,1%.
 // Proporcional ao deslocamento, para o trackpad não disparar.
 function wheel(e: WheelEvent) {
   const clicks = e.deltaY / (e.deltaMode === 1 ? 3 : 100)
-  value.value = clamp01(value.value - clicks * 0.01 * (fine.value ? 0.1 : 1))
+  value.value = clamp01(value.value - clicks * 0.01 * fineScale())
 }
 </script>
 
@@ -44,7 +56,7 @@ function wheel(e: WheelEvent) {
   <div class="rl-fader">
     <div class="body" @wheel.prevent="wheel">
       <div class="scale">
-        <span v-for="mark in marks" :key="mark" :style="{ bottom: `${mark}%` }">{{ mark }}</span>
+        <span v-for="mark in marks" :key="mark.label" :style="{ bottom: `${mark.at * 100}%` }">{{ mark.label }}</span>
       </div>
       <div
         ref="track"

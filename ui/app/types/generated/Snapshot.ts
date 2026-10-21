@@ -3,6 +3,7 @@ import type { CurrentStep } from "./CurrentStep";
 import type { Desk } from "./Desk";
 import type { DmxInterface } from "./DmxInterface";
 import type { FixtureDef } from "./FixtureDef";
+import type { Locate } from "./Locate";
 import type { Master } from "./Master";
 import type { MidiDevice } from "./MidiDevice";
 import type { Project } from "./Project";
@@ -61,6 +62,6 @@ testPattern: TestPattern | null,
  */
 preview: string | null, 
 /**
- * Fixtures acesas pelo "Localizar".
+ * O "Localizar": as fixtures acesas e quanto as outras ficam.
  */
-highlight: Array<string>, };
+highlight: Locate, };

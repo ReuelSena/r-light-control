@@ -21,8 +21,8 @@ use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
 use crate::apply::{
-    Topic, apply, empty_project, highlight_levels, is_live, new_id, preview_levels,
-    running_programs, universe_patch,
+    Topic, apply, empty_project, highlight, is_live, new_id, preview_levels, running_programs,
+    universe_patch,
 };
 use crate::{library, project};
 
@@ -93,7 +93,10 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
         },
         test_pattern: None,
         preview: None,
-        highlight: vec![],
+        highlight: Locate {
+            fixtures: vec![],
+            others: 255,
+        },
     }
 }
 
@@ -196,10 +199,11 @@ impl Hub {
             op,
             Op::Panic { .. } | Op::NewProject | Op::OpenProject { .. }
         );
-        // O passo da cue list e o BPM do tap vão direto ao motor, depois das criações rodando
+        // O passo da cue list e o BPM (do tap e do fader) vão direto ao motor, depois das criações rodando
         let direct = match &op {
             Op::StepChaser { id, action } => Some(Command::Step(id.clone(), *action)),
             Op::SetBpm { bpm } => Some(Command::Bpm(*bpm)),
+            Op::SetTempo { bpm } => Some(Command::Tempo(*bpm)),
             _ => None,
         };
         let (topics, reply) = match op {
@@ -546,7 +550,7 @@ impl Hub {
             self.engine
                 .send(Command::Preview(preview_levels(&self.snapshot)));
             self.engine
-                .send(Command::Highlight(highlight_levels(&self.snapshot)));
+                .send(Command::Highlight(highlight(&self.snapshot)));
         }
     }
 

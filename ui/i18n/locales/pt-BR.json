@@ -207,7 +207,9 @@
     "formatAuto": "Automático (pela largura da tela)",
     "zoom": "Zoom da interface",
     "zoomBrowser": "No navegador, use o zoom do próprio navegador (Ctrl + e Ctrl −).",
-    "zoomInfo": "Vale só para este aparelho. No computador, Ctrl + − e Ctrl + + também mudam o zoom; com o console na frente, mudam o zoom do console."
+    "zoomInfo": "Vale só para este aparelho. No computador, Ctrl + − e Ctrl + + também mudam o zoom; com o console na frente, mudam o zoom do console.",
+    "locateOthers": "Localizar: intensidade das outras",
+    "locateOthersInfo": "Com o Localizar ligado, as outras fixtures ficam com esta intensidade (dimmer e cores) e só a localizada fica em 100%. Em 0%, só a localizada acende. Pan, tilt e gobo não mudam. Vale só para este aparelho."
   },
   "kind": {
     "colorChanger": "Troca de cor (PAR)",

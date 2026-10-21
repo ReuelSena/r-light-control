@@ -32,7 +32,7 @@ O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
 
-**Ordem de execução (aprovada em 2026-10-21):** Ajustes rápidos → F10 → F10b → F10c → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). O próximo passo é o mini-plano dos [ajustes rápidos](docs/fases/ajustes-rapidos.md), aguardando a aprovação.
+**Ordem de execução (aprovada em 2026-10-21):** Ajustes rápidos → F10 → F10b → F10c → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md) foram validados em 2026-10-21; o próximo passo é a F10.
 
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
@@ -253,17 +253,17 @@ Validação (detalhada em [docs/fases/fase-08.md](docs/fases/fase-08.md)):
 - [x] Os itens da F7, testados junto (pedido do usuário), menos o deslizar dos Beams, a sequência e a coleção, que estão na validação final.
 - Na [validação final](docs/validacao-final.md), com os moving beams: o círculo em 4 moving heads com offset de 90°, o EFX relativo sobre uma posição do programador (a prévia) e de uma cena, e os outros testes do EFX.
 
-### Ajustes rápidos · ⬜
+### Ajustes rápidos · ✅
 
-Mini-plano: [docs/fases/ajustes-rapidos.md](docs/fases/ajustes-rapidos.md) (escrito em 2026-10-21, aguardando a aprovação). Dois pedidos do usuário, da pesquisa da grandMA, antes da F10.
+Mini-plano: [docs/fases/ajustes-rapidos.md](docs/fases/ajustes-rapidos.md) (aprovado e entregue em 2026-10-21). Validado pelo usuário em 2026-10-21. Dois pedidos do usuário, da pesquisa da grandMA, antes da F10.
 
 - **Localizar (P6):** enquanto ligado, as outras fixtures ficam com a intensidade reduzida (padrão 20%, ajustável no ⚙; com 0% vira um "solo") e só as localizadas ficam em 100%.
 - **Fader de BPM (E3):** na seção master, ao lado do TAP, com o FINO. O celular e o tablet ganham um knob.
 
 Validação:
-- [ ] O Localizar deixa só a fixture escolhida em 100% e as outras na intensidade ajustada.
-- [ ] O fader de BPM ajusta (também o FINO), e o TAP move o fader.
-- [ ] `pnpm check` passa.
+- [x] O Localizar deixa só a fixture escolhida em 100% e as outras na intensidade ajustada.
+- [x] O fader de BPM ajusta (também o FINO), e o TAP move o fader.
+- [x] `pnpm check` passa.
 
 ### F9 — RGB Matrix · ⬜
 

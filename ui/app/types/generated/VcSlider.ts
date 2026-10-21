@@ -11,6 +11,10 @@ channelGroups: Array<string>,
  */
 function: string | null, 
 /**
+ * Velocidade: criações que têm os tempos acelerados ou desacelerados.
+ */
+functions: Array<string>, 
+/**
  * Aparência de knob em vez de fader.
  */
 knob: boolean, };

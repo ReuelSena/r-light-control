@@ -13,15 +13,33 @@ const fn = (id: string | null) => project.value.functions.find((f) => f.id === i
 // Só o relógio precisa do tempo correndo
 const now = props.widget.type === 'clock' ? useClock(200) : ref(0)
 
-const setButton = (on: boolean) => props.widget.type === 'button' && vc.setButton(props.widget, on)
+// Flash e Temp valem enquanto o dedo está no botão; o resto age no toque
+const momentary = computed(() => props.widget.type === 'button' && props.widget.mode !== 'toggle' && props.widget.action !== 'stopAll')
 // O botão só mostra ícone quando o usuário liga a opção (VC-1)
 const { icon } = useIconLibrary()
 const buttonIcon = computed(() => (props.widget.type === 'button' ? icon(props.widget.icon) : undefined))
 
-// Nível 0–1 do slider e do animation (o animation começa com a intensidade cheia)
+// Nível 0–1 do slider e do animation. Sem valor, o animation e o submaster ficam cheios, e a
+// velocidade, em ×1 (o meio, 128)
+const sliderMode = computed(() => (props.widget.type === 'slider' ? props.widget.mode : undefined))
+const empty = computed(() => (sliderMode.value === 'rate' ? 128 : props.widget.type === 'animation' || sliderMode.value === 'submaster' ? 255 : 0))
 const level = computed({
-  get: () => (vc.value(props.widget.id)?.[0] ?? (props.widget.type === 'animation' ? 255 : 0)) / 255,
+  get: () => (vc.value(props.widget.id)?.[0] ?? empty.value) / 255,
   set: (v: number) => vc.setValue(props.widget.id, [Math.round(v * 255)]),
+})
+// Velocidade: de ×0,25 (embaixo) a ×4 (em cima), as mesmas contas do servidor
+const rateAt = (rate: number) => (128 + 127 * Math.log(rate) / Math.log(4)) / 255
+const rateMarks = [
+  { label: '×4', at: 1 },
+  { label: '×2', at: rateAt(2) },
+  { label: '×1', at: rateAt(1) },
+  { label: '½', at: rateAt(0.5) },
+  { label: '¼', at: 0 },
+]
+const levelText = computed(() => {
+  if (sliderMode.value !== 'rate') return format(level.value)
+  const rate = Math.min(4, Math.max(0.25, 4 ** ((level.value * 255 - 128) / 127)))
+  return `×${rate.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}`
 })
 const xy = computed({
   get: () => {
@@ -86,12 +104,12 @@ function setColor(i: number, color: string) {
   <RlButton
     v-if="widget.type === 'button'"
     class="h-full w-full flex-col gap-1! px-1! text-[11px]!"
-    :mode="widget.action === 'stopAll' ? 'action' : widget.mode"
+    :mode="momentary ? 'flash' : 'action'"
     :highlight="widget.highlight"
     :color="widget.color"
     :model-value="vc.active(widget)"
-    @update:model-value="setButton"
-    @press="widget.action === 'stopAll' && setButton(true)"
+    @update:model-value="(down: boolean) => momentary && vc.press(widget, 'main', down)"
+    @press="!momentary && vc.press(widget, 'main', true)"
   >
     <component :is="buttonIcon" v-if="buttonIcon" :size="18" class="shrink-0" />
     <span class="line-clamp-2 whitespace-normal text-center leading-tight wrap-anywhere">{{ widget.caption }}</span>
@@ -112,9 +130,16 @@ function setColor(i: number, color: string) {
     </header>
 
     <template v-if="widget.type === 'slider'">
-      <RlKnob v-if="widget.knob" v-model="level" class="mx-auto" :color="widget.color" />
-      <RlFader v-else v-model="level" class="min-h-0 flex-1" :cap="widget.mode === 'submaster' ? 'red' : 'silver'" />
-      <RlLcd class="text-center text-xs">{{ format(level) }}</RlLcd>
+      <RlKnob v-if="widget.knob" v-model="level" class="mx-auto" :color="widget.color" :default="empty / 255" />
+      <RlFader
+        v-else
+        v-model="level"
+        class="min-h-0 flex-1"
+        :cap="widget.mode === 'submaster' ? 'red' : 'silver'"
+        :default="empty / 255"
+        :marks="widget.mode === 'rate' ? rateMarks : undefined"
+      />
+      <RlLcd class="text-center text-xs">{{ levelText }}</RlLcd>
     </template>
 
     <RlXYPad v-else-if="widget.type === 'xyPad'" v-model="xy" />
@@ -136,18 +161,18 @@ function setColor(i: number, color: string) {
         <p v-if="!chaser" class="p-2 text-xs text-fg-muted">{{ t('vc.noChaser') }}</p>
       </div>
       <div class="grid grid-cols-3 gap-1">
-        <RlButton size="sm" :aria-label="t('vc.control.previous')" @press="vc.input(widget, 'previous', true)"><ChevronLeft :size="18" /></RlButton>
+        <RlButton size="sm" :aria-label="t('vc.control.previous')" @press="vc.press(widget, 'previous', true)"><ChevronLeft :size="18" /></RlButton>
         <RlButton
           size="sm"
           highlight="led"
           color="var(--color-on)"
           :model-value="playing"
           :aria-label="t('vc.control.main')"
-          @press="vc.play(widget, !playing)"
+          @press="vc.press(widget, 'main', true)"
         >
           <component :is="playing ? Square : Play" :size="16" />
         </RlButton>
-        <RlButton size="sm" :aria-label="t('vc.control.next')" @press="vc.input(widget, 'next', true)"><ChevronRight :size="18" /></RlButton>
+        <RlButton size="sm" :aria-label="t('vc.control.next')" @press="vc.press(widget, 'next', true)"><ChevronRight :size="18" /></RlButton>
       </div>
     </template>
 

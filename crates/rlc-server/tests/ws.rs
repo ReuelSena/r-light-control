@@ -292,3 +292,43 @@ async fn efx_moves_pan_and_tilt_every_frame() {
     cmd(&mut ws, 2, json!({ "op": "saveFunction", "function": efx })).await;
     evt_until(&mut ws, "running", |d| *d == json!([])).await;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_held_button_is_released_when_its_device_drops() {
+    let port = server().await;
+    let mut a = connect(port).await;
+    let mut b = connect(port).await;
+    for ws in [&mut a, &mut b] {
+        assert_eq!(next_json(ws).await["t"], "hello");
+        assert_eq!(next_json(ws).await["t"], "snapshot");
+    }
+    let has_s5 = |running: &Value| running.as_array().unwrap().iter().any(|id| id == "s5");
+    // O aparelho "a" segura o Temp "b11" (Haze leve), e o "b" vê a criação rodando
+    let press = json!({ "op": "pressWidget", "widget": "b11", "control": "main", "down": true });
+    cmd(&mut a, 1, press).await;
+    evt_until(&mut b, "running", has_s5).await;
+    // O "a" cai com o dedo no botão: o servidor solta
+    drop(a);
+    evt_until(&mut b, "running", |running| !has_s5(running)).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_silent_device_drops_and_its_button_is_released() {
+    let port = server().await;
+    let mut a = connect(port).await;
+    let mut b = connect(port).await;
+    for ws in [&mut a, &mut b] {
+        assert_eq!(next_json(ws).await["t"], "hello");
+        assert_eq!(next_json(ws).await["t"], "snapshot");
+    }
+    let has_s5 = |running: &Value| running.as_array().unwrap().iter().any(|id| id == "s5");
+    let press = json!({ "op": "pressWidget", "widget": "b11", "control": "main", "down": true });
+    cmd(&mut a, 1, press).await;
+    evt_until(&mut b, "running", has_s5).await;
+    // O "a" fica calado, sem fechar a conexão (como um Wi-Fi que cai): sem ler, ele não responde ao
+    // ping, e o servidor o derruba e solta o botão em poucos segundos
+    let started = tokio::time::Instant::now();
+    evt_until(&mut b, "running", |running| !has_s5(running)).await;
+    assert!(started.elapsed() < Duration::from_secs(6));
+    drop(a);
+}

@@ -21,8 +21,8 @@ use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
 use crate::apply::{
-    Topic, apply, empty_project, highlight, is_live, new_id, preview_levels, running_programs,
-    universe_patch,
+    Topic, apply, cue_list_op, empty_project, fixture_blackout, highlight, is_live, new_id,
+    preview_levels, running_programs, universe_patch,
 };
 use crate::{library, project};
 
@@ -125,6 +125,9 @@ pub struct Hub {
     recovery_pending: bool,
     /// Acesso pela rede local, acompanhado pelos clientes de fora (que caem quando ele é desligado).
     pub allow_lan: watch::Sender<bool>,
+    /// Elementos do console que cada aparelho está apertando (aparelho, elemento): se ele cair, o
+    /// servidor os solta (o flash não fica preso).
+    holds: Vec<(Id, Id)>,
     started: Instant,
     last_stats: Instant,
     system: System,
@@ -157,6 +160,7 @@ impl Hub {
             redo: vec![],
             last_edit: None,
             recovery_pending: false,
+            holds: vec![],
             started: Instant::now(),
             last_stats: Instant::now(),
             system: System::new(),
@@ -192,8 +196,25 @@ impl Hub {
         self.engine.frames.clone()
     }
 
+    /// Operação de um aparelho: anota o que ele aperta e solta no console, para soltar se ele cair.
+    pub fn command_from(&mut self, client: &str, op: Op) -> Result<Value, String> {
+        if let Op::PressWidget {
+            widget,
+            control: InputControl::Main,
+            down,
+        } = &op
+        {
+            self.holds.retain(|(_, w)| w != widget);
+            if *down {
+                self.holds.push((client.into(), widget.clone()));
+            }
+        }
+        self.command(op)
+    }
+
     /// Aplica uma operação de um cliente. Recusada, nada muda e ninguém é avisado.
     pub fn command(&mut self, op: Op) -> Result<Value, String> {
+        let op = cue_list_op(&self.snapshot, op);
         // O pânico, o "Novo" e o "Abrir" param as cenas sem fade out
         let cut = matches!(
             op,
@@ -487,9 +508,26 @@ impl Hub {
         id
     }
 
+    /// O aparelho saiu (ou caiu): o que ele estava apertando no console é solto.
     pub fn leave(&mut self, id: &str) {
         self.snapshot.remote.clients.retain(|c| c.id != id);
         self.publish(&[Topic::Remote]);
+        let held: Vec<Id> = self
+            .holds
+            .iter()
+            .filter(|(client, _)| client == id)
+            .map(|(_, widget)| widget.clone())
+            .collect();
+        self.holds.retain(|(client, _)| client != id);
+        for widget in held {
+            let release = Op::PressWidget {
+                widget,
+                control: InputControl::Main,
+                down: false,
+            };
+            // Um elemento removido nesse meio tempo não tem o que soltar
+            let _ = self.command(release);
+        }
     }
 
     /// Leva ao motor e às saídas o que mudou para eles.
@@ -551,6 +589,18 @@ impl Hub {
                 .send(Command::Preview(preview_levels(&self.snapshot)));
             self.engine
                 .send(Command::Highlight(highlight(&self.snapshot)));
+        }
+        if any(&[
+            Topic::Project,
+            Topic::Universes,
+            Topic::Fixtures,
+            Topic::FixtureDefs,
+            Topic::FixtureGroups,
+            Topic::Console,
+            Topic::WidgetValues,
+        ]) {
+            self.engine
+                .send(Command::FixtureBlackout(fixture_blackout(&self.snapshot)));
         }
     }
 
@@ -786,6 +836,28 @@ mod tests {
         assert_eq!(hub.snapshot.project, saved);
         assert!(hub.command(Op::Undo).is_err());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn what_a_device_holds_is_released_when_it_leaves() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        let press = |widget: &str| Op::PressWidget {
+            widget: widget.into(),
+            control: InputControl::Main,
+            down: true,
+        };
+        // O aparelho segura o Temp "b11" (Haze leve) e liga a "b1" (liga/desliga)
+        hub.command_from("aparelho", press("b11")).unwrap();
+        hub.command_from("aparelho", press("b1")).unwrap();
+        assert_eq!(hub.snapshot.running, ["s5", "s1"]);
+        // Ele cai: o Temp solta, e o liga/desliga continua
+        hub.leave("aparelho");
+        assert_eq!(hub.snapshot.running, ["s1"]);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

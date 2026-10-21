@@ -4,8 +4,10 @@ import type { VcWidget } from '~/types/generated/VcWidget'
 
 type Widget<T extends VcWidget['type']> = Extract<VcWidget, { type: T }>
 
-// Operação do Virtual Console: o que cada elemento faz ao toque e às entradas externas
-// (teclado agora; MIDI na F12). Usado pelos elementos e pelos atalhos de teclado da tela.
+// Operação do Virtual Console. O aparelho manda só "apertou" e "soltou" de cada elemento, e o servidor
+// aplica o que ele faz (A2): assim ele solta o flash de um aparelho que cai, e o MIDI da F12 usa o
+// mesmo caminho. Ficam aqui o que é do aparelho: o tap, medido onde o dedo está, e o toque num passo da
+// cue list.
 const taps = new Map<string, number>() // último toque no TAP de cada speed dial
 const bpmTaps: number[] = []
 
@@ -19,38 +21,16 @@ export function useConsole() {
     return fn?.type === 'chaser' || fn?.type === 'sequence' ? fn : undefined
   }
 
+  /** O botão aceso: a criação rodando, o blackout ligado ou as fixtures apagadas. */
   function active(w: Widget<'button'>) {
-    if (w.action === 'function') return running(w.function)
+    if (w.action === 'function' || w.action === 'exclusive') return running(w.function)
     if (w.action === 'blackout') return state.value.master.blackout
     return w.action === 'blackoutFixtures' && !!value(w.id)
   }
 
-  /** Liga ou desliga o botão. Numa moldura solo, ligar uma criação para as outras da moldura. */
-  function setButton(w: Widget<'button'>, on: boolean) {
-    const widgets = state.value.project.console.widgets
-    switch (w.action) {
-      case 'function': {
-        if (!w.function) return
-        const frame = widgets.find((x) => x.id === w.frame)
-        if (on && frame?.type === 'frame' && frame.solo) {
-          for (const b of widgets) {
-            if (b.type === 'button' && b.frame === w.frame && b.function && b.function !== w.function && running(b.function)) {
-              send({ op: 'setFunctionRunning', id: b.function, running: false })
-            }
-          }
-        }
-        send({ op: 'setFunctionRunning', id: w.function, running: on })
-        return
-      }
-      case 'blackout':
-        send({ op: 'setBlackout', on })
-        return
-      case 'blackoutFixtures':
-        setValue(w.id, on ? [1] : [])
-        return
-      case 'stopAll':
-        if (on) send({ op: 'stopAllFunctions' })
-    }
+  /** Apertou (`down`) ou soltou uma parte do elemento. */
+  function press(w: VcWidget, control: InputControl, down: boolean) {
+    send({ op: 'pressWidget', widget: w.id, control, down })
   }
 
   /** Passo atual da cue list, vindo do motor; -1 com o chaser parado. */
@@ -59,15 +39,9 @@ export function useConsole() {
     return state.value.chaserSteps.find((c) => c.chaser === w.chaser)?.step ?? -1
   }
 
-  /** Próximo, anterior ou um passo escolhido; o chaser parado passa a rodar. A ordem (Loop, Ping Pong…)
-   * fica com o motor. */
+  /** Toque num passo da cue list; o chaser parado passa a rodar. */
   function step(w: Widget<'cueList'>, action: StepAction) {
     if (w.chaser && chaserOf(w)?.steps.length) send({ op: 'stepChaser', id: w.chaser, action })
-  }
-
-  /** Play roda o chaser do começo; stop para. */
-  function play(w: Widget<'cueList'>, on: boolean) {
-    if (w.chaser) send({ op: 'setFunctionRunning', id: w.chaser, running: on })
   }
 
   /** TAP do speed dial: seguindo o BPM, é o tap do BPM master; em segundos, o intervalo entre dois
@@ -91,21 +65,11 @@ export function useConsole() {
     if (bpmTaps.length > 1) send({ op: 'setBpm', bpm: Math.round((60000 * (bpmTaps.length - 1)) / (now - bpmTaps[0]!)) })
   }
 
-  /** Entrada externa (tecla ou MIDI): `down` ao apertar e `false` ao soltar. */
+  /** Entrada externa (tecla; o MIDI na F12): `down` ao apertar e `false` ao soltar. */
   function input(w: VcWidget, control: InputControl, down: boolean) {
-    if (w.type === 'button') {
-      if (w.action === 'stopAll' || w.mode === 'toggle') {
-        if (down) setButton(w, w.action === 'stopAll' || !active(w))
-      } else setButton(w, down)
-    }
-    if (!down) return
-    if (w.type === 'cueList') {
-      if (control === 'main') play(w, !running(w.chaser))
-      if (control === 'stop') play(w, false)
-      if (control === 'next' || control === 'previous') step(w, control)
-    }
-    if (w.type === 'speedDial' && control === 'tap') tap(w)
+    if (w.type !== 'speedDial') press(w, control, down)
+    else if (down && control === 'tap') tap(w)
   }
 
-  return { value, setValue, running, active, setButton, chaserOf, currentStep, step, play, tap, tapBpm, input }
+  return { value, setValue, running, active, press, chaserOf, currentStep, step, tap, tapBpm, input }
 }

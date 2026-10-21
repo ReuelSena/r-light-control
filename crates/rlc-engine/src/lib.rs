@@ -66,6 +66,9 @@ pub struct UniversePatch {
 pub struct Run {
     pub id: Id,
     pub program: Program,
+    /// Multiplica a intensidade (dimmer e cores) de tudo o que ela acende: o slider de playback e os
+    /// submasters (255 = cheia).
+    pub intensity: u8,
 }
 
 /// O que uma criação acende.
@@ -181,6 +184,9 @@ pub enum Command {
     Preview(Vec<DeskLevel>),
     /// O "Localizar", acima da Mesa simples.
     Highlight(Highlight),
+    /// Canais (universo e endereço) das fixtures apagadas pelos botões de blackout de fixtures: como o
+    /// blackout, só a intensidade deles vai a zero.
+    FixtureBlackout(Vec<(Id, u16)>),
     GrandMaster(u8),
     Blackout(bool),
     Test(Option<TestPattern>),
@@ -261,6 +267,8 @@ struct Fader {
     channels: Vec<Fade>,
     /// EFX relativo: os valores são somados ao que está embaixo, com o zero em 127 (no grosso).
     relative: bool,
+    /// Intensidade da criação dona: multiplica os canais de intensidade (255 = cheia).
+    intensity: u8,
 }
 
 /// Um canal de uma cena: vai de `start` ao valor da cena em `time`, contado de `since`. Com a cena
@@ -330,6 +338,8 @@ struct Ctx<'a> {
     /// Saída das criações no último quadro: de onde parte o fade de uma cena que começa.
     mixed: &'a [(Id, Frame)],
     owner: &'a Id,
+    /// Intensidade da criação dona, para os faders novos.
+    intensity: u8,
     now: Instant,
     /// Intervalo entre as batidas e a posição de agora na batida, em milésimos.
     beat: Duration,
@@ -349,19 +359,31 @@ impl Ctx<'_> {
     ) -> u64 {
         *self.serial += 1;
         let channels = levels
-            .map(|level| Fade {
-                universe: position(self.universes, &level),
-                start: if relative {
+            .map(|level| {
+                let universe = position(self.universes, &level);
+                let mut start = if relative {
                     zero(&level)
                 } else {
                     self.mixed
                         .iter()
                         .find(|(id, _)| *id == level.universe)
                         .map_or(0, |(_, frame)| read(frame, &level))
-                },
-                level,
-                since: self.now,
-                time: fade_in.duration(self.beat),
+                };
+                // Com a intensidade reduzida, o fade parte do valor cheio que dá o que está saindo:
+                // num passo de chaser a 50%, a luz não afunda na troca
+                let htp = universe
+                    .is_some_and(|u| self.universes[u].intensity[usize::from(level.channel) - 1]);
+                if htp && (1..255).contains(&self.intensity) {
+                    let max = if level.fine.is_some() { 0xFFFF } else { 0xFF };
+                    start = (u32::from(start) * 255 / u32::from(self.intensity)).min(max) as u16;
+                }
+                Fade {
+                    universe,
+                    start,
+                    level,
+                    since: self.now,
+                    time: fade_in.duration(self.beat),
+                }
             })
             .collect();
         self.faders.push(Fader {
@@ -371,6 +393,7 @@ impl Ctx<'_> {
             stopped: None,
             channels,
             relative,
+            intensity: self.intensity,
         });
         *self.serial
     }
@@ -492,6 +515,8 @@ struct State {
     universes: Vec<UniversePatch>,
     /// Criações disparadas pelo usuário, na ordem de início.
     runs: Vec<(Id, Node)>,
+    /// Intensidade de cada criação disparada.
+    intensities: Vec<(Id, u8)>,
     /// Cenas acesas, na ordem de início: a mistura LTP segue essa ordem.
     faders: Vec<Fader>,
     serial: u64,
@@ -502,6 +527,7 @@ struct State {
     highlight: Highlight,
     grand_master: u8,
     blackout: bool,
+    dark: Vec<(Id, u16)>,
     test: Option<(TestPattern, Instant)>,
     /// Intervalo entre as batidas (o BPM), a hora da próxima e quantas já passaram.
     beat: Duration,
@@ -515,6 +541,7 @@ impl Default for State {
         Self {
             universes: Vec::new(),
             runs: Vec::new(),
+            intensities: Vec::new(),
             faders: Vec::new(),
             serial: 0,
             mixed: Vec::new(),
@@ -523,6 +550,7 @@ impl Default for State {
             highlight: Highlight::default(),
             grand_master: 255,
             blackout: false,
+            dark: Vec::new(),
             test: None,
             beat,
             next_beat: Instant::now() + beat,
@@ -570,6 +598,7 @@ impl State {
             Command::Desk(levels) => self.desk = levels,
             Command::Preview(levels) => self.preview = levels,
             Command::Highlight(highlight) => self.highlight = highlight,
+            Command::FixtureBlackout(channels) => self.dark = channels,
             Command::GrandMaster(value) => self.grand_master = value,
             Command::Blackout(on) => self.blackout = on,
             // Trocar de padrão recomeça a rampa do zero
@@ -585,6 +614,11 @@ impl State {
             universes: &self.universes,
             mixed: &self.mixed,
             owner,
+            intensity: self
+                .intensities
+                .iter()
+                .find(|(id, _)| id == owner)
+                .map_or(255, |(_, i)| *i),
             now,
             beat: self.beat,
         }
@@ -593,6 +627,13 @@ impl State {
     /// Acompanha a lista das criações disparadas. As que saíram dela começam o fade out; as que
     /// continuam recebem as edições na hora; as novas entram por último.
     fn set_running(&mut self, runs: Vec<Run>, now: Instant) {
+        self.intensities = runs.iter().map(|r| (r.id.clone(), r.intensity)).collect();
+        // A intensidade nova vale na hora para o que já está aceso (o que está apagando fica com a sua)
+        for f in self.faders.iter_mut().filter(|f| f.stopped.is_none()) {
+            if let Some((_, i)) = self.intensities.iter().find(|(id, _)| *id == f.owner) {
+                f.intensity = *i;
+            }
+        }
         let mut old = std::mem::take(&mut self.runs);
         for (id, node) in &old {
             if !runs.iter().any(|r| r.id == *id) {
@@ -706,33 +747,25 @@ impl State {
                         set(&mut frame, &self.highlight.levels);
                         // As outras fixtures ficam mais fracas enquanto algo está localizado
                         if self.highlight.others < 255 && !self.highlight.located.is_empty() {
-                            let mut located = [false; 512];
-                            for (_, channel) in
-                                self.highlight.located.iter().filter(|(id, _)| *id == u.id)
-                            {
-                                if let Some(l) =
-                                    located.get_mut(usize::from(*channel).wrapping_sub(1))
-                                {
-                                    *l = true;
-                                }
-                            }
+                            let located = mask(&self.highlight.located, &u.id);
                             for (i, v) in frame.iter_mut().enumerate() {
                                 if u.intensity[i] && !located[i] {
-                                    *v = reduce(*v, self.highlight.others);
+                                    *v = reduce((*v).into(), self.highlight.others) as u8;
                                 }
                             }
                         }
                     }
                 }
-                for (v, _) in frame
+                let dark = mask(&self.dark, &u.id);
+                for (i, v) in frame
                     .iter_mut()
-                    .zip(u.intensity.iter())
-                    .filter(|(_, i)| **i)
+                    .enumerate()
+                    .filter(|(i, _)| u.intensity[*i])
                 {
-                    *v = if self.blackout {
+                    *v = if self.blackout || dark[i] {
                         0
                     } else {
-                        reduce(*v, self.grand_master)
+                        reduce((*v).into(), self.grand_master) as u8
                     };
                 }
                 (u.id.clone(), frame)
@@ -778,6 +811,12 @@ impl State {
                     f.start
                 } else {
                     target
+                };
+                // A intensidade da criação só escala dimmer e cores, como no QLC+
+                let value = if htp && fader.intensity < 255 {
+                    reduce(value, fader.intensity)
+                } else {
+                    value
                 };
                 if !htp || !taken[u][i] || value > current {
                     write(&mut frames[u], &f.level, value);
@@ -863,9 +902,21 @@ fn triangle(ms: u64) -> u8 {
     (up * 255 / (RAMP_MS / 2)) as u8
 }
 
-/// Grand Master no modo "reduzir" do QLC+: `round(valor × gm / 255)`, em inteiros.
-fn reduce(value: u8, grand_master: u8) -> u8 {
-    ((u32::from(value) * u32::from(grand_master) * 2 + 255) / 510) as u8
+/// Grand Master no modo "reduzir" do QLC+: `round(valor × gm / 255)`, em inteiros. Também a
+/// intensidade de uma criação (em 16 bits, com o canal fino) e as outras fixtures do Localizar.
+fn reduce(value: u16, by: u8) -> u16 {
+    ((u32::from(value) * u32::from(by) * 2 + 255) / 510) as u16
+}
+
+/// Quais canais de um universo estão na lista (universo e endereço).
+fn mask(channels: &[(Id, u16)], universe: &str) -> [bool; 512] {
+    let mut mask = [false; 512];
+    for (_, channel) in channels.iter().filter(|(id, _)| id == universe) {
+        if let Some(m) = mask.get_mut(usize::from(*channel).wrapping_sub(1)) {
+            *m = true;
+        }
+    }
+    mask
 }
 
 #[cfg(test)]
@@ -931,6 +982,7 @@ mod tests {
         Run {
             id: id.into(),
             program,
+            intensity: 255,
         }
     }
 
@@ -971,6 +1023,66 @@ mod tests {
         // O blackout vale também para o "Localizar"
         s.apply(Command::Blackout(true), now);
         assert_eq!(frame(&mut s)[..2], [0, 0]);
+    }
+
+    #[test]
+    fn intensity_scales_only_dimmer_and_colors_of_all_it_lights_and_changes_live() {
+        let mut s = patched();
+        let now = Instant::now();
+        // Uma coleção com uma cena no 1 (dimmer) e no 3 (pan) e um chaser com uma cena no 2 (cor)
+        let chaser = Program::Chaser(ChaserProgram {
+            steps: vec![Step {
+                program: scene(&[(2, 100)], 0),
+                fade_in: None,
+                hold: Span::Ms(1000),
+                fade_out: None,
+            }],
+            run_order: RunOrder::Loop,
+            direction: Direction::Forward,
+            keep_last: false,
+        });
+        let collection = Program::Collection(vec![scene(&[(1, 200), (3, 200)], 0), chaser]);
+        let half = Run {
+            intensity: 128,
+            ..run("a", collection.clone())
+        };
+        s.apply(Command::Running(vec![half]), now);
+        s.render(now);
+        // A 50%, só o dimmer e a cor caem; o pan fica
+        assert_eq!(frame(&mut s)[..3], [100, 50, 200]);
+        // Ao vivo, sem recomeçar
+        s.apply(Command::Running(vec![run("a", collection)]), now);
+        assert_eq!(frame(&mut s)[..3], [200, 100, 200]);
+    }
+
+    #[test]
+    fn a_reduced_intensity_does_not_dip_when_a_scene_takes_over() {
+        let mut s = patched();
+        let now = Instant::now();
+        let half = |id, fade_ms| Run {
+            intensity: 128,
+            ..run(id, scene(&[(1, 200)], fade_ms))
+        };
+        s.apply(Command::Running(vec![half("a", 0)]), now);
+        assert_eq!(frame(&mut s)[0], 100);
+        // Outra criação a 50% entra no lugar, no mesmo valor e com fade: parte de 200 (o cheio que dá
+        // os 100 que estão saindo), e a luz não afunda
+        s.apply(Command::Running(vec![half("b", 1000)]), now);
+        assert_eq!(frame(&mut s)[0], 100);
+    }
+
+    #[test]
+    fn fixture_blackout_zeroes_only_their_intensity() {
+        let mut s = state();
+        let now = Instant::now();
+        // A mesa tem 1 (dimmer), 2 (cor) e 3 (pan): as fixtures apagadas têm o 1 e o 3
+        s.apply(
+            Command::FixtureBlackout(vec![("u1".into(), 1), ("u1".into(), 3)]),
+            now,
+        );
+        assert_eq!(frame(&mut s)[..3], [0, 100, 200]);
+        s.apply(Command::FixtureBlackout(vec![]), now);
+        assert_eq!(frame(&mut s)[..3], [255, 100, 200]);
     }
 
     #[test]

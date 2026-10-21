@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
 use rlc_core::{Id, Op};
@@ -16,6 +16,9 @@ use crate::{AppState, PROTOCOL_VERSION};
 
 /// Tipo do frame binário com os 512 valores de um universo.
 const UNIVERSE_FRAME: u8 = 1;
+
+/// Tempo sem nenhuma mensagem do aparelho (nem a resposta ao ping, a cada segundo) para ele cair.
+const SILENCE: Duration = Duration::from_secs(3);
 
 #[derive(Deserialize)]
 struct Cmd {
@@ -40,7 +43,7 @@ pub async fn client(
         "clientId": id,
     }});
     if send(&mut socket, hello.to_string().into()).await && send(&mut socket, snapshot).await {
-        run(&mut socket, &state, address, &mut events).await;
+        run(&mut socket, &state, &id, address, &mut events).await;
     }
     state.lock().leave(&id);
 }
@@ -48,27 +51,38 @@ pub async fn client(
 async fn run(
     socket: &mut WebSocket,
     state: &AppState,
+    client: &str,
     address: SocketAddr,
     events: &mut broadcast::Receiver<Utf8Bytes>,
 ) {
     let mut sent: HashMap<Id, [u8; 512]> = HashMap::new();
     let mut frames = tokio::time::interval(Duration::from_millis(40));
+    let mut ping = tokio::time::interval(Duration::from_secs(1));
+    let mut heard = Instant::now();
     let mut allow_lan = state.allow_lan.clone();
     let local = address.ip().is_loopback();
     loop {
         tokio::select! {
             message = socket.recv() => match message {
                 Some(Ok(Message::Text(text))) => {
-                    let reply = command(state, &text);
+                    heard = Instant::now();
+                    let reply = command(state, client, &text);
                     // Os avisos da operação saem antes da resposta: quem espera a resposta já
                     // encontra o estado novo
                     if !forward(socket, state, events).await || !send(socket, reply).await {
                         return;
                     }
                 }
-                Some(Ok(_)) => {}
+                Some(Ok(_)) => heard = Instant::now(),
                 _ => return,
             },
+            // O navegador responde ao ping sozinho. Um aparelho calado por 3 s (o Wi-Fi caiu) sai, e o
+            // que ele segurava no console é solto: sem isso, o TCP levaria dezenas de segundos para notar
+            _ = ping.tick() => {
+                if heard.elapsed() > SILENCE || socket.send(Message::Ping(Default::default())).await.is_err() {
+                    return;
+                }
+            }
             event = events.recv() => match event {
                 Ok(event) => if !send(socket, event).await { return },
                 Err(RecvError::Lagged(_)) => if !resync(socket, state, events).await { return },
@@ -81,14 +95,14 @@ async fn run(
     }
 }
 
-fn command(state: &AppState, text: &str) -> Utf8Bytes {
+fn command(state: &AppState, client: &str, text: &str) -> Utf8Bytes {
     let reply = match serde_json::from_str::<Cmd>(text) {
         Err(e) => json!({ "t": "err", "id": null, "data": format!("Comando inválido: {e}") }),
         Ok(cmd) => match serde_json::from_value::<Op>(cmd.data) {
             Err(e) => {
                 json!({ "t": "err", "id": cmd.id, "data": format!("Operação inválida: {e}") })
             }
-            Ok(op) => match state.lock().command(op) {
+            Ok(op) => match state.lock().command_from(client, op) {
                 Ok(data) => json!({ "t": "ack", "id": cmd.id, "data": data }),
                 Err(e) => json!({ "t": "err", "id": cmd.id, "data": e }),
             },

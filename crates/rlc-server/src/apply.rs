@@ -154,6 +154,7 @@ pub fn is_live(op: &Op) -> bool {
             | Op::SetDeskGroupLevel { .. }
             | Op::ResetDesk { .. }
             | Op::SetWidgetValue { .. }
+            | Op::PressWidget { .. }
             | Op::SetGrandMaster { .. }
             | Op::SetBlackout { .. }
             | Op::SetBpm { .. }
@@ -394,7 +395,10 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             for w in &mut p.console.widgets {
                 match &mut w.kind {
                     VcWidgetKind::Button(b) => clear(&mut b.function),
-                    VcWidgetKind::Slider(slider) => clear(&mut slider.function),
+                    VcWidgetKind::Slider(slider) => {
+                        clear(&mut slider.function);
+                        slider.functions.retain(|f| *f != id);
+                    }
                     VcWidgetKind::CueList(cues) => clear(&mut cues.chaser),
                     VcWidgetKind::Animation(a) => clear(&mut a.matrix),
                     VcWidgetKind::SpeedDial(dial) => dial.functions.retain(|f| *f != id),
@@ -457,16 +461,19 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         // `all`, também zera a Mesa simples e desliga o padrão de teste, a prévia e o "Localizar".
         Op::StopAllFunctions | Op::Panic { .. } => {
             s.running.clear();
-            let playback: Vec<&Id> = p
+            // O pânico de dois toques também zera os sliders de nível, como zera a Mesa simples
+            let lowered: Vec<&Id> = p
                 .console
                 .widgets
                 .iter()
                 .filter(|w| {
-                    matches!(&w.kind, VcWidgetKind::Slider(slider) if slider.mode == SliderMode::Playback)
+                    matches!(&w.kind, VcWidgetKind::Slider(slider)
+                        if slider.mode == SliderMode::Playback
+                            || (panic_all && slider.mode == SliderMode::Level))
                 })
                 .map(|w| &w.id)
                 .collect();
-            s.widget_values.retain(|v| !playback.contains(&&v.widget));
+            s.widget_values.retain(|v| !lowered.contains(&&v.widget));
             let mut topics = vec![T::Running, T::WidgetValues];
             if panic_all {
                 s.desk = Desk {
@@ -550,19 +557,40 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         }
         Op::SaveWidgets { widgets } => {
             unique(widgets.iter().map(|w| &w.id))?;
-            // O elemento "Tempos" que trocou de unidade (segundos ou batidas) volta aos tempos
-            // gravados: o valor de uma unidade não serve na outra
+            // O elemento "Tempos" que trocou de unidade (segundos ou batidas) e o slider que trocou de
+            // modo ou de criação voltam ao valor inicial: o valor antigo não serve no novo. O slider
+            // de playback que estava aceso desliga a criação dele
             let unit = |w: &VcWidget| match &w.kind {
-                VcWidgetKind::SpeedDial(dial) => Some(dial.beats),
-                _ => None,
+                VcWidgetKind::SpeedDial(dial) => format!("{}", dial.beats),
+                VcWidgetKind::Slider(slider) => format!("{:?} {:?}", slider.mode, slider.function),
+                _ => String::new(),
             };
-            let changed: Vec<Id> = widgets
+            let changed: Vec<VcWidget> = p
+                .console
+                .widgets
                 .iter()
-                .filter(|w| {
-                    let old = p.console.widgets.iter().find(|old| old.id == w.id);
-                    old.is_some_and(|old| unit(old) != unit(w))
+                .filter(|old| {
+                    widgets
+                        .iter()
+                        .any(|w| w.id == old.id && unit(old) != unit(w))
                 })
-                .map(|w| w.id.clone())
+                .cloned()
+                .collect();
+            let lit = |id: &Id| {
+                s.widget_values
+                    .iter()
+                    .any(|v| v.widget == *id && v.value.first().is_some_and(|&x| x > 0))
+            };
+            let stopped: Vec<Id> = changed
+                .iter()
+                .filter_map(|old| match &old.kind {
+                    VcWidgetKind::Slider(slider)
+                        if slider.mode == SliderMode::Playback && lit(&old.id) =>
+                    {
+                        slider.function.clone()
+                    }
+                    _ => None,
+                })
                 .collect();
             for w in widgets {
                 upsert(&mut p.console.widgets, w, |w| &w.id)?;
@@ -570,8 +598,14 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             if changed.is_empty() {
                 vec![T::Console]
             } else {
-                s.widget_values.retain(|v| !changed.contains(&v.widget));
-                vec![T::Console, T::WidgetValues]
+                s.widget_values
+                    .retain(|v| !changed.iter().any(|w| w.id == v.widget));
+                let mut topics = vec![T::Console, T::WidgetValues];
+                if !stopped.is_empty() {
+                    s.running.retain(|r| !stopped.contains(r));
+                    topics.push(T::Running);
+                }
+                topics
             }
         }
         Op::RemoveWidgets { ids } => {
@@ -584,12 +618,37 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Console, T::WidgetValues]
         }
         Op::SetWidgetValue { widget, value } => {
+            // O slider de playback liga a criação ao sair do zero e desliga ao voltar a ele
+            let playback = p.console.widgets.iter().find_map(|w| match &w.kind {
+                VcWidgetKind::Slider(slider)
+                    if w.id == widget && slider.mode == SliderMode::Playback =>
+                {
+                    slider.function.clone()
+                }
+                _ => None,
+            });
+            let up = value.first().is_some_and(|&v| v > 0);
             s.widget_values.retain(|v| v.widget != widget);
             if !value.is_empty() {
                 s.widget_values.push(WidgetValue { widget, value });
             }
-            vec![T::WidgetValues]
+            let mut topics = vec![T::WidgetValues];
+            if let Some(f) = playback
+                && up != s.running.contains(&f)
+            {
+                s.running.retain(|r| *r != f);
+                if up {
+                    s.running.push(f);
+                }
+                topics.push(T::Running);
+            }
+            topics
         }
+        Op::PressWidget {
+            widget,
+            control,
+            down,
+        } => press(s, &widget, control, down)?,
         Op::SetGrandMaster { value } => {
             s.master.grand_master = value;
             vec![T::Master]
@@ -788,43 +847,77 @@ pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
 }
 
 /// Criações disparadas pelo usuário, na ordem de início, já resolvidas para o motor: as cenas e o pan
-/// e o tilt dos EFX nos endereços DMX, e os chasers e as coleções com o que disparam e os tempos que
-/// valem agora. O RGB Matrix só acende na F9.
+/// e o tilt dos EFX nos endereços DMX, e os chasers e as coleções com o que disparam, os tempos que
+/// valem agora e a intensidade. Depois delas, os sliders de nível acesos. O RGB Matrix só acende na F9.
 pub fn running_programs(s: &Snapshot) -> Vec<Run> {
-    s.running
+    let mut runs: Vec<Run> = s
+        .running
         .iter()
         .filter_map(|id| {
-            let program = program(s, id, [None; 3], &mut vec![])?;
+            // O Flash e o slider de playback são o próprio fade: a criação entra e sai sem os gravados
+            let flash = flashed(s, id);
+            let cut = flash || playback_level(s, id).is_some();
+            let play = Play { rate: 1.0, cut };
             Some(Run {
                 id: id.clone(),
-                program,
+                program: program(s, id, [None; 3], &mut vec![], play)?,
+                intensity: if flash { 255 } else { intensity(s, id) },
             })
         })
-        .collect()
+        .collect();
+    runs.extend(level_sliders(s));
+    runs
+}
+
+/// Como uma criação está sendo tocada: a velocidade (os sliders de velocidade, que multiplicam os
+/// tempos em segundos) e se ela entra e sai sem os fades gravados (o Flash e o slider de playback).
+#[derive(Clone, Copy)]
+struct Play {
+    rate: f64,
+    cut: bool,
 }
 
 /// O que uma criação acende. `dial` traz os tempos (fade in, fade out e duração) de um elemento
 /// "Tempos" que controla uma coleção de fora; o que controla a própria criação vale antes. `path` são
 /// as criações de fora: uma que contenha a si mesma não entra.
-fn program(s: &Snapshot, id: &Id, dial: [Option<Span>; 3], path: &mut Vec<Id>) -> Option<Program> {
+fn program(
+    s: &Snapshot,
+    id: &Id,
+    dial: [Option<Span>; 3],
+    path: &mut Vec<Id>,
+    play: Play,
+) -> Option<Program> {
     let p = &s.project;
     let function = p
         .functions
         .iter()
         .find(|f| f.id == *id && !path.contains(id))?;
     let dial: [Option<Span>; 3] = std::array::from_fn(|i| live_time(s, id, i).or(dial[i]));
+    let play = Play {
+        rate: play.rate * rate(s, id),
+        ..play
+    };
+    // A velocidade só muda os tempos em segundos: nos em batidas, manda o BPM
+    let ms = |span: Span| match span {
+        Span::Ms(ms) => Span::Ms((f64::from(ms) / play.rate).round() as u32),
+        beats => beats,
+    };
+    let fade = |dial: Option<Span>, recorded: u32| match play.cut {
+        true => Span::Ms(0),
+        false => ms(dial.unwrap_or(Span::Ms(recorded))),
+    };
     path.push(id.clone());
     let program = match &function.kind {
         FunctionKind::Scene(scene) => Some(scene_program(
             p,
             &scene.values,
-            dial[0].unwrap_or(Span::Ms(scene.fade_in_ms)),
-            dial[1].unwrap_or(Span::Ms(scene.fade_out_ms)),
+            fade(dial[0], scene.fade_in_ms),
+            fade(dial[1], scene.fade_out_ms),
         )),
         FunctionKind::Collection(c) => Some(Program::Collection(
             c.functions
                 .iter()
-                .filter_map(|f| program(s, f, dial, path))
+                .filter_map(|f| program(s, f, dial, path, play))
                 .collect(),
         )),
         FunctionKind::Chaser(c) | FunctionKind::Sequence(c) => {
@@ -848,37 +941,43 @@ fn program(s: &Snapshot, id: &Id, dial: [Option<Span>; 3], path: &mut Vec<Id>) -
                 })
             });
             let sequence = matches!(function.kind, FunctionKind::Sequence(_));
+            // Os passos andam com os tempos deles: entrar sem fade vale só para a entrada
+            let inner = Play { cut: false, ..play };
             let steps = c
                 .steps
                 .iter()
                 .map(|step| Step {
                     program: if sequence {
                         let (fade_in, fade_out) = scene.unwrap_or((Span::Ms(0), Span::Ms(0)));
-                        scene_program(p, &step.values, fade_in, fade_out)
+                        scene_program(p, &step.values, ms(fade_in), ms(fade_out))
                     } else {
                         // O passo com um EFX (ou um RGB Matrix) conta o tempo sem acender nada
-                        program(s, &step.function, [None; 3], path)
+                        program(s, &step.function, [None; 3], path, inner)
                             .unwrap_or(Program::Collection(vec![]))
                     },
-                    fade_in: dial[0].or(time(
-                        c.fade_in_mode,
-                        c.common.fade_in_ms,
-                        step.timing.fade_in_ms,
-                    )),
+                    fade_in: dial[0]
+                        .or(time(
+                            c.fade_in_mode,
+                            c.common.fade_in_ms,
+                            step.timing.fade_in_ms,
+                        ))
+                        .map(ms),
                     // No hold, "Padrão" vale como "Comum". A duração do elemento em batidas vale em
                     // todos os chasers; a em segundos, só nos que não estão em batidas (neles, manda
                     // o BPM)
-                    hold: match dial[2] {
+                    hold: ms(match dial[2] {
                         Some(span @ Span::Beats(_)) => span,
                         Some(span) if !c.beats => span,
                         _ if c.hold_mode == SpeedMode::PerStep => unit(step.timing.hold_ms),
                         _ => unit(c.common.hold_ms),
-                    },
-                    fade_out: dial[1].or(time(
-                        c.fade_out_mode,
-                        c.common.fade_out_ms,
-                        step.timing.fade_out_ms,
-                    )),
+                    }),
+                    fade_out: dial[1]
+                        .or(time(
+                            c.fade_out_mode,
+                            c.common.fade_out_ms,
+                            step.timing.fade_out_ms,
+                        ))
+                        .map(ms),
                 })
                 .collect();
             Some(Program::Chaser(ChaserProgram {
@@ -901,9 +1000,9 @@ fn program(s: &Snapshot, id: &Id, dial: [Option<Span>; 3], path: &mut Vec<Id>) -
                 moves
             });
             Some(Program::Efx(EfxProgram {
-                cycle: dial[2].unwrap_or(Span::Ms(efx.timing.hold_ms)),
-                fade_in: dial[0].unwrap_or(Span::Ms(efx.timing.fade_in_ms)),
-                fade_out: dial[1].unwrap_or(Span::Ms(efx.timing.fade_out_ms)),
+                cycle: ms(dial[2].unwrap_or(Span::Ms(efx.timing.hold_ms))),
+                fade_in: fade(dial[0], efx.timing.fade_in_ms),
+                fade_out: fade(dial[1], efx.timing.fade_out_ms),
                 heads,
                 efx,
             }))
@@ -912,6 +1011,323 @@ fn program(s: &Snapshot, id: &Id, dial: [Option<Span>; 3], path: &mut Vec<Id>) -
     };
     path.pop();
     program
+}
+
+/// Um botão do console apertado ou solto (A2). O botão de Flash ou Temp marca `[1]` no valor dele
+/// enquanto segura a criação que ele mesmo acendeu: só ela apaga ao soltar. A cue list chega já
+/// traduzida (`cue_list_op`), e os outros elementos não têm o que apertar.
+fn press(
+    s: &mut Snapshot,
+    id: &str,
+    control: InputControl,
+    down: bool,
+) -> Result<Vec<Topic>, String> {
+    use Topic as T;
+    let w = s
+        .project
+        .console
+        .widgets
+        .iter()
+        .find(|w| w.id == id)
+        .ok_or("Elemento não encontrado.")?;
+    let (VcWidgetKind::Button(b), InputControl::Main) = (&w.kind, control) else {
+        return Ok(vec![]);
+    };
+    let (b, frame) = (b.clone(), w.frame.clone());
+    let momentary = b.mode != ButtonMode::Toggle;
+    let held = s.widget_values.iter().any(|v| v.widget == id);
+    let hold = |s: &mut Snapshot, on: bool| {
+        s.widget_values.retain(|v| v.widget != id);
+        if on {
+            s.widget_values.push(WidgetValue {
+                widget: id.into(),
+                value: vec![1],
+            });
+        }
+    };
+    // O liga/desliga e as ações de um toque agem ao apertar; soltar não faz nada
+    if !momentary && !down {
+        return Ok(vec![]);
+    }
+    Ok(match b.action {
+        ButtonAction::Function | ButtonAction::Exclusive => {
+            let Some(f) = b.function else {
+                return Ok(vec![]);
+            };
+            let running = s.running.contains(&f);
+            if (momentary && !down && held) || (!momentary && running) {
+                s.running.retain(|r| *r != f);
+                hold(s, false);
+            } else if down && !running {
+                if b.action == ButtonAction::Exclusive {
+                    // "Só esta": as outras param (com o fade out), e os sliders de playback baixam
+                    s.running.clear();
+                    let playback: Vec<Id> = s
+                        .project
+                        .console
+                        .widgets
+                        .iter()
+                        .filter(|w| matches!(&w.kind, VcWidgetKind::Slider(sl) if sl.mode == SliderMode::Playback))
+                        .map(|w| w.id.clone())
+                        .collect();
+                    s.widget_values.retain(|v| !playback.contains(&v.widget));
+                } else {
+                    solo(s, frame.as_ref(), &f);
+                }
+                s.running.push(f);
+                hold(s, momentary);
+            } else {
+                return Ok(vec![]);
+            }
+            vec![T::Running, T::WidgetValues]
+        }
+        ButtonAction::Blackout => {
+            s.master.blackout = if momentary { down } else { !s.master.blackout };
+            vec![T::Master]
+        }
+        ButtonAction::BlackoutFixtures => {
+            hold(s, if momentary { down } else { !held });
+            vec![T::WidgetValues]
+        }
+        ButtonAction::StopAll if down => apply(s, Op::StopAllFunctions)?.0,
+        ButtonAction::StopAll => vec![],
+    })
+}
+
+/// Numa moldura solo, ligar a criação de um botão para as dos outros botões da moldura.
+fn solo(s: &mut Snapshot, frame: Option<&Id>, keep: &Id) {
+    let widgets = &s.project.console.widgets;
+    let solo = widgets
+        .iter()
+        .any(|x| Some(&x.id) == frame && matches!(&x.kind, VcWidgetKind::Frame(fr) if fr.solo));
+    if !solo {
+        return;
+    }
+    let others: Vec<Id> = widgets
+        .iter()
+        .filter(|x| x.frame.as_ref() == frame)
+        .filter_map(|x| match &x.kind {
+            VcWidgetKind::Button(b) => b.function.clone().filter(|f| f != keep),
+            _ => None,
+        })
+        .collect();
+    s.running.retain(|r| !others.contains(r));
+}
+
+/// A cue list apertada vira a operação dela: play (que também para), stop, anterior e próximo. O
+/// passo vai direto ao motor, então a tradução acontece no hub, antes de aplicar.
+pub fn cue_list_op(s: &Snapshot, op: Op) -> Op {
+    let Op::PressWidget {
+        widget,
+        control,
+        down: true,
+    } = &op
+    else {
+        return op;
+    };
+    let chaser = s
+        .project
+        .console
+        .widgets
+        .iter()
+        .find_map(|w| match &w.kind {
+            VcWidgetKind::CueList(c) if w.id == *widget => c.chaser.clone(),
+            _ => None,
+        });
+    let Some(id) = chaser else {
+        return op;
+    };
+    let running = s.running.contains(&id);
+    match control {
+        InputControl::Main => Op::SetFunctionRunning {
+            id,
+            running: !running,
+        },
+        InputControl::Stop => Op::SetFunctionRunning { id, running: false },
+        InputControl::Next => Op::StepChaser {
+            id,
+            action: StepAction::Next,
+        },
+        InputControl::Previous => Op::StepChaser {
+            id,
+            action: StepAction::Previous,
+        },
+        _ => op,
+    }
+}
+
+/// Valor ao vivo de um elemento do console (o primeiro número; 0 a 255 nos sliders).
+fn widget_level(s: &Snapshot, widget: &str) -> Option<u32> {
+    s.widget_values
+        .iter()
+        .find(|v| v.widget == widget)
+        .and_then(|v| v.value.first().copied())
+}
+
+/// Um botão de Flash está segurando a criação (o Flash é cheio e sem fades).
+fn flashed(s: &Snapshot, id: &Id) -> bool {
+    s.project.console.widgets.iter().any(|w| {
+        matches!(&w.kind, VcWidgetKind::Button(b) if b.mode == ButtonMode::Flash && b.function.as_ref() == Some(id))
+            && s.widget_values.iter().any(|v| v.widget == w.id)
+    })
+}
+
+/// Nível do slider de playback que está tocando a criação (acima do zero).
+fn playback_level(s: &Snapshot, id: &Id) -> Option<u32> {
+    s.project
+        .console
+        .widgets
+        .iter()
+        .find_map(|w| match &w.kind {
+            VcWidgetKind::Slider(slider)
+                if slider.mode == SliderMode::Playback && slider.function.as_ref() == Some(id) =>
+            {
+                widget_level(s, &w.id).filter(|&v| v > 0)
+            }
+            _ => None,
+        })
+}
+
+/// Velocidade de uma criação: os sliders de velocidade que a têm na lista, de ×0,25 a ×4 (sem valor,
+/// ×1, que fica em 128, o meio do slider).
+fn rate(s: &Snapshot, id: &Id) -> f64 {
+    s.project
+        .console
+        .widgets
+        .iter()
+        .filter_map(|w| match &w.kind {
+            VcWidgetKind::Slider(slider)
+                if slider.mode == SliderMode::Rate && slider.functions.contains(id) =>
+            {
+                Some(widget_level(s, &w.id).unwrap_or(128))
+            }
+            _ => None,
+        })
+        .map(|v| 4f64.powf((f64::from(v) - 128.0) / 127.0).clamp(0.25, 4.0))
+        .product()
+}
+
+/// Submasters que alcançam um elemento: os da moldura dele e das molduras de fora, e os soltos na
+/// página (a página é a moldura de fora de todas).
+fn submasters<'a>(p: &'a Project, w: &'a VcWidget) -> impl Iterator<Item = &'a VcWidget> {
+    let mut frames: Vec<&Id> = vec![];
+    let mut frame = w.frame.as_ref();
+    while let Some(id) = frame.filter(|id| !frames.contains(id)) {
+        frames.push(id);
+        frame = p
+            .console
+            .widgets
+            .iter()
+            .find(|x| x.id == *id)
+            .and_then(|x| x.frame.as_ref());
+    }
+    p.console.widgets.iter().filter(move |x| {
+        x.page == w.page
+            && matches!(&x.kind, VcWidgetKind::Slider(s) if s.mode == SliderMode::Submaster)
+            && x.frame.as_ref().is_none_or(|f| frames.contains(&f))
+    })
+}
+
+/// Fração de um submaster (sem valor, cheio).
+fn submaster_level(s: &Snapshot, w: &VcWidget) -> f64 {
+    f64::from(widget_level(s, &w.id).unwrap_or(255).min(255)) / 255.0
+}
+
+/// Intensidade de uma criação (0 a 255): o slider de playback que a toca e os submasters que alcançam
+/// os elementos que a controlam (botões, sliders de playback e cue lists), multiplicados.
+fn intensity(s: &Snapshot, id: &Id) -> u8 {
+    let p = &s.project;
+    let mut factor = playback_level(s, id).map_or(1.0, |v| f64::from(v.min(255)) / 255.0);
+    let mut seen: Vec<&Id> = vec![];
+    for w in p.console.widgets.iter().filter(|w| match &w.kind {
+        VcWidgetKind::Button(b) => b.function.as_ref() == Some(id),
+        VcWidgetKind::Slider(sl) => {
+            sl.mode == SliderMode::Playback && sl.function.as_ref() == Some(id)
+        }
+        VcWidgetKind::CueList(c) => c.chaser.as_ref() == Some(id),
+        _ => false,
+    }) {
+        for sub in submasters(p, w) {
+            if !seen.contains(&&sub.id) {
+                seen.push(&sub.id);
+                factor *= submaster_level(s, sub);
+            }
+        }
+    }
+    (factor * 255.0).round() as u8
+}
+
+/// Os sliders de nível acesos, como cenas sem fade nos canais dos grupos de canais deles: na
+/// intensidade misturam com as criações pelo maior valor; no resto, contam da hora em que saíram do
+/// zero, como uma criação. Os submasters que os alcançam escalam a intensidade.
+fn level_sliders(s: &Snapshot) -> impl Iterator<Item = Run> {
+    let p = &s.project;
+    p.console.widgets.iter().filter_map(move |w| {
+        let VcWidgetKind::Slider(slider) = &w.kind else {
+            return None;
+        };
+        let value =
+            widget_level(s, &w.id).filter(|&v| v > 0 && slider.mode == SliderMode::Level)?;
+        let mut levels: Vec<SceneLevel> = vec![];
+        for (universe, channel) in slider
+            .channel_groups
+            .iter()
+            .flat_map(|g| group_addresses(p, g))
+        {
+            if !levels
+                .iter()
+                .any(|l| l.universe == universe && l.channel == channel)
+            {
+                levels.push(SceneLevel {
+                    universe,
+                    channel,
+                    fine: None,
+                    value: value.min(255) as u16,
+                });
+            }
+        }
+        Some(Run {
+            id: w.id.clone(),
+            program: Program::Scene(SceneProgram {
+                levels,
+                fade_in: Span::Ms(0),
+                fade_out: Span::Ms(0),
+            }),
+            intensity: (submasters(p, w)
+                .map(|sub| submaster_level(s, sub))
+                .product::<f64>()
+                * 255.0)
+                .round() as u8,
+        })
+    })
+}
+
+/// Canais das fixtures apagadas pelos botões de blackout de fixtures ligados (o motor zera só a
+/// intensidade deles).
+pub fn fixture_blackout(s: &Snapshot) -> Vec<(Id, u16)> {
+    let p = &s.project;
+    let mut fixtures: Vec<&Id> = vec![];
+    for w in &p.console.widgets {
+        let VcWidgetKind::Button(b) = &w.kind else {
+            continue;
+        };
+        if b.action != ButtonAction::BlackoutFixtures || widget_level(s, &w.id).is_none() {
+            continue;
+        }
+        fixtures.extend(&b.fixtures);
+        for g in p.fixture_groups.iter().filter(|g| b.groups.contains(&g.id)) {
+            fixtures.extend(g.cells.iter().map(|c| &c.fixture));
+        }
+    }
+    p.fixtures
+        .iter()
+        .filter(|f| fixtures.contains(&&f.id))
+        .flat_map(|f| {
+            (0..channel_count(p, f))
+                .filter_map(|i| channel_address(p, &f.id, i))
+                .map(|l| (l.universe, l.channel))
+        })
+        .collect()
 }
 
 /// Tempo ajustado ao vivo (VC-3) de uma criação: fade in, fade out ou duração (0, 1 ou 2), em
@@ -1691,6 +2107,292 @@ mod tests {
             running: true,
         };
         apply(s, op).unwrap();
+    }
+
+    /// Aperta (`down`) ou solta um elemento do console.
+    fn hit(s: &mut Snapshot, widget: &str, down: bool) {
+        let op = Op::PressWidget {
+            widget: widget.into(),
+            control: InputControl::Main,
+            down,
+        };
+        apply(s, op).unwrap();
+    }
+
+    fn widget(s: &Snapshot, id: &str) -> VcWidget {
+        s.project
+            .console
+            .widgets
+            .iter()
+            .find(|w| w.id == id)
+            .cloned()
+            .unwrap()
+    }
+
+    fn save_widget(s: &mut Snapshot, widget: VcWidget) {
+        let op = Op::SaveWidgets {
+            widgets: vec![widget],
+        };
+        apply(s, op).unwrap();
+    }
+
+    fn set_value(s: &mut Snapshot, widget: &str, value: Vec<u32>) {
+        let op = Op::SetWidgetValue {
+            widget: widget.into(),
+            value,
+        };
+        apply(s, op).unwrap();
+    }
+
+    /// Fade in, fade out e intensidade de uma cena rodando.
+    fn scene_run(s: &Snapshot, id: &str) -> (Span, Span, u8) {
+        let run = running_programs(s)
+            .into_iter()
+            .find(|r| r.id == id)
+            .unwrap();
+        let scene = scene_of(&run.program);
+        (scene.fade_in, scene.fade_out, run.intensity)
+    }
+
+    fn button(w: &mut VcWidget) -> &mut VcButton {
+        match &mut w.kind {
+            VcWidgetKind::Button(b) => b,
+            _ => panic!("não é botão"),
+        }
+    }
+
+    fn slider(w: &mut VcWidget) -> &mut VcSlider {
+        match &mut w.kind {
+            VcWidgetKind::Slider(slider) => slider,
+            _ => panic!("não é slider"),
+        }
+    }
+
+    #[test]
+    fn buttons_toggle_flash_temp_and_only_this() {
+        let mut s = example();
+        let ms = Span::Ms;
+        // Liga/desliga ("b1", Frente âmbar, numa moldura solo): age ao apertar; soltar não faz nada
+        hit(&mut s, "b1", true);
+        hit(&mut s, "b1", false);
+        assert_eq!(s.running, ["s1"]);
+        // Na moldura solo, ligar a "b2" para a da "b1"; apertar de novo desliga
+        hit(&mut s, "b2", true);
+        assert_eq!(s.running, ["s2"]);
+        hit(&mut s, "b2", true);
+        assert!(s.running.is_empty());
+        // Temp ("b11", Haze leve): só enquanto pressionado, com os fades gravados
+        hit(&mut s, "b11", true);
+        assert_eq!(s.running, ["s5"]);
+        assert_eq!(scene_run(&s, "s5"), (ms(1000), ms(1000), 255));
+        hit(&mut s, "b11", false);
+        assert!(s.running.is_empty() && s.widget_values.is_empty());
+
+        // A "b1" em Flash, com o submaster da moldura a 50%: na hora e cheia
+        let mut b1 = widget(&s, "b1");
+        button(&mut b1).mode = ButtonMode::Flash;
+        save_widget(&mut s, b1.clone());
+        set_value(&mut s, "sl1", vec![128]);
+        hit(&mut s, "b1", true);
+        assert_eq!(scene_run(&s, "s1"), (ms(0), ms(0), 255));
+        hit(&mut s, "b1", false);
+        assert!(s.running.is_empty());
+        // O Flash não solta o que ele não acendeu
+        run(&mut s, "s1");
+        hit(&mut s, "b1", true);
+        hit(&mut s, "b1", false);
+        assert_eq!(s.running, ["s1"]);
+        // Em Temp, o submaster vale
+        apply(&mut s, Op::StopAllFunctions).unwrap();
+        button(&mut b1).mode = ButtonMode::Temp;
+        save_widget(&mut s, b1);
+        hit(&mut s, "b1", true);
+        assert_eq!(scene_run(&s, "s1"), (ms(1000), ms(1000), 128));
+        hit(&mut s, "b1", false);
+
+        // "Só esta" na "b6" (o chaser c1): para as outras e baixa o slider de playback
+        let mut b6 = widget(&s, "b6");
+        button(&mut b6).action = ButtonAction::Exclusive;
+        save_widget(&mut s, b6);
+        run(&mut s, "s1");
+        set_value(&mut s, "sl3", vec![200]);
+        assert_eq!(s.running, ["s1", "s4"]);
+        hit(&mut s, "b6", true);
+        assert_eq!(s.running, ["c1"]);
+        assert!(!s.widget_values.iter().any(|v| v.widget == "sl3"));
+        // Apertar de novo desliga só ela
+        hit(&mut s, "b6", true);
+        assert!(s.running.is_empty());
+    }
+
+    #[test]
+    fn blackout_buttons_and_stop_all() {
+        let mut s = example();
+        // "b4": blackout dos PARs da frente (o grupo g1), liga/desliga
+        hit(&mut s, "b4", true);
+        let dark = fixture_blackout(&s);
+        assert!(dark.contains(&("u1".into(), 1)) && !dark.contains(&("u1".into(), 101)));
+        hit(&mut s, "b4", true);
+        assert!(fixture_blackout(&s).is_empty());
+        // Parar tudo ("b12")
+        run(&mut s, "s1");
+        hit(&mut s, "b12", true);
+        assert!(s.running.is_empty());
+        // Blackout geral em Temp: só enquanto pressionado
+        let mut b12 = widget(&s, "b12");
+        button(&mut b12).action = ButtonAction::Blackout;
+        button(&mut b12).mode = ButtonMode::Temp;
+        save_widget(&mut s, b12);
+        hit(&mut s, "b12", true);
+        assert!(s.master.blackout);
+        hit(&mut s, "b12", false);
+        assert!(!s.master.blackout);
+    }
+
+    #[test]
+    fn playback_slider_is_the_fade_and_the_intensity() {
+        let mut s = example();
+        let ms = Span::Ms;
+        // "sl3" toca a s4 (MHs no centro): sai do zero e liga, sem os fades gravados
+        set_value(&mut s, "sl3", vec![128]);
+        assert_eq!(s.running, ["s4"]);
+        assert_eq!(scene_run(&s, "s4"), (ms(0), ms(0), 128));
+        set_value(&mut s, "sl3", vec![255]);
+        assert_eq!(scene_run(&s, "s4").2, 255);
+        set_value(&mut s, "sl3", vec![0]);
+        assert!(s.running.is_empty());
+        // Trocar o modo com o slider aceso desliga a criação e solta o valor
+        set_value(&mut s, "sl3", vec![200]);
+        let mut sl3 = widget(&s, "sl3");
+        slider(&mut sl3).mode = SliderMode::Level;
+        save_widget(&mut s, sl3);
+        assert!(s.running.is_empty() && s.widget_values.is_empty());
+    }
+
+    #[test]
+    fn submasters_reach_the_frame_the_frames_inside_and_the_page() {
+        let mut s = example();
+        // A s1 pela "b1" (na moldura fr1, com o submaster sl1) e a s4 pelo slider de fora
+        hit(&mut s, "b1", true);
+        set_value(&mut s, "sl3", vec![255]);
+        let intensities = |s: &Snapshot| [scene_run(s, "s1").2, scene_run(s, "s4").2];
+        // Sem valor, o submaster fica cheio
+        assert_eq!(intensities(&s), [255, 255]);
+        set_value(&mut s, "sl1", vec![128]);
+        assert_eq!(intensities(&s), [128, 255]);
+        // Um submaster solto na página alcança os dois
+        let mut page = widget(&s, "sl1");
+        page.id = "sub".into();
+        page.frame = None;
+        save_widget(&mut s, page);
+        set_value(&mut s, "sub", vec![128]);
+        assert_eq!(intensities(&s), [64, 128]);
+        // Uma moldura dentro da fr1: os dois submasters multiplicam
+        let mut inner = widget(&s, "fr1");
+        inner.id = "fr2".into();
+        inner.frame = Some("fr1".into());
+        let VcWidgetKind::Frame(frame) = &mut inner.kind else {
+            panic!("fr1 não é moldura")
+        };
+        frame.solo = false;
+        save_widget(&mut s, inner);
+        let mut bx = widget(&s, "b2");
+        bx.id = "bx".into();
+        bx.frame = Some("fr2".into());
+        save_widget(&mut s, bx);
+        hit(&mut s, "bx", true);
+        assert_eq!(scene_run(&s, "s2").2, 64);
+    }
+
+    #[test]
+    fn level_slider_lights_its_channel_groups_without_fade() {
+        let mut s = example();
+        // "sl2": o grupo "Dimmer PARs" (seis canais)
+        set_value(&mut s, "sl2", vec![200]);
+        let (fade_in, fade_out, intensity) = scene_run(&s, "sl2");
+        assert_eq!(
+            (fade_in, fade_out, intensity),
+            (Span::Ms(0), Span::Ms(0), 255)
+        );
+        let runs = running_programs(&s);
+        let levels = &scene_of(&runs.iter().find(|r| r.id == "sl2").unwrap().program).levels;
+        assert_eq!(levels.len(), 6);
+        assert!(levels.iter().all(|l| l.value == 200));
+        // O pânico de um toque não mexe nele; o de dois zera
+        apply(&mut s, Op::Panic { all: false }).unwrap();
+        assert!(running_programs(&s).iter().any(|r| r.id == "sl2"));
+        apply(&mut s, Op::Panic { all: true }).unwrap();
+        assert!(running_programs(&s).is_empty());
+    }
+
+    #[test]
+    fn rate_scales_the_times_in_seconds_but_not_in_beats() {
+        let mut s = example();
+        // Um slider de velocidade com a s1 e o chaser c1 (em segundos)
+        let mut rate = widget(&s, "sl3");
+        rate.id = "rt".into();
+        let rt = slider(&mut rate);
+        rt.mode = SliderMode::Rate;
+        rt.function = None;
+        rt.functions = vec!["s1".into(), "c1".into()];
+        save_widget(&mut s, rate);
+        run(&mut s, "s1");
+        run(&mut s, "c1");
+        let times = |s: &Snapshot| {
+            let runs = running_programs(s);
+            let scene = scene_of(&runs[0].program);
+            let step = &chaser_of(&runs[1].program).steps[0];
+            [Some(scene.fade_in), step.fade_in, Some(step.hold)]
+        };
+        let ms = |v| Some(Span::Ms(v));
+        let normal = times(&s);
+        assert_eq!(normal[0], ms(1000));
+        // ×4 (o topo): os tempos caem a um quarto; ×0,25 (embaixo): quadruplicam
+        set_value(&mut s, "rt", vec![255]);
+        let fast = times(&s);
+        set_value(&mut s, "rt", vec![1]);
+        let slow = times(&s);
+        let scaled = |times: [Option<Span>; 3], by: f64| {
+            times.map(|t| match t {
+                Some(Span::Ms(v)) => ms((f64::from(v) * by).round() as u32),
+                other => other,
+            })
+        };
+        assert_eq!(fast, scaled(normal, 0.25));
+        assert_eq!(slow, scaled(normal, 4.0));
+        // No meio (128), ×1
+        set_value(&mut s, "rt", vec![128]);
+        assert_eq!(times(&s), normal);
+        // Os tempos em batidas do elemento "Tempos" ("sd1" segue o BPM) não mudam
+        set_value(&mut s, "rt", vec![255]);
+        set_value(&mut s, "sd1", vec![2000, 500, 0]);
+        assert_eq!(times(&s)[0], Some(Span::Beats(2000)));
+    }
+
+    #[test]
+    fn cue_list_press_becomes_play_stop_and_steps() {
+        let mut s = example();
+        let op = |control, down| Op::PressWidget {
+            widget: "cl1".into(),
+            control,
+            down,
+        };
+        let play = |running| Op::SetFunctionRunning {
+            id: "c1".into(),
+            running,
+        };
+        assert_eq!(cue_list_op(&s, op(InputControl::Main, true)), play(true));
+        run(&mut s, "c1");
+        assert_eq!(cue_list_op(&s, op(InputControl::Main, true)), play(false));
+        assert_eq!(cue_list_op(&s, op(InputControl::Stop, true)), play(false));
+        let step = Op::StepChaser {
+            id: "c1".into(),
+            action: StepAction::Next,
+        };
+        assert_eq!(cue_list_op(&s, op(InputControl::Next, true)), step);
+        // Soltar não vira nada
+        let up = op(InputControl::Next, false);
+        assert_eq!(cue_list_op(&s, up.clone()), up);
     }
 
     /// A cena de uma criação rodando.

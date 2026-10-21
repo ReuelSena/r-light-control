@@ -29,7 +29,7 @@ function defaultIcon() {
   const w = props.widget
   if (w.type !== 'button') return null
   if (w.action === 'stopAll') return 'OctagonX'
-  if (w.action !== 'function') return 'LightbulbOff'
+  if (w.action !== 'function' && w.action !== 'exclusive') return 'LightbulbOff'
   const type = project.value.functions.find((f) => f.id === w.function)?.type ?? 'scene'
   return { scene: 'Camera', chaser: 'Repeat', sequence: 'Film', collection: 'Layers', efx: 'Orbit', rgbMatrix: 'LayoutGrid' }[type]
 }
@@ -95,10 +95,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
       <label class="field-label">
         {{ t('vc.action') }}
         <select class="field" :value="widget.action" @change="save({ action: pick($event) })">
-          <option v-for="a in ['function', 'blackout', 'blackoutFixtures', 'stopAll']" :key="a" :value="a">{{ t(`vc.actions.${a}`) }}</option>
+          <option v-for="a in ['function', 'exclusive', 'blackout', 'blackoutFixtures', 'stopAll']" :key="a" :value="a">{{ t(`vc.actions.${a}`) }}</option>
         </select>
       </label>
-      <label v-if="widget.action === 'function'" class="field-label">
+      <label v-if="widget.action === 'function' || widget.action === 'exclusive'" class="field-label">
         {{ t('vc.function') }}
         <select class="field" :value="widget.function ?? ''" @change="save({ function: pick($event) })">
           <option value="">—</option>
@@ -135,8 +135,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
       </div>
       <template v-if="widget.action !== 'stopAll'">
         <div class="field-label">
-          {{ t('vc.mode') }}
-          <RlSegmented :model-value="widget.mode" :options="[{ value: 'toggle', label: t('vc.modes.toggle') }, { value: 'flash', label: t('vc.modes.flash') }]" @update:model-value="(mode) => save({ mode })" />
+          <span class="flex items-center gap-1">{{ t('vc.mode') }} <RlInfo :text="t('vc.info.buttonMode')" /></span>
+          <RlSegmented :model-value="widget.mode" :options="(['toggle', 'flash', 'temp'] as const).map((value) => ({ value, label: t(`vc.modes.${value}`) }))" @update:model-value="(mode) => save({ mode })" />
         </div>
         <div class="field-label">
           {{ t('vc.highlight') }}
@@ -162,7 +162,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
     <template v-else-if="widget.type === 'slider'">
       <div class="field-label">
         <span class="flex items-center gap-1">{{ t('vc.mode') }} <RlInfo :text="t('vc.info.sliderMode')" /></span>
-        <RlSegmented :model-value="widget.mode" :options="(['level', 'playback', 'submaster'] as const).map((value) => ({ value, label: t(`vc.sliderModes.${value}`) }))" @update:model-value="(mode) => save({ mode })" />
+        <RlSegmented :model-value="widget.mode" :options="(['level', 'playback', 'submaster', 'rate'] as const).map((value) => ({ value, label: t(`vc.sliderModes.${value}`) }))" @update:model-value="(mode) => save({ mode })" />
+      </div>
+      <div v-if="widget.mode === 'rate'" class="field-label">
+        {{ t('vc.functions', { n: widget.functions.length }) }}
+        <div class="flex flex-wrap gap-1.5">
+          <RlButton
+            v-for="f in project.functions"
+            :key="f.id"
+            size="sm"
+            highlight="led"
+            :model-value="widget.functions.includes(f.id)"
+            @press="save({ functions: toggled(widget.functions, f.id) })"
+          >
+            <component :is="functionIcons[f.type]" :size="14" />
+            {{ f.name }}
+          </RlButton>
+        </div>
       </div>
       <div v-if="widget.mode === 'level'" class="field-label">
         {{ t('groups.channelGroups') }}

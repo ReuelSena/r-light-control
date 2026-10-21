@@ -614,6 +614,8 @@ pub struct VcButton {
 #[serde(rename_all = "camelCase")]
 pub enum ButtonAction {
     Function,
+    /// "Só esta" (o Kill da grandMA): liga a criação e para todas as outras que estão rodando.
+    Exclusive,
     Blackout,
     BlackoutFixtures,
     StopAll,
@@ -623,7 +625,10 @@ pub enum ButtonAction {
 #[serde(rename_all = "camelCase")]
 pub enum ButtonMode {
     Toggle,
+    /// Enquanto pressionado: acende na hora, a 100% (sem o submaster), e apaga na hora ao soltar.
     Flash,
+    /// Enquanto pressionado, com os fades da criação e o submaster.
+    Temp,
 }
 
 /// Aceso: o botão inteiro (`face`) ou só o filete de LED.
@@ -642,6 +647,8 @@ pub struct VcSlider {
     pub channel_groups: Vec<Id>,
     /// Playback: criação que roda com a intensidade do slider.
     pub function: Option<Id>,
+    /// Velocidade: criações que têm os tempos acelerados ou desacelerados.
+    pub functions: Vec<Id>,
     /// Aparência de knob em vez de fader.
     pub knob: bool,
 }
@@ -651,8 +658,10 @@ pub struct VcSlider {
 pub enum SliderMode {
     Level,
     Playback,
-    /// Escala as criações dos botões da mesma moldura.
+    /// Escala a intensidade das criações dos elementos da moldura (fora de molduras, da página).
     Submaster,
+    /// O "Rate" da grandMA: de ×0,25 a ×4 nos tempos em segundos das criações da lista.
+    Rate,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -807,9 +816,10 @@ pub struct Master {
     pub bpm: u16,
 }
 
-/// Valor ao vivo de um elemento do console. Conforme o tipo: slider e animation `[nível]`,
-/// XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms (ou em milésimos de batida, quando
-/// ele segue o BPM), botão de blackout de fixtures `[1]` quando ligado.
+/// Valor ao vivo de um elemento do console. Conforme o tipo: slider e animation `[nível]` (0 a 255;
+/// na velocidade, ×1 em 128), XY pad `[x, y]`, speed dial `[fade in, fade out, duração]` em ms (ou em
+/// milésimos de batida, quando ele segue o BPM), botão de blackout de fixtures `[1]` quando ligado e
+/// botão de Flash ou Temp `[1]` enquanto segura a criação que ele mesmo acendeu.
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WidgetValue {
@@ -1035,6 +1045,13 @@ pub enum Op {
     SetWidgetValue {
         widget: Id,
         value: Vec<u32>,
+    },
+    /// Uma parte de um elemento do console foi apertada (`down`) ou solta: o servidor aplica o que o
+    /// elemento faz (A2). Vem do toque, das teclas e, na F12, do MIDI.
+    PressWidget {
+        widget: Id,
+        control: InputControl,
+        down: bool,
     },
     SetGrandMaster {
         value: u8,

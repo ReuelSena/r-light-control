@@ -3971,6 +3971,7 @@
      "mode": "submaster",
      "channelGroups": [],
      "function": null,
+     "functions": [],
      "knob": false
     },
     {
@@ -4203,7 +4204,7 @@
      "function": "s5",
      "fixtures": [],
      "groups": [],
-     "mode": "flash",
+     "mode": "temp",
      "highlight": "face",
      "icon": null
     },
@@ -4288,6 +4289,7 @@
       "cg1"
      ],
      "function": null,
+     "functions": [],
      "knob": false
     },
     {
@@ -4321,6 +4323,7 @@
      "mode": "playback",
      "channelGroups": [],
      "function": "s4",
+     "functions": [],
      "knob": false
     },
     {

@@ -58,7 +58,7 @@ Para montar telas:
 |---|---|---|
 | `RlButton` | Qualquer ação | `mode`: `action`, `toggle` ou `flash`. `highlight`: `face` (o botão inteiro acende, padrão) ou `led` (só o filete acende e o botão fica afundado). `color`: cor do destaque e do filete. `size`: `sm`, `md` ou `lg`. Emite `press` com o evento (para ler `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`. |
 | `RlLcd` | Mostrar valores e estados | Texto ciano por padrão; `color` muda a cor (ex.: blackout em vermelho). |
-| `RlFader` | Nível contínuo (intensidade, submaster, GM) | Arrasto relativo, botão FINO (×0,1), toque duplo volta ao `default`, roda do mouse, setas e PageUp/PageDown. `meter` opcional; `cap="red"` para o master. `marks`: a escala ao lado do trilho (rótulo e posição de 0 a 1; sem ela, 0 a 100%). `fineStep`: o passo da roda e das setas com o FINO (padrão 0,001, ou 0,1% do curso). |
+| `RlFader` | Nível contínuo (intensidade, submaster, GM) | Arrasto relativo, botão FINO (×0,1), toque duplo volta ao `default`, roda do mouse, setas e PageUp/PageDown. `meter` opcional; `cap="red"` para o master. `marks`: a escala ao lado do trilho (rótulo, número ou texto, e posição de 0 a 1; sem ela, 0 a 100%). `fineStep`: o passo da roda e das setas com o FINO (padrão 0,001, ou 0,1% do curso). |
 | `RlKnob` | Parâmetros secundários (zoom, foco, velocidade) | Arrasto vertical relativo (150 px = curso todo), roda do mouse, toque duplo volta ao padrão. |
 | `RlXYPad` | Pan/tilt | Arrasto relativo em X e Y, FINO, toque duplo centraliza. |
 | `RlColorPicker` | Cor de fixtures RGB | Roda de matiz/saturação (toque absoluto, brilho máximo), amostras de gelatina, campos R, G e B. |
@@ -104,6 +104,8 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 ## Console (Virtual Console)
 
 `widgetKinds` ([`utils/console.ts`](../ui/app/utils/console.ts)) dá o ícone (da paleta de edição), o tamanho inicial e as entradas externas de cada tipo de elemento.
+
+**Botões e sliders em operação (F10):** o aparelho só manda "apertou" e "soltou" (`pressWidget`); o servidor aplica o que o elemento faz. O botão em Flash ou Temp usa o `RlButton` no modo `flash` (aceso enquanto o dedo está nele); o liga/desliga, o "Só esta" e o "Parar tudo" usam o modo `action`, e o aceso vem do servidor (a criação rodando, o blackout, as fixtures apagadas). O slider de velocidade mostra "×1,0" e a escala ×4, ×2, ×1, ½, ¼ (`marks`), com ×1 no meio; o submaster e o Animation sem valor ficam cheios; o toque duplo volta a esses valores.
 
 **Ícone dos botões:** por padrão o botão mostra só o texto. Com "Mostrar ícone", ele começa com o ícone do tipo da criação (ou o da ação: apagar → `LightbulbOff`, parar tudo → `OctagonX`), e "Trocar" abre a biblioteca inteira do lucide (`ConsoleIcons`), com busca pelo nome em inglês e uma seleção sugerida. A biblioteca (~1.700 ícones) fica num pedaço separado do app ([`useIconLibrary`](../ui/app/composables/useIconLibrary.ts)), baixado só quando algum botão usa ícone.
 

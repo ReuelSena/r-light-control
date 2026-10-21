@@ -32,7 +32,7 @@ O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
 
-**Ordem de execução (aprovada em 2026-10-21):** Ajustes rápidos → F10 → F10b → F10c → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md) foram validados em 2026-10-21; o próximo passo é a F10.
+**Ordem de execução (aprovada em 2026-10-21):** Ajustes rápidos → F10 → F10b → F10c → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md) e a [F10](docs/fases/fase-10.md) foram validados em 2026-10-21; o próximo passo é a F10b.
 
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
@@ -292,7 +292,9 @@ Validação:
 
 ## Etapa D — Operação ao vivo
 
-### F10 — Virtual Console I · ⬜
+### F10 — Virtual Console I · ✅
+
+Mini-plano: [docs/fases/fase-10.md](docs/fases/fase-10.md) (aprovado e entregue em 2026-10-21). Validada pelo usuário em 2026-10-21.
 
 - **Base:** registro de widgets com propriedades geradas por schema.
 - **Edição:** grade com snap e edição por toque, modos Edição e Operação, páginas e frames.
@@ -308,11 +310,11 @@ Validação:
   - `engine/src/qlcinputsource.cpp`
 
 Validação:
-- [ ] Console de 2 páginas montado no desktop e operado no celular.
-- [ ] Flash solta ao levantar o dedo e ao cair a conexão.
-- [ ] Submaster escala uma cena.
-- [ ] Rate acelera e desacelera os fades de uma cena rodando, sem mudar os gravados.
-- [ ] Ligar e desligar uma criação pelo fader.
+- [x] Console de 2 páginas montado no desktop e operado no celular.
+- [x] Flash solta ao levantar o dedo e ao cair a conexão.
+- [x] Submaster escala uma cena.
+- [x] Rate acelera e desacelera os fades de uma cena rodando, sem mudar os gravados.
+- [x] Ligar e desligar uma criação pelo fader.
 
 ### F10b — Rig flexível · ⬜ (nova, 2026-10-21)
 

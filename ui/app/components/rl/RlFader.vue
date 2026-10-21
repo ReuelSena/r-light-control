@@ -8,7 +8,7 @@ const props = withDefaults(defineProps<{
   meterColor?: string
   cap?: 'silver' | 'red'
   /** Escala ao lado do trilho: o rótulo e a posição (0–1). Sem ela, vai de 0 a 100%. */
-  marks?: { label: number; at: number }[]
+  marks?: { label: number | string; at: number }[]
   /** Passo da roda e das setas com o FINO, de 0 a 1 (0,1% do curso). */
   fineStep?: number
 }>(), {

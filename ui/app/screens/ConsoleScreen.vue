@@ -67,7 +67,7 @@ function blank(type: WidgetType): VcWidget {
   const firstOf = (kind: string) => project.value.functions.find((f) => f.type === kind)?.id ?? null
   const kinds = {
     button: { type, action: 'function', function: null, fixtures: [], groups: [], mode: 'toggle', highlight: 'face', icon: null },
-    slider: { type, mode: 'level', channelGroups: [], function: null, knob: false },
+    slider: { type, mode: 'level', channelGroups: [], function: null, functions: [], knob: false },
     cueList: { type, chaser: firstOf('chaser') },
     xyPad: { type, fixtures: [] },
     speedDial: { type, functions: [], fadeIn: true, fadeOut: true, hold: false, beats: true },

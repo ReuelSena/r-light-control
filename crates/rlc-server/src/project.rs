@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 6;
+const SCHEMA_VERSION: u32 = 7;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -136,7 +136,7 @@ fn migrate(project: &mut Value, version: u32) {
     }
     // 4 → 5 e 5 → 6: a grade do console ganhou o dobro de colunas (células pela metade), duas vezes; as
     // posições e os tamanhos dos elementos dobram a cada uma, e eles continuam do mesmo jeito na tela
-    for _ in version.max(4)..SCHEMA_VERSION {
+    for _ in version.max(4)..6 {
         let widgets = project
             .pointer_mut("/console/widgets")
             .and_then(Value::as_array_mut);
@@ -151,6 +151,28 @@ fn migrate(project: &mut Value, version: u32) {
                         *cells = (n * 2).into();
                     }
                 }
+            }
+        }
+    }
+    // 6 → 7 (F10): o "flash" de antes, que sobe e desce com os fades, virou o Temp (o Flash novo
+    // acende na hora); o slider ganhou a lista de criações do modo Velocidade
+    if version < 7 {
+        let widgets = project
+            .pointer_mut("/console/widgets")
+            .and_then(Value::as_array_mut);
+        for w in widgets
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+        {
+            match w.get("type").and_then(Value::as_str) {
+                Some("button") if w.get("mode").and_then(Value::as_str) == Some("flash") => {
+                    w.insert("mode".into(), "temp".into());
+                }
+                Some("slider") => {
+                    w.entry("functions").or_insert(json!([]));
+                }
+                _ => {}
             }
         }
     }
@@ -293,6 +315,27 @@ mod tests {
         let file = dir.join("antigo.rlc");
         let v4 = json!({ "format": FORMAT, "schemaVersion": 4, "project": old });
         std::fs::write(&file, v4.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_6_opens_with_the_old_flash_as_temp_and_the_slider_list() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = crate::hub::example_snapshot(None).project;
+        let mut old = serde_json::to_value(&project).unwrap();
+        for w in old["console"]["widgets"].as_array_mut().unwrap() {
+            if w["mode"] == "temp" {
+                w["mode"] = "flash".into();
+            }
+            if let Some(slider) = w.as_object_mut().filter(|w| w["type"] == "slider") {
+                slider.remove("functions");
+            }
+        }
+        let file = dir.join("antigo.rlc");
+        let v6 = json!({ "format": FORMAT, "schemaVersion": 6, "project": old });
+        std::fs::write(&file, v6.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

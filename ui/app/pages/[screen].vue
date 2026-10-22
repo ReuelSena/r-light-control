@@ -34,7 +34,7 @@ function toggleFullscreen() {
 }
 
 // Pânico: um toque corta as criações na hora (sem fade out); o segundo toque logo em seguida também
-// zera a mesa simples. O LED fica aceso enquanto houver algo para parar.
+// zera a mesa simples. O botão fica aceso (em vermelho) enquanto houver algo para parar.
 const busy = computed(() => state.value.running.length + state.value.desk.levels.length + state.value.desk.groups.length > 0)
 let lastStop = 0
 function stop() {
@@ -72,7 +72,6 @@ function go(id: ScreenId) {
     <template #toolbar-end>
       <RlButton
         size="sm"
-        highlight="led"
         color="var(--color-danger)"
         :model-value="busy"
         :title="t('shell.stop')"
@@ -92,7 +91,6 @@ function go(id: ScreenId) {
         v-if="wide"
         v-model="prefs.modular"
         mode="toggle"
-        highlight="led"
         size="sm"
         :title="t('shell.modular')"
         :aria-label="t('shell.modular')"
@@ -102,7 +100,6 @@ function go(id: ScreenId) {
       <RlButton
         v-if="canFullscreen"
         size="sm"
-        highlight="led"
         :model-value="fullscreen"
         :aria-label="t(fullscreen ? 'shell.exitFullscreen' : 'shell.fullscreen')"
         @press="toggleFullscreen"

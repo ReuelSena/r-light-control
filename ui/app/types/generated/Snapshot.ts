@@ -46,6 +46,14 @@ running: Array<string>,
  */
 chaserSteps: Array<CurrentStep>, 
 /**
+ * Criações da lista `running` pausadas: os fades, os delays e os passos delas não andam (R1).
+ */
+paused: Array<string>, 
+/**
+ * Passo carregado de cada chaser na cue list: o próximo Go vai para ele (R1).
+ */
+loadedSteps: Array<CurrentStep>, 
+/**
  * Mesa simples (não é salva no projeto).
  */
 desk: Desk, master: Master, 

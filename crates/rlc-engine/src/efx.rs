@@ -7,12 +7,12 @@ use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
 use rlc_core::{Direction, Efx, EfxAlgorithm, Propagation, RunOrder};
 
-use crate::{Ctx, EfxProgram, Fades, TICK, valid};
+use crate::{Ctx, EfxProgram, Imposed, TICK, Times, valid};
 
 pub(crate) struct EfxRunner {
     efx: EfxProgram,
-    /// Tempos impostos pelo passo de um chaser.
-    fades: Fades,
+    /// Tempos impostos pelo passo de um chaser (o EFX não tem delay nem curva próprios).
+    imposed: Imposed,
     /// Voltas desde o começo: a fração é a posição no desenho.
     turns: f64,
     /// Fader de cada fixture, na ordem do EFX; `None` até a vez dela ("Em sequência").
@@ -22,11 +22,11 @@ pub(crate) struct EfxRunner {
 
 impl EfxRunner {
     /// As fixtures que já começam ganham o fader agora, para a mistura seguir a ordem de início.
-    pub(crate) fn new(efx: EfxProgram, fades: Fades, ctx: &mut Ctx) -> Self {
+    pub(crate) fn new(efx: EfxProgram, imposed: Imposed, ctx: &mut Ctx) -> Self {
         let mut runner = Self {
             faders: vec![None; efx.heads.len()],
             efx,
-            fades,
+            imposed,
             turns: 0.0,
             done: false,
         };
@@ -94,9 +94,8 @@ impl EfxRunner {
                 Some(serial) => serial,
                 None => {
                     let levels = valid(head.iter().flatten().cloned().collect());
-                    let fade_in = self.fades.0.unwrap_or(self.efx.fade_in);
-                    let fade_out = self.fades.1.unwrap_or(self.efx.fade_out);
-                    let serial = ctx.push(levels, fade_in, fade_out, efx.relative);
+                    let times = self.times();
+                    let serial = ctx.push(levels, times, efx.relative);
                     self.faders[i] = Some(serial);
                     serial
                 }
@@ -123,10 +122,16 @@ impl EfxRunner {
         }
     }
 
+    /// Os fades do EFX, com os impostos pelo passo de um chaser por cima.
+    fn times(&self) -> Times {
+        let own = Times::fades(self.efx.fade_in, self.efx.fade_out);
+        self.imposed.on(own)
+    }
+
     /// Edição com o EFX rodando: vale na hora, sem recomeçar o desenho. A fixture incluída ganha o
     /// fader na vez dela; a retirada (ou com outro endereço) faz o fade out. Trocar o relativo
     /// recomeça os faders.
-    pub(crate) fn update(&mut self, efx: EfxProgram, fades: Fades, ctx: &mut Ctx) {
+    pub(crate) fn update(&mut self, efx: EfxProgram, imposed: Imposed, ctx: &mut Ctx) {
         let restart = efx.efx.relative != self.efx.efx.relative;
         let old = std::mem::take(&mut self.faders);
         self.faders = efx
@@ -148,14 +153,14 @@ impl EfxRunner {
                 ctx.stop_fader(*serial);
             }
         }
-        let fade_out = fades.1.unwrap_or(efx.fade_out);
+        self.efx = efx;
+        self.imposed = imposed;
+        let times = self.times();
         for fader in ctx.faders.iter_mut() {
             if self.faders.contains(&Some(fader.serial)) {
-                fader.fade_out = fade_out;
+                fader.times = times;
             }
         }
-        self.efx = efx;
-        self.fades = fades;
     }
 }
 
@@ -802,9 +807,8 @@ pub(crate) mod tests {
         let moving = |p: &Vec<Vec<(i32, i32)>>| p.windows(2).filter(|w| w[0] != w[1]).count() > 5;
         let step = Step {
             program: Program::Efx(efx(1)),
-            fade_in: None,
+            times: Imposed::default(),
             hold: Span::Ms(60_000),
-            fade_out: None,
         };
         let chaser = ChaserProgram {
             steps: vec![step],

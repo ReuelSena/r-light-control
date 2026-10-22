@@ -2,12 +2,14 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-vue-next'
 import type { Chaser } from '~/types/generated/Chaser'
 import type { ChaserStep } from '~/types/generated/ChaserStep'
+import type { Curve } from '~/types/generated/Curve'
 import type { Function } from '~/types/generated/Function'
 
 type ChaserFn = Extract<Function, { type: 'chaser' | 'sequence' }>
 
-// Editor de chaser e de sequência: passos com fade in, hold e fade out, ordem, sentido e de onde vem
-// cada tempo. Na sequência, cada passo é um estado da cena escolhida, editado nos faders abaixo.
+// Editor de chaser e de sequência: passos com a entrada (delay, fade in e curva), o hold (que pode ser ∞,
+// esperando o Go) e a saída (delay e fade out), ordem, sentido e de onde vem cada tempo. Na sequência,
+// cada passo é um estado da cena escolhida, editado nos faders abaixo.
 const props = defineProps<{ fn: ChaserFn }>()
 const { t } = useI18n()
 const { state, send } = useEngine()
@@ -21,11 +23,23 @@ const current = computed(() => state.value.chaserSteps.find((c) => c.chaser === 
 const functionOf = (id: string) => project.value.functions.find((f) => f.id === id)
 const fixtureOf = (id: string) => project.value.fixtures.find((f) => f.id === id)
 const step = computed(() => props.fn.steps[selectedStep.value])
+// De onde vem cada tempo: a entrada (com a curva), o hold e a saída
+const sources = [
+  { mode: 'fadeInMode', label: 'chaser.entry' },
+  { mode: 'holdMode', label: 'studio.hold' },
+  { mode: 'fadeOutMode', label: 'chaser.exit' },
+] as const
 const times = [
+  { mode: 'fadeInMode', key: 'delayInMs', label: 'studio.delayIn' },
   { mode: 'fadeInMode', key: 'fadeInMs', label: 'studio.fadeIn' },
   { mode: 'holdMode', key: 'holdMs', label: 'studio.hold' },
+  { mode: 'fadeOutMode', key: 'delayOutMs', label: 'studio.delayOut' },
   { mode: 'fadeOutMode', key: 'fadeOutMs', label: 'studio.fadeOut' },
 ] as const
+// Na tabela, os delays e a curva só aparecem quando são de cada passo
+const columns = computed(() => times.filter((time) => !time.key.startsWith('delay') || props.fn[time.mode] === 'perStep'))
+const timeText = (v: number) => (v === INFINITE ? '∞' : `${v / 1000} ${props.fn.beats ? 'bt' : 's'}`)
+const curveOptions = computed(() => curves.map((value) => ({ value, label: t(`curve.${value}`) })))
 
 function save(changes: Partial<Chaser>) {
   send({ op: 'saveFunction', function: { ...props.fn, ...changes } })
@@ -93,21 +107,32 @@ function addStep(functionId: string) {
       </div>
 
       <div class="grid content-start gap-2">
-        <span class="field-label">{{ t('chaser.timingSource') }}</span>
-        <div v-for="time in times" :key="time.key" class="grid grid-cols-[72px_1fr] items-center gap-2 @xl:grid-cols-[72px_1fr_96px]">
-          <span class="text-sm">{{ t(time.label) }}</span>
+        <span class="flex items-center gap-1 text-xs text-fg-muted">{{ t('chaser.timingSource') }} <RlInfo :text="t('chaser.timingInfo')" /></span>
+        <div v-for="source in sources" :key="source.mode" class="grid grid-cols-[72px_1fr] items-center gap-2">
+          <span class="text-sm">{{ t(source.label) }}</span>
           <RlSegmented
-            :model-value="fn[time.mode]"
+            :model-value="fn[source.mode]"
             :options="(['default', 'common', 'perStep'] as const).map((value) => ({ value, label: t(`speedMode.${value}`) }))"
-            @update:model-value="(mode) => save({ [time.mode]: mode })"
+            @update:model-value="(mode) => save({ [source.mode]: mode })"
           />
-          <RlTimeField
-            v-if="fn[time.mode] === 'common'"
-            class="col-start-2 @xl:col-start-auto"
-            :beats="fn.beats"
-            :model-value="fn.common[time.key]"
-            @update:model-value="(ms) => save({ common: { ...fn.common, [time.key]: ms } })"
-          />
+          <!-- Os tempos comuns desta parte -->
+          <div v-if="fn[source.mode] === 'common'" class="col-start-2 flex flex-wrap gap-2">
+            <label v-for="time in times.filter((x) => x.mode === source.mode)" :key="time.key" class="field-label w-28">
+              {{ t(time.label) }}
+              <RlTimeField
+                :beats="fn.beats"
+                :infinite="time.key === 'holdMs'"
+                :model-value="fn.common[time.key]"
+                @update:model-value="(ms) => save({ common: { ...fn.common, [time.key]: ms } })"
+              />
+            </label>
+            <label v-if="source.mode === 'fadeInMode'" class="field-label">
+              {{ t('studio.curve') }}
+              <select class="field" :value="fn.common.curve" @change="save({ common: { ...fn.common, curve: ($event.target as HTMLSelectElement).value as Curve } })">
+                <option v-for="c in curveOptions" :key="c.value" :value="c.value">{{ c.label }}</option>
+              </select>
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -125,7 +150,8 @@ function addStep(functionId: string) {
           <tr>
             <th class="w-10">#</th>
             <th>{{ isSequence ? t('chaser.note') : t('chaser.function') }}</th>
-            <th v-for="time in times" :key="time.key" class="w-24">{{ t(time.label) }}</th>
+            <th v-for="time in columns" :key="time.key" class="w-24">{{ t(time.label) }}</th>
+            <th v-if="fn.fadeInMode === 'perStep'" class="w-36">{{ t('studio.curve') }}</th>
             <th class="w-32" />
           </tr>
         </thead>
@@ -144,14 +170,20 @@ function addStep(functionId: string) {
                 <span class="truncate">{{ functionOf(s.function)?.name ?? '?' }}</span>
               </span>
             </td>
-            <td v-for="time in times" :key="time.key">
+            <td v-for="time in columns" :key="time.key">
               <RlTimeField
                 v-if="fn[time.mode] === 'perStep'"
                 :beats="fn.beats"
+                :infinite="time.key === 'holdMs'"
                 :model-value="s.timing[time.key]"
                 @update:model-value="(ms) => saveStep(i, { timing: { ...s.timing, [time.key]: ms } })"
               />
-              <span v-else class="text-xs text-fg-dim">{{ fn[time.mode] === 'common' ? `${fn.common[time.key] / 1000} ${fn.beats ? 'bt' : 's'}` : t('speedMode.default') }}</span>
+              <span v-else class="text-xs text-fg-dim">{{ fn[time.mode] === 'common' ? timeText(fn.common[time.key]) : t('speedMode.default') }}</span>
+            </td>
+            <td v-if="fn.fadeInMode === 'perStep'">
+              <select class="field w-full" :value="s.timing.curve" @change="saveStep(i, { timing: { ...s.timing, curve: ($event.target as HTMLSelectElement).value as Curve } })">
+                <option v-for="c in curveOptions" :key="c.value" :value="c.value">{{ c.label }}</option>
+              </select>
             </td>
             <td>
               <span class="flex justify-end gap-1">

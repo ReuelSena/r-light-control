@@ -349,6 +349,13 @@
     "fadeIn": "Fade in",
     "hold": "Hold",
     "fadeOut": "Fade out",
+    "delayIn": "Delay in",
+    "delayOut": "Delay out",
+    "curve": "Curva",
+    "infinite": "Infinito: espera o Go",
+    "pause": "Pausar",
+    "priority": "Prioridade",
+    "priorityInfo": "Num canal disputado, a criação de prioridade maior ganha, também no dimmer e nas cores: o valor dela vale, mesmo que seja menor. Ao parar, ela desce com o fade out até o que está embaixo.\nNa mesma prioridade, vale a regra de sempre: o maior valor no dimmer e nas cores, a última iniciada no resto.\nO que um chaser ou uma coleção acende usa a prioridade deles.",
     "newFolder": "Nova pasta",
     "editFolder": "Editar pasta",
     "stopAll": "Parar todas",
@@ -390,7 +397,9 @@
     "backToGroup": "Voltar ao grupo",
     "exception": "Exceção: valor próprio, vence o grupo",
     "inGroup": "Num grupo da cena",
-    "times": "Tempos"
+    "times": "Tempos",
+    "timesInfo": "Delay in: espera antes do fade in. Delay out: espera antes do fade out, ao parar.\nA curva vale para os dois fades.\nPor tipo de atributo: tempos próprios para a intensidade (o dimmer), a cor, a posição ou os efeitos (ex.: a cor muda no escuro e o dimmer sobe depois). Os tipos desligados usam os tempos da cena.",
+    "byAttribute": "Por tipo de atributo"
   },
   "chaser": {
     "scene": "Cena da sequência",
@@ -400,6 +409,9 @@
     "beats": "Tempos em batidas do BPM",
     "keepLast": "Manter o último passo",
     "timingSource": "De onde vem cada tempo",
+    "entry": "Entrada",
+    "exit": "Saída",
+    "timingInfo": "Padrão: os tempos da criação de cada passo. Comum: os mesmos em todos os passos. Por passo: os de cada um, na tabela.\nEntrada: o delay in, o fade in e a curva dos fades. Saída: o delay out e o fade out. O passo dura o delay in, o fade in e o hold.\nHold ∞: o passo espera o Go da cue list.",
     "steps": "Passos ({n})",
     "addStep": "Adicionar passo",
     "note": "Nota",
@@ -408,6 +420,17 @@
     "down": "Descer",
     "noSteps": "Nenhum passo ainda.",
     "stepValues": "Valores do passo {n}"
+  },
+  "curve": {
+    "linear": "Linear",
+    "easeIn": "Lento no começo",
+    "easeOut": "Lento no fim",
+    "easeInOut": "S"
+  },
+  "priority": {
+    "low": "Baixa",
+    "normal": "Normal",
+    "high": "Alta"
   },
   "runOrder": {
     "loop": "Repetir",
@@ -535,6 +558,7 @@
     "action": "Ação",
     "function": "Criação",
     "chaser": "Chaser ou sequência",
+    "loaded": "Carregado para o próximo Go",
     "movers": "Fixtures com pan e tilt",
     "blackoutTargets": "Grupos e fixtures apagados",
     "mode": "Modo",
@@ -575,7 +599,9 @@
       "exclusive": "Só esta (para as outras)",
       "blackout": "Blackout geral",
       "blackoutFixtures": "Apagar fixtures ou grupos",
-      "stopAll": "Parar tudo"
+      "stopAll": "Parar tudo",
+      "previous": "Voltar (passo anterior)",
+      "pause": "Pausar e continuar"
     },
     "modes": {
       "toggle": "Liga/desliga",
@@ -604,9 +630,11 @@
     },
     "control": {
       "main": "Principal",
-      "previous": "Anterior",
+      "go": "Go",
+      "previous": "Voltar",
       "next": "Próximo",
       "stop": "Parar",
+      "pause": "Pausar",
       "tap": "Tap",
       "x": "Eixo X",
       "y": "Eixo Y"
@@ -630,6 +658,7 @@
       "sliderMode": "Nível: os canais dos grupos de canais escolhidos, sem fade. Na intensidade, vale o maior entre o slider e as criações.\nPlayback: sair do zero liga a criação, e o slider é a intensidade e o fade dela; voltar ao zero desliga.\nSubmaster: reduz a intensidade das criações dos elementos da mesma moldura (e das molduras de dentro). Fora de uma moldura, vale para a página.\nVelocidade: de ×0,25 a ×4 nos tempos em segundos das criações da lista, sem mudar os gravados. No meio, ×1. Os tempos em batidas seguem o BPM.",
       "buttonMode": "Liga/desliga: um toque liga, outro desliga.\nFlash: só enquanto o dedo está no botão; acende na hora, a 100%, e apaga na hora ao soltar.\nTemp: só enquanto o dedo está no botão, com os fades da criação e o submaster.\nSe o aparelho perder a conexão com o dedo no botão, o Flash e o Temp soltam sozinhos.",
       "speedDial": "Ajusta ao vivo os tempos das criações da lista, no lugar dos tempos gravados nelas. \"Gravados\" volta aos tempos de cada criação.\nSeguindo o BPM, os tempos ficam em batidas do BPM master, e o Tap é o mesmo do master: um tap muda o BPM, e os tempos e os chasers da lista acompanham.\nEm segundos, o Tap marca a duração (hold do chaser, ciclo do EFX, passo do RGB Matrix).",
+      "cueList": "Go: começa o chaser, vai para o passo seguinte (ou para o carregado) e continua o pausado. Voltar: o passo anterior. Pausar: congela os fades e o hold; o Go ou o Pausar continuam de onde parou.\nToque num passo: vai para ele. Toque longo: carrega o passo para o próximo Go, sem disparar.",
       "solo": "Só uma criação da moldura roda por vez: ligar um botão para os outros.",
       "inputs": "O controle MIDI ou a tecla que aciona este elemento. \"Aprender\" espera você mexer no controlador. As teclas valem com o console fora da edição.",
       "icons": "A biblioteca tem cerca de 1.700 ícones. Os nomes estão em inglês: busque por sun, star, music, heart, fire…\nA busca mostra até 150 resultados.",

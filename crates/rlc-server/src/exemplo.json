@@ -3039,6 +3039,7 @@
     "id": "s1",
     "name": "Frente âmbar",
     "folder": "d1",
+    "priority": "normal",
     "type": "scene",
     "values": [],
     "groups": [
@@ -3069,13 +3070,18 @@
       "value": 255
      }
     ],
+    "delayInMs": 0,
     "fadeInMs": 1000,
-    "fadeOutMs": 1000
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
    },
    {
     "id": "s2",
     "name": "Frente azul",
     "folder": "d1",
+    "priority": "normal",
     "type": "scene",
     "values": [],
     "groups": [
@@ -3101,13 +3107,18 @@
       "value": 255
      }
     ],
+    "delayInMs": 0,
     "fadeInMs": 1000,
-    "fadeOutMs": 1000
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
    },
    {
     "id": "s3",
     "name": "Frente vermelha",
     "folder": "d1",
+    "priority": "normal",
     "type": "scene",
     "values": [],
     "groups": [
@@ -3133,13 +3144,18 @@
       "value": 255
      }
     ],
+    "delayInMs": 0,
     "fadeInMs": 1000,
-    "fadeOutMs": 1000
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
    },
    {
     "id": "s4",
     "name": "MHs no centro",
     "folder": null,
+    "priority": "normal",
     "type": "scene",
     "values": [],
     "groups": [
@@ -3175,13 +3191,18 @@
      }
     ],
     "channelGroups": [],
+    "delayInMs": 0,
     "fadeInMs": 1000,
-    "fadeOutMs": 1000
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
    },
    {
     "id": "s5",
     "name": "Haze leve",
     "folder": null,
+    "priority": "normal",
     "type": "scene",
     "values": [
      {
@@ -3197,13 +3218,18 @@
     ],
     "groups": [],
     "channelGroups": [],
+    "delayInMs": 0,
     "fadeInMs": 1000,
-    "fadeOutMs": 1000
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
    },
    {
     "id": "c1",
     "name": "Troca de cores",
     "folder": null,
+    "priority": "normal",
     "type": "chaser",
     "scene": null,
     "runOrder": "loop",
@@ -3214,17 +3240,23 @@
     "holdMode": "perStep",
     "fadeOutMode": "default",
     "common": {
+     "delayInMs": 0,
      "fadeInMs": 500,
      "holdMs": 2000,
-     "fadeOutMs": 0
+     "delayOutMs": 0,
+     "fadeOutMs": 0,
+     "curve": "linear"
     },
     "steps": [
      {
       "function": "s1",
       "timing": {
+       "delayInMs": 0,
        "fadeInMs": 1000,
        "holdMs": 2000,
-       "fadeOutMs": 0
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
       },
       "note": "",
       "values": []
@@ -3232,9 +3264,12 @@
      {
       "function": "s2",
       "timing": {
+       "delayInMs": 0,
        "fadeInMs": 1000,
        "holdMs": 2000,
-       "fadeOutMs": 0
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
       },
       "note": "",
       "values": []
@@ -3242,9 +3277,12 @@
      {
       "function": "s3",
       "timing": {
+       "delayInMs": 0,
        "fadeInMs": 1000,
        "holdMs": 2000,
-       "fadeOutMs": 0
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
       },
       "note": "",
       "values": []
@@ -3255,6 +3293,7 @@
     "id": "q1",
     "name": "Subida da frente",
     "folder": null,
+    "priority": "normal",
     "type": "sequence",
     "scene": "s1",
     "runOrder": "pingPong",
@@ -3265,17 +3304,23 @@
     "holdMode": "common",
     "fadeOutMode": "common",
     "common": {
+     "delayInMs": 0,
      "fadeInMs": 800,
      "holdMs": 400,
-     "fadeOutMs": 0
+     "delayOutMs": 0,
+     "fadeOutMs": 0,
+     "curve": "linear"
     },
     "steps": [
      {
       "function": "s1",
       "timing": {
+       "delayInMs": 0,
        "fadeInMs": 800,
        "holdMs": 400,
-       "fadeOutMs": 0
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
       },
       "note": "25%",
       "values": [
@@ -3374,9 +3419,12 @@
      {
       "function": "s1",
       "timing": {
+       "delayInMs": 0,
        "fadeInMs": 800,
        "holdMs": 400,
-       "fadeOutMs": 0
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
       },
       "note": "50%",
       "values": [
@@ -3475,9 +3523,12 @@
      {
       "function": "s1",
       "timing": {
+       "delayInMs": 0,
        "fadeInMs": 800,
        "holdMs": 400,
-       "fadeOutMs": 0
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
       },
       "note": "100%",
       "values": [
@@ -3579,6 +3630,7 @@
     "id": "k1",
     "name": "Abertura",
     "folder": null,
+    "priority": "normal",
     "type": "collection",
     "functions": [
      "c1",
@@ -3591,6 +3643,7 @@
     "id": "e1",
     "name": "Círculo nos MHs",
     "folder": null,
+    "priority": "normal",
     "type": "efx",
     "algorithm": "circle",
     "width": 64,
@@ -3623,6 +3676,7 @@
     "id": "r1",
     "name": "Degradê nas barras",
     "folder": null,
+    "priority": "normal",
     "type": "rgbMatrix",
     "group": "g2",
     "algorithm": "gradient",
@@ -3642,6 +3696,7 @@
     "id": "r2",
     "name": "Perseguição nos PARs",
     "folder": null,
+    "priority": "normal",
     "type": "rgbMatrix",
     "group": "g1",
     "algorithm": "chase",
@@ -3656,6 +3711,366 @@
      "holdMs": 250,
      "fadeOutMs": 0
     }
+   },
+   {
+    "id": "s6",
+    "name": "Base branca (baixa)",
+    "folder": "d2",
+    "priority": "low",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "white",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "amber",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "uv",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "colorMacro",
+        "index": 0,
+        "value": 0
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s7",
+    "name": "Azul a 30% (alta)",
+    "folder": "d2",
+    "priority": "high",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 77
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "white",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "amber",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "uv",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "colorMacro",
+        "index": 0,
+        "value": 0
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 2000,
+    "delayOutMs": 0,
+    "fadeOutMs": 2000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s8",
+    "name": "Delay e curva S",
+    "folder": "d2",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "white",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "amber",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "uv",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "colorMacro",
+        "index": 0,
+        "value": 0
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 1000,
+    "fadeInMs": 3000,
+    "delayOutMs": 2000,
+    "fadeOutMs": 3000,
+    "curve": "easeInOut",
+    "attributeTimes": []
+   },
+   {
+    "id": "s9",
+    "name": "Cor no escuro",
+    "folder": "d2",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 120
+       },
+       {
+        "attribute": "white",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "amber",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "uv",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "colorMacro",
+        "index": 0,
+        "value": 0
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 0,
+    "delayOutMs": 0,
+    "fadeOutMs": 0,
+    "curve": "linear",
+    "attributeTimes": [
+     {
+      "kind": "intensity",
+      "delayInMs": 2000,
+      "fadeInMs": 3000,
+      "delayOutMs": 0,
+      "fadeOutMs": 3000
+     },
+     {
+      "kind": "color",
+      "delayInMs": 0,
+      "fadeInMs": 0,
+      "delayOutMs": 3000,
+      "fadeOutMs": 0
+     }
+    ]
+   },
+   {
+    "id": "c2",
+    "name": "Roteiro manual (Go)",
+    "folder": null,
+    "priority": "normal",
+    "type": "chaser",
+    "scene": null,
+    "runOrder": "singleShot",
+    "direction": "forward",
+    "beats": false,
+    "keepLast": true,
+    "fadeInMode": "default",
+    "holdMode": "common",
+    "fadeOutMode": "default",
+    "common": {
+     "delayInMs": 0,
+     "fadeInMs": 0,
+     "holdMs": 4294967295,
+     "delayOutMs": 0,
+     "fadeOutMs": 0,
+     "curve": "linear"
+    },
+    "steps": [
+     {
+      "function": "s6",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 0,
+       "holdMs": 4294967295,
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
+      },
+      "note": "Abertura",
+      "values": []
+     },
+     {
+      "function": "s8",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 0,
+       "holdMs": 4294967295,
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
+      },
+      "note": "Entrada lenta",
+      "values": []
+     },
+     {
+      "function": "s9",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 0,
+       "holdMs": 4294967295,
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
+      },
+      "note": "Troca no escuro",
+      "values": []
+     },
+     {
+      "function": "s7",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 0,
+       "holdMs": 4294967295,
+       "delayOutMs": 0,
+       "fadeOutMs": 0,
+       "curve": "linear"
+      },
+      "note": "Final",
+      "values": []
+     }
+    ]
    }
   ],
   "folders": [
@@ -3663,6 +4078,12 @@
     "id": "d1",
     "name": "Frente",
     "kind": "scene"
+   },
+   {
+    "id": "d2",
+    "name": "Tempos e prioridade",
+    "kind": "scene",
+    "parent": null
    }
   ],
   "console": {
@@ -3674,6 +4095,10 @@
     {
      "id": "p2",
      "name": "Efeitos"
+    },
+    {
+     "id": "p3",
+     "name": "Tempos"
     }
    ],
    "widgets": [
@@ -4363,7 +4788,7 @@
        "key": "ArrowLeft"
       },
       {
-       "control": "next",
+       "control": "main",
        "midi": null,
        "key": "ArrowRight"
       }
@@ -4553,6 +4978,268 @@
      "type": "clock",
      "mode": "stopwatch",
      "countdownS": 0
+    },
+    {
+     "id": "cl3",
+     "page": "p3",
+     "frame": null,
+     "caption": "Roteiro manual",
+     "color": "#00ffff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 0,
+       "w": 64,
+       "h": 48
+      },
+      "tablet": {
+       "x": 0,
+       "y": 0,
+       "w": 64,
+       "h": 48
+      },
+      "desktop": {
+       "x": 0,
+       "y": 0,
+       "w": 64,
+       "h": 48
+      }
+     },
+     "inputs": [
+      {
+       "control": "main",
+       "midi": null,
+       "key": "G"
+      },
+      {
+       "control": "previous",
+       "midi": null,
+       "key": "V"
+      },
+      {
+       "control": "pause",
+       "midi": null,
+       "key": "P"
+      }
+     ],
+     "type": "cueList",
+     "chaser": "c2"
+    },
+    {
+     "id": "b13",
+     "page": "p3",
+     "frame": null,
+     "caption": "Voltar",
+     "color": "#00ffff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 48,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 64,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 64,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "previous",
+     "function": "c2",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b14",
+     "page": "p3",
+     "frame": null,
+     "caption": "Pausar",
+     "color": "#ffff00",
+     "layouts": {
+      "phone": {
+       "x": 16,
+       "y": 48,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 80,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 80,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "pause",
+     "function": "c2",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "led",
+     "icon": null
+    },
+    {
+     "id": "b15",
+     "page": "p3",
+     "frame": null,
+     "caption": "Base (baixa)",
+     "color": "#ffffff",
+     "layouts": {
+      "phone": {
+       "x": 32,
+       "y": 48,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 64,
+       "y": 16,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 64,
+       "y": 16,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s6",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b16",
+     "page": "p3",
+     "frame": null,
+     "caption": "Azul 30% (alta)",
+     "color": "#0080ff",
+     "layouts": {
+      "phone": {
+       "x": 48,
+       "y": 48,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 80,
+       "y": 16,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 80,
+       "y": 16,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s7",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b17",
+     "page": "p3",
+     "frame": null,
+     "caption": "Delay e curva S",
+     "color": "#ff00aa",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 64,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 64,
+       "y": 32,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 64,
+       "y": 32,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s8",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
+    },
+    {
+     "id": "b18",
+     "page": "p3",
+     "frame": null,
+     "caption": "Cor no escuro",
+     "color": "#00ff00",
+     "layouts": {
+      "phone": {
+       "x": 16,
+       "y": 64,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 80,
+       "y": 32,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 80,
+       "y": 32,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s9",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null
     }
    ]
   },

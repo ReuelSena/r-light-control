@@ -20,19 +20,24 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 5. Ajustar → validar de novo.
 6. Marcar a fase aqui e registrar as decisões novas no `DECISOES.md`. Commit se o usuário pedir.
 
-## Pendências (2026-10-20)
+## Pendências (2026-10-21)
+
+**Onde paramos (2026-10-21, para retomar em outra conversa):** a F10c foi entregue e commitada, e falta o usuário validá-la ([checklist](docs/fases/fase-10c.md#validação-com-você), com os exemplos no "Show de exemplo": página "Tempos" do console e pasta "Tempos e prioridade" do Studio). Depois da validação, começa a F10d (estudo e mini-plano para aprovação, G1), que leva também o pedido de inverter o pan e o tilt nos EFX. Detalhes que não estão no código:
+- O usuário usa o `pnpm dev` aberto com o "RSena Palco" (alterações não salvas, entre elas a "Cena 8", só na recuperação). Antes de qualquer teste que abra outro projeto, guardar uma cópia da recuperação e restaurá-la no fim (abrir um projeto descarta a recuperação).
+- Os "botões acesos, sem LED" pedidos na F10c valeram para o Studio (Rodar, Pausar, Parar todas e a lista) e para a barra de cima. Os botões de dentro das telas (Prévia, Localizar, Editar do console etc.) continuam em LED: o usuário ainda não decidiu se quer trocá-los.
+- A área do console tem a célula de tamanho fixo por formato (mudança do usuário, 2026-10-21, em [DECISOES.md](DECISOES.md), E11).
 
 O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Na [validação final](docs/validacao-final.md)**, antes do release:
-- com os moving beams: 3 itens da F6, 1 da F7, 7 da F8 (o EFX) e 3 da F10b (o EFX em grupo);
+- com os moving beams: 3 itens da F6, 1 da F7, 7 da F8 (o EFX), 3 da F10b (o EFX em grupo) e 1 da F10c (a posição lenta com a cor rápida);
 - adiados por escolha dele, sem precisar dos Beams: o tick com 4 universos (F6), a sequência e a coleção (F7).
 
 **Na F16:** o instalador num PC limpo (adiado da F3).
 
 **Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
 
-**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21; o próximo passo é a F10c.
+**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia e aguarda a validação; depois vem a F10d.
 
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
@@ -334,7 +339,9 @@ Validação:
 - [x] `pnpm check` passa.
 - Com os Beams de verdade, o EFX em grupo fica na [validação final](docs/validacao-final.md).
 
-### F10c — Tempos, cue list e prioridade · ⬜ (nova, 2026-10-21)
+### F10c — Tempos, cue list e prioridade · 🟡 (nova, 2026-10-21; entregue, aguardando a validação)
+
+Mini-plano: [docs/fases/fase-10c.md](docs/fases/fase-10c.md) (aprovado e entregue em 2026-10-21, com as quatro recomendações; aguardando a validação). Os exemplos de cada recurso (G8) estão no "Show de exemplo": a pasta "Tempos e prioridade", o chaser "Roteiro manual (Go)" e a página "Tempos" do console.
 
 - **R1:** cue list com Go, voltar, ir para, **pausar** e **carregar a próxima**; gatilhos por passo (manual, depois de X segundos, quando o anterior termina, nas batidas); **hold infinito** (o passo espera o Go); Off no fim e volta ao começo.
 - **R2:** **delay** de entrada e de saída em cada passo e em cada cena, e curvas além da linear (lenta, rápida, S). Muda a decisão da F6 (fades lineares).
@@ -355,6 +362,7 @@ Validação:
 - **Parâmetros por item:** o desenho, a posição, o tamanho e os outros parâmetros do EFX valem para todos, e cada item da lista (fixture ou grupo) pode trocar os que quiser, como a exceção na cena. Ex.: os Beams da esquerda num círculo pequeno e os da direita num oito grande, no mesmo EFX.
 - **Desenho personalizado:** desenhar o caminho com o dedo ou o mouse na área da prévia; as fixtures percorrem o desenho.
 - **Curva de velocidade:** como a velocidade varia ao longo da volta (constante, acelera, desacelera, rápida no meio e lenta nas pontas, ou uma curva desenhada), reaproveitando as curvas dos fades da F10c (R2).
+- **Inverter o pan e o tilt (pedido do usuário, 2026-10-21):** cada item do EFX (fixture ou grupo) pode inverter o pan, o tilt ou os dois, e o desenho sai espelhado naquele eixo (ex.: Beams pendurados de cabeça para baixo, ou um de frente para o outro, desenhando para o mesmo lado). O mini-plano estuda também trocar um eixo pelo outro (a fixture montada de lado).
 - **Já entregue na F10b:** a defasagem entre as fixtures de um grupo.
 - **Onde mexe:** o contrato (nova versão do projeto, com migração), o motor (`efx.rs`), a tradução no servidor, o editor de EFX e a prévia (as mesmas contas em `utils/functions.ts`).
 
@@ -362,6 +370,7 @@ Validação:
 - [ ] Dois itens do mesmo EFX com desenhos diferentes.
 - [ ] Um desenho feito à mão percorrido pelas fixtures (na 3D View).
 - [ ] A curva de velocidade se vê no movimento.
+- [ ] Um item com o pan invertido desenha espelhado (na prévia do EFX e na 3D View).
 - [ ] Com os Beams de verdade: na [validação final](docs/validacao-final.md).
 
 ### F11 — Virtual Console II, multi-cliente e segurança · ⬜
@@ -507,10 +516,9 @@ Validação:
   - fixtures que atravessam universos;
   - o "dump" do QLC+ (gravar a saída numa cena).
 - Ficou de fora da F7 (só se o usuário pedir):
-  - pausar um chaser;
   - tempo em batidas nas cenas (o editor de cena só tem segundos);
-  - hold infinito (∞), para o chaser só andar no "próximo" da cue list: pode entrar na F11, com o resto da Cue List;
   - BPM vindo de fora (MIDI clock ou áudio): pode entrar na F12.
+  - Pausar um chaser e o hold infinito (∞) entraram na F10c (2026-10-21).
 - Ficou de fora da F8 (só se o usuário pedir):
   - os modos Dimmer e RGB do EFX (o desenho no dimmer ou nas cores) e o "controle do dimmer" do QLC+ 5.3;
   - EFX em fixtures com várias cabeças de pan e tilt (hoje vale a primeira cabeça de cada uma);

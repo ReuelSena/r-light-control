@@ -3,4 +3,4 @@
 /**
  * Qual parte do elemento a entrada aciona.
  */
-export type InputControl = "main" | "previous" | "next" | "stop" | "tap" | "x" | "y";
+export type InputControl = "main" | "previous" | "next" | "stop" | "pause" | "tap" | "x" | "y";

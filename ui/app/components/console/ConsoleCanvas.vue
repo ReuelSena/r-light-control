@@ -3,8 +3,8 @@ import { Piano } from 'lucide-vue-next'
 import type { Rect } from '~/types/generated/Rect'
 import type { VcWidget } from '~/types/generated/VcWidget'
 
-// Uma página do console num formato (VC-2): elementos numa grade de células quadradas, que
-// acompanham a largura. Em edição, como no Patch:
+// Uma página do console num formato (VC-2): elementos numa grade de células quadradas, de tamanho fixo
+// em cada formato. Em edição, como no Patch:
 // - o toque escolhe; Ctrl + clique ou toque longo soma outros do mesmo nível;
 // - arrastar move os escolhidos (no toque, só depois de escolhidos) e o canto redimensiona;
 // - um elemento solto dentro de uma moldura passa a ser dela (e sai ao ser solto fora);
@@ -22,19 +22,9 @@ const keysOf = (w: VcWidget) =>
   !prefs.value.keyHints ? '' : w.inputs.flatMap((i) => (i.key ? [i.key.split('+').map((k) => keyNames[k] ?? k).join('+')] : [])).join(' ')
 
 const cols = computed(() => formatColumns[props.format])
-const area = ref<HTMLElement>()
-const width = ref(0)
-let observer: ResizeObserver | undefined
-// Mede quem rola (e não a própria grade, que pode ficar mais larga que ele)
-watch(area, (el) => el && (observer ??= new ResizeObserver(([entry]) => (width.value = entry!.contentRect.width))).observe(el.parentElement!))
-onBeforeUnmount(() => observer?.disconnect())
-// Na edição a célula guarda o tamanho da operação: o painel de propriedades não aperta os elementos
-// (a grade rola para o lado), e o que se vê editando é o que se vê operando
-const fit = computed(() => Math.max(4, Math.floor(width.value / cols.value)))
-const operating = ref(0)
-watchEffect(() => !props.editing && (operating.value = fit.value))
-// O zoom do console (ao lado do Editar) aumenta ou diminui a célula; a grade rola se passar da tela
-const cell = computed(() => Math.max(4, Math.floor((props.editing ? Math.max(fit.value, operating.value) : fit.value) * props.zoom)))
+// A célula tem tamanho fixo em cada formato: o tamanho da janela (ou do painel de propriedades) não mexe na
+// grade, que rola se não couber. Só o zoom do console (ao lado do Editar) aumenta ou diminui a célula.
+const cell = computed(() => Math.max(4, Math.floor(formatCell[props.format] * props.zoom)))
 
 const byId = computed(() => new Map(props.widgets.map((w) => [w.id, w])))
 const rectOf = (w: VcWidget) => w.layouts[props.format]
@@ -172,10 +162,9 @@ function itemStyle(w: VcWidget) {
 
 <template>
   <div
-    ref="area"
     class="canvas"
     :class="{ editing }"
-    :style="{ height: `${rows * cell}px`, minWidth: `${cols * cell}px`, '--cell': `${cell}px` }"
+    :style="{ height: `${rows * cell}px`, width: `${cols * cell}px`, '--cell': `${cell}px` }"
     @pointerdown.self="editing && (selection = [])"
   >
     <div

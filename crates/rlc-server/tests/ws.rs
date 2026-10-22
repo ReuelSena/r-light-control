@@ -226,7 +226,9 @@ async fn chasers_step_by_the_cue_list_and_by_themselves() {
     for mode in ["fadeInMode", "holdMode", "fadeOutMode"] {
         chaser[mode] = json!("common");
     }
-    chaser["common"] = json!({ "fadeInMs": 0, "holdMs": 60000, "fadeOutMs": 0 });
+    chaser["common"] = json!({
+        "delayInMs": 0, "fadeInMs": 0, "holdMs": 60000, "delayOutMs": 0, "fadeOutMs": 0, "curve": "linear"
+    });
     cmd(&mut ws, 1, save(&chaser)).await;
     let run = json!({ "op": "setFunctionRunning", "id": "c1", "running": true });
     cmd(&mut ws, 2, run).await;

@@ -4,7 +4,8 @@
 
 use rlc_core::*;
 use rlc_engine::{
-    ChaserProgram, EfxProgram, Program, Run, SceneLevel, SceneProgram, Span, Step, UniversePatch,
+    ChaserProgram, EfxProgram, Imposed, Program, Run, SceneLevel, SceneProgram, Span, Step, Times,
+    UniversePatch,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -32,6 +33,8 @@ pub enum Topic {
     Remote,
     Running,
     ChaserSteps,
+    Paused,
+    LoadedSteps,
     Desk,
     Master,
     WidgetValues,
@@ -64,6 +67,8 @@ impl Topic {
             Topic::Remote => "remote",
             Topic::Running => "running",
             Topic::ChaserSteps => "chaserSteps",
+            Topic::Paused => "paused",
+            Topic::LoadedSteps => "loadedSteps",
             Topic::Desk => "desk",
             Topic::Master => "master",
             Topic::WidgetValues => "widgetValues",
@@ -131,6 +136,8 @@ impl Topic {
             Topic::Remote => json!(s.remote),
             Topic::Running => json!(s.running),
             Topic::ChaserSteps => json!(s.chaser_steps),
+            Topic::Paused => json!(s.paused),
+            Topic::LoadedSteps => json!(s.loaded_steps),
             Topic::Desk => json!(s.desk),
             Topic::Master => json!(s.master),
             Topic::WidgetValues => json!(s.widget_values),
@@ -147,7 +154,9 @@ pub fn is_live(op: &Op) -> bool {
     matches!(
         op,
         Op::SetFunctionRunning { .. }
+            | Op::SetFunctionPaused { .. }
             | Op::StepChaser { .. }
+            | Op::LoadStep { .. }
             | Op::StopAllFunctions
             | Op::Panic { .. }
             | Op::SetDeskLevel { .. }
@@ -525,19 +534,65 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             }
             vec![T::Running]
         }
-        // O passo pedido vai ao motor (no hub); parado, o chaser passa a rodar
-        Op::StepChaser { id, .. } => {
+        // Só uma criação rodando pausa
+        Op::SetFunctionPaused { id, paused } => {
+            if (paused && !s.running.contains(&id)) || paused == s.paused.contains(&id) {
+                return Ok((vec![], Value::Null));
+            }
+            s.paused.retain(|r| *r != id);
+            if paused {
+                s.paused.push(id);
+            }
+            vec![T::Paused]
+        }
+        // O passo pedido vai ao motor (no hub); parado, o chaser passa a rodar e, pausado, continua.
+        // Ir para o passo carregado o desfaz
+        Op::StepChaser { id, action } => {
             let chaser = |f: &Function| {
                 f.id == id && matches!(f.kind, FunctionKind::Chaser(_) | FunctionKind::Sequence(_))
             };
             if !p.functions.iter().any(chaser) {
                 return Err("A cue list só anda chasers e sequências.".into());
             }
-            if s.running.contains(&id) {
-                return Ok((vec![], Value::Null));
+            let mut topics = vec![];
+            if let StepAction::Go(i) = action
+                && s.loaded_steps.contains(&CurrentStep {
+                    chaser: id.clone(),
+                    step: i,
+                })
+            {
+                s.loaded_steps.retain(|l| l.chaser != id);
+                topics.push(T::LoadedSteps);
             }
-            s.running.push(id);
-            vec![T::Running]
+            if s.paused.contains(&id) {
+                s.paused.retain(|r| *r != id);
+                topics.push(T::Paused);
+            }
+            if !s.running.contains(&id) {
+                s.running.push(id);
+                topics.push(T::Running);
+            }
+            topics
+        }
+        Op::LoadStep { id, step } => {
+            let steps = p
+                .functions
+                .iter()
+                .find_map(|f| match &f.kind {
+                    FunctionKind::Chaser(c) | FunctionKind::Sequence(c) if f.id == id => {
+                        Some(c.steps.len())
+                    }
+                    _ => None,
+                })
+                .ok_or("A cue list só anda chasers e sequências.")?;
+            if step.is_some_and(|i| usize::from(i) >= steps) {
+                return Err("Passo fora do chaser.".into());
+            }
+            s.loaded_steps.retain(|l| l.chaser != id);
+            if let Some(step) = step {
+                s.loaded_steps.push(CurrentStep { chaser: id, step });
+            }
+            vec![T::LoadedSteps]
         }
         // Parar também baixa os sliders de playback. O pânico corta as cenas na hora (no hub); com
         // `all`, também zera a Mesa simples e desliga o padrão de teste, a prévia e o "Localizar".
@@ -855,8 +910,27 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Interfaces]
         }
     };
-    // Os grupos de canais que acompanham um grupo de fixtures refazem os canais (N1)
     let mut topics = topics;
+    // A criação que parou deixa de estar pausada, e sai o passo carregado que não existe mais
+    let paused = s.paused.len();
+    s.paused.retain(|id| s.running.contains(id));
+    if s.paused.len() < paused && !topics.contains(&T::Paused) {
+        topics.push(T::Paused);
+    }
+    let loaded = s.loaded_steps.len();
+    let functions = &s.project.functions;
+    s.loaded_steps.retain(|l| {
+        functions.iter().any(|f| match &f.kind {
+            FunctionKind::Chaser(c) | FunctionKind::Sequence(c) => {
+                f.id == l.chaser && usize::from(l.step) < c.steps.len()
+            }
+            _ => false,
+        })
+    });
+    if s.loaded_steps.len() < loaded && !topics.contains(&T::LoadedSteps) {
+        topics.push(T::LoadedSteps);
+    }
+    // Os grupos de canais que acompanham um grupo de fixtures refazem os canais (N1)
     let patch = [
         T::Fixtures,
         T::FixtureDefs,
@@ -1028,7 +1102,8 @@ pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
 
 /// Criações disparadas pelo usuário, na ordem de início, já resolvidas para o motor: as cenas e o pan
 /// e o tilt dos EFX nos endereços DMX, e os chasers e as coleções com o que disparam, os tempos que
-/// valem agora e a intensidade. Depois delas, os sliders de nível acesos. O RGB Matrix só acende na F9.
+/// valem agora, a intensidade, a prioridade e a pausa. Depois delas, os sliders de nível acesos, na
+/// prioridade Normal. O RGB Matrix só acende na F9.
 pub fn running_programs(s: &Snapshot) -> Vec<Run> {
     let mut runs: Vec<Run> = s
         .running
@@ -1038,10 +1113,13 @@ pub fn running_programs(s: &Snapshot) -> Vec<Run> {
             let flash = flashed(s, id);
             let cut = flash || playback_level(s, id).is_some();
             let play = Play { rate: 1.0, cut };
+            let function = s.project.functions.iter().find(|f| f.id == *id)?;
             Some(Run {
                 id: id.clone(),
                 program: program(s, id, [None; 3], &mut vec![], play)?,
                 intensity: if flash { 255 } else { intensity(s, id) },
+                priority: function.priority,
+                paused: s.paused.contains(id),
             })
         })
         .collect();
@@ -1077,10 +1155,10 @@ fn program(
         rate: play.rate * rate(s, id),
         ..play
     };
-    // A velocidade só muda os tempos em segundos: nos em batidas, manda o BPM
+    // A velocidade só muda os tempos em segundos (menos o hold infinito): nos em batidas, manda o BPM
     let ms = |span: Span| match span {
-        Span::Ms(ms) => Span::Ms((f64::from(ms) / play.rate).round() as u32),
-        beats => beats,
+        Span::Ms(ms) if ms != INFINITE => Span::Ms((f64::from(ms) / play.rate).round() as u32),
+        span => span,
     };
     let fade = |dial: Option<Span>, recorded: u32| match play.cut {
         true => Span::Ms(0),
@@ -1088,12 +1166,10 @@ fn program(
     };
     path.push(id.clone());
     let program = match &function.kind {
-        FunctionKind::Scene(scene) => Some(scene_program(
-            p,
-            &scene_values(p, scene),
-            fade(dial[0], scene.fade_in_ms),
-            fade(dial[1], scene.fade_out_ms),
-        )),
+        FunctionKind::Scene(scene) => {
+            let (times, parts) = scene_times(scene, [dial[0], dial[1]], fade);
+            Some(scene_program(p, &scene_values(p, scene), times, &parts))
+        }
         FunctionKind::Collection(c) => Some(Program::Collection(
             c.functions
                 .iter()
@@ -1107,15 +1183,14 @@ fn program(
                 SpeedMode::Common => Some(unit(common)),
                 SpeedMode::PerStep => Some(unit(step)),
             };
-            // Na sequência, os passos acendem a cena dela, e o "Padrão" são os fades da cena
+            // Na sequência, os passos acendem a cena dela, e o "Padrão" são os tempos da cena
             let scene = c.scene.as_ref().and_then(|scene| {
                 p.functions.iter().find_map(|f| match &f.kind {
                     FunctionKind::Scene(sc) if f.id == *scene => {
-                        let live = |i| live_time(s, &f.id, i);
-                        Some((
-                            live(0).unwrap_or(Span::Ms(sc.fade_in_ms)),
-                            live(1).unwrap_or(Span::Ms(sc.fade_out_ms)),
-                        ))
+                        let live = [live_time(s, &f.id, 0), live_time(s, &f.id, 1)];
+                        Some(scene_times(sc, live, |dial, recorded| {
+                            ms(dial.unwrap_or(Span::Ms(recorded)))
+                        }))
                     }
                     _ => None,
                 })
@@ -1128,20 +1203,48 @@ fn program(
                 .iter()
                 .map(|step| Step {
                     program: if sequence {
-                        let (fade_in, fade_out) = scene.unwrap_or((Span::Ms(0), Span::Ms(0)));
-                        scene_program(p, &step.values, ms(fade_in), ms(fade_out))
+                        let none = (Times::fades(Span::Ms(0), Span::Ms(0)), vec![]);
+                        let (times, parts) = scene.clone().unwrap_or(none);
+                        scene_program(p, &step.values, times, &parts)
                     } else {
                         // O passo com um EFX (ou um RGB Matrix) conta o tempo sem acender nada
                         program(s, &step.function, [None; 3], path, inner)
                             .unwrap_or(Program::Collection(vec![]))
                     },
-                    fade_in: dial[0]
-                        .or(time(
+                    // O delay de entrada e a curva vão com o fade in; o de saída, com o fade out
+                    times: Imposed {
+                        delay_in: time(
                             c.fade_in_mode,
-                            c.common.fade_in_ms,
-                            step.timing.fade_in_ms,
-                        ))
+                            c.common.delay_in_ms,
+                            step.timing.delay_in_ms,
+                        )
                         .map(ms),
+                        fade_in: dial[0]
+                            .or(time(
+                                c.fade_in_mode,
+                                c.common.fade_in_ms,
+                                step.timing.fade_in_ms,
+                            ))
+                            .map(ms),
+                        delay_out: time(
+                            c.fade_out_mode,
+                            c.common.delay_out_ms,
+                            step.timing.delay_out_ms,
+                        )
+                        .map(ms),
+                        fade_out: dial[1]
+                            .or(time(
+                                c.fade_out_mode,
+                                c.common.fade_out_ms,
+                                step.timing.fade_out_ms,
+                            ))
+                            .map(ms),
+                        curve: match c.fade_in_mode {
+                            SpeedMode::Default => None,
+                            SpeedMode::Common => Some(c.common.curve),
+                            SpeedMode::PerStep => Some(step.timing.curve),
+                        },
+                    },
                     // No hold, "Padrão" vale como "Comum". A duração do elemento em batidas vale em
                     // todos os chasers; a em segundos, só nos que não estão em batidas (neles, manda
                     // o BPM)
@@ -1151,13 +1254,6 @@ fn program(
                         _ if c.hold_mode == SpeedMode::PerStep => unit(step.timing.hold_ms),
                         _ => unit(c.common.hold_ms),
                     }),
-                    fade_out: dial[1]
-                        .or(time(
-                            c.fade_out_mode,
-                            c.common.fade_out_ms,
-                            step.timing.fade_out_ms,
-                        ))
-                        .map(ms),
                 })
                 .collect();
             Some(Program::Chaser(ChaserProgram {
@@ -1202,7 +1298,7 @@ fn program(
 
 /// Um botão do console apertado ou solto (A2). O botão de Flash ou Temp marca `[1]` no valor dele
 /// enquanto segura a criação que ele mesmo acendeu: só ela apaga ao soltar. A cue list chega já
-/// traduzida (`cue_list_op`), e os outros elementos não têm o que apertar.
+/// traduzida (`console_op`), e os outros elementos não têm o que apertar.
 fn press(
     s: &mut Snapshot,
     id: &str,
@@ -1277,7 +1373,8 @@ fn press(
             vec![T::WidgetValues]
         }
         ButtonAction::StopAll if down => apply(s, Op::StopAllFunctions)?.0,
-        ButtonAction::StopAll => vec![],
+        // O Voltar e o Pausar chegam já traduzidos (`console_op`)
+        ButtonAction::StopAll | ButtonAction::Previous | ButtonAction::Pause => vec![],
     })
 }
 
@@ -1301,44 +1398,75 @@ fn solo(s: &mut Snapshot, frame: Option<&Id>, keep: &Id) {
     s.running.retain(|r| !others.contains(r));
 }
 
-/// A cue list apertada vira a operação dela: play (que também para), stop, anterior e próximo. O
-/// passo vai direto ao motor, então a tradução acontece no hub, antes de aplicar.
-pub fn cue_list_op(s: &Snapshot, op: Op) -> Op {
-    let Op::PressWidget {
-        widget,
-        control,
-        down: true,
-    } = &op
-    else {
-        return op;
-    };
-    let chaser = s
-        .project
-        .console
-        .widgets
-        .iter()
-        .find_map(|w| match &w.kind {
-            VcWidgetKind::CueList(c) if w.id == *widget => c.chaser.clone(),
-            _ => None,
-        });
-    let Some(id) = chaser else {
-        return op;
-    };
-    let running = s.running.contains(&id);
-    match control {
-        InputControl::Main => Op::SetFunctionRunning {
-            id,
-            running: !running,
-        },
-        InputControl::Stop => Op::SetFunctionRunning { id, running: false },
-        InputControl::Next => Op::StepChaser {
+/// O que a cue list e os botões Voltar e Pausar fazem vira a operação que faz: o passo vai direto ao
+/// motor, então a tradução acontece no hub, antes de aplicar. Na cue list, o Go (o principal ou o
+/// "próximo") começa o chaser parado, continua o pausado e, rodando, vai para o passo seguinte; com um
+/// passo carregado, vai para ele.
+pub fn console_op(s: &Snapshot, op: Op) -> Op {
+    let (id, control) = match &op {
+        Op::PressWidget {
+            widget,
+            control,
+            down: true,
+        } => {
+            let target = s
+                .project
+                .console
+                .widgets
+                .iter()
+                .find_map(|w| match &w.kind {
+                    VcWidgetKind::CueList(c) if w.id == *widget => {
+                        Some((c.chaser.clone(), *control))
+                    }
+                    VcWidgetKind::Button(b)
+                        if w.id == *widget && *control == InputControl::Main =>
+                    {
+                        let control = match b.action {
+                            ButtonAction::Previous => InputControl::Previous,
+                            ButtonAction::Pause => InputControl::Pause,
+                            _ => return None,
+                        };
+                        Some((b.function.clone(), control))
+                    }
+                    _ => None,
+                });
+            let Some((Some(id), control)) = target else {
+                return op;
+            };
+            (id, control)
+        }
+        Op::StepChaser {
             id,
             action: StepAction::Next,
+        } => (id.clone(), InputControl::Next),
+        _ => return op,
+    };
+    let paused = s.paused.contains(&id);
+    let loaded = s.loaded_steps.iter().find(|l| l.chaser == id);
+    match control {
+        InputControl::Main if paused => Op::SetFunctionPaused { id, paused: false },
+        InputControl::Main | InputControl::Next => match loaded {
+            Some(l) => Op::StepChaser {
+                id,
+                action: StepAction::Go(l.step),
+            },
+            None if control == InputControl::Main && !s.running.contains(&id) => {
+                Op::SetFunctionRunning { id, running: true }
+            }
+            None => Op::StepChaser {
+                id,
+                action: StepAction::Next,
+            },
         },
         InputControl::Previous => Op::StepChaser {
             id,
             action: StepAction::Previous,
         },
+        InputControl::Pause => Op::SetFunctionPaused {
+            id,
+            paused: !paused,
+        },
+        InputControl::Stop => Op::SetFunctionRunning { id, running: false },
         _ => op,
     }
 }
@@ -1477,14 +1605,15 @@ fn level_sliders(s: &Snapshot) -> impl Iterator<Item = Run> {
             id: w.id.clone(),
             program: Program::Scene(SceneProgram {
                 levels,
-                fade_in: Span::Ms(0),
-                fade_out: Span::Ms(0),
+                times: Times::fades(Span::Ms(0), Span::Ms(0)),
             }),
             intensity: (submasters(p, w)
                 .map(|sub| submaster_level(s, sub))
                 .product::<f64>()
                 * 255.0)
                 .round() as u8,
+            priority: Priority::Normal,
+            paused: false,
         })
     })
 }
@@ -1541,10 +1670,49 @@ fn live_time(s: &Snapshot, id: &Id, index: usize) -> Option<Span> {
     })
 }
 
+/// Tempos de uma cena para o motor: os dela e os de cada tipo de atributo com tempos próprios (R3).
+/// `fades` são o fade in e o fade out ao vivo (o elemento "Tempos"), que valem em todos; `time` leva
+/// cada tempo ao motor (`time(ao vivo, gravado)`, com a velocidade e o "sem fades").
+fn scene_times(
+    scene: &Scene,
+    fades: [Option<Span>; 2],
+    time: impl Fn(Option<Span>, u32) -> Span,
+) -> (Times, Vec<(AttributeKind, Times)>) {
+    let times = |delay_in, fade_in, delay_out, fade_out| Times {
+        delay_in: time(None, delay_in),
+        fade_in: time(fades[0], fade_in),
+        delay_out: time(None, delay_out),
+        fade_out: time(fades[1], fade_out),
+        curve: scene.curve,
+    };
+    let parts = scene
+        .attribute_times
+        .iter()
+        .map(|a| {
+            let t = times(a.delay_in_ms, a.fade_in_ms, a.delay_out_ms, a.fade_out_ms);
+            (a.kind, t)
+        })
+        .collect();
+    let own = times(
+        scene.delay_in_ms,
+        scene.fade_in_ms,
+        scene.delay_out_ms,
+        scene.fade_out_ms,
+    );
+    (own, parts)
+}
+
 /// Valores de uma cena (ou de um passo de sequência) nos endereços DMX. O canal fino vai junto do
-/// grosso, para o fade em 16 bits; sem o fino na cena, ele vale 0.
-fn scene_program(p: &Project, values: &[SceneValue], fade_in: Span, fade_out: Span) -> Program {
-    let mut levels = Vec::new();
+/// grosso, para o fade em 16 bits; sem o fino na cena, ele vale 0. Com tempos próprios de tipos de
+/// atributo (`parts`), a cena vira uma coleção, que o motor acende junta: uma parte com os tempos da
+/// cena e uma para cada tipo.
+fn scene_program(
+    p: &Project,
+    values: &[SceneValue],
+    times: Times,
+    parts: &[(AttributeKind, Times)],
+) -> Program {
+    let mut levels: Vec<Vec<SceneLevel>> = vec![vec![]; parts.len() + 1];
     for fixture in &p.fixtures {
         // Valores da cena nesta fixture, pela posição do canal no modo
         let values: Vec<(usize, u8)> = values
@@ -1580,7 +1748,10 @@ fn scene_program(p: &Project, values: &[SceneValue], fade_in: Span, fade_out: Sp
             let fine = pair
                 .filter(|_| !channel.fine)
                 .and_then(|i| channel_address(p, &fixture.id, i as u16));
-            levels.push(SceneLevel {
+            let part = attribute_kind(channel.attribute)
+                .and_then(|kind| parts.iter().position(|(k, _)| *k == kind))
+                .map_or(0, |i| i + 1);
+            levels[part].push(SceneLevel {
                 universe: address.universe,
                 channel: address.channel,
                 value: match fine {
@@ -1591,11 +1762,28 @@ fn scene_program(p: &Project, values: &[SceneValue], fade_in: Span, fade_out: Sp
             });
         }
     }
-    Program::Scene(SceneProgram {
-        levels,
-        fade_in,
-        fade_out,
-    })
+    let all = std::iter::once(times).chain(parts.iter().map(|(_, t)| *t));
+    let mut scenes = levels
+        .into_iter()
+        .zip(all)
+        .map(|(levels, times)| Program::Scene(SceneProgram { levels, times }));
+    match parts.is_empty() {
+        true => scenes.next().expect("a parte com os tempos da cena"),
+        false => Program::Collection(scenes.collect()),
+    }
+}
+
+/// Tipo de atributo dos tempos próprios da cena (R3): as abas do editor de cena.
+fn attribute_kind(attribute: Attribute) -> Option<AttributeKind> {
+    use Attribute::*;
+    match attribute {
+        Dimmer => Some(AttributeKind::Intensity),
+        Red | Green | Blue | White | Amber | Uv | Lime | Indigo | Cyan | Magenta | Yellow
+        | ColorWheel | ColorMacro | ColorTemperature => Some(AttributeKind::Color),
+        Pan | Tilt => Some(AttributeKind::Position),
+        Shutter | Gobo | GoboRotation | Prism | Focus | Zoom | Iris => Some(AttributeKind::Effects),
+        Speed | Effect | Maintenance | Other => None,
+    }
 }
 
 /// Pan e tilt de uma fixture nos endereços DMX: o primeiro canal grosso de cada um, com o fino dele.
@@ -2376,8 +2564,8 @@ mod tests {
             .into_iter()
             .find(|r| r.id == id)
             .unwrap();
-        let scene = scene_of(&run.program);
-        (scene.fade_in, scene.fade_out, run.intensity)
+        let times = scene_of(&run.program).times;
+        (times.fade_in, times.fade_out, run.intensity)
     }
 
     fn button(w: &mut VcWidget) -> &mut VcButton {
@@ -2568,7 +2756,11 @@ mod tests {
             let runs = running_programs(s);
             let scene = scene_of(&runs[0].program);
             let step = &chaser_of(&runs[1].program).steps[0];
-            [Some(scene.fade_in), step.fade_in, Some(step.hold)]
+            [
+                Some(scene.times.fade_in),
+                step.times.fade_in,
+                Some(step.hold),
+            ]
         };
         let ms = |v| Some(Span::Ms(v));
         let normal = times(&s);
@@ -2596,29 +2788,120 @@ mod tests {
     }
 
     #[test]
-    fn cue_list_press_becomes_play_stop_and_steps() {
+    fn cue_list_press_becomes_go_back_pause_and_stop() {
         let mut s = example();
-        let op = |control, down| Op::PressWidget {
-            widget: "cl1".into(),
+        let op = |widget: &str, control, down| Op::PressWidget {
+            widget: widget.into(),
             control,
             down,
         };
+        let go = |s: &Snapshot| console_op(s, op("cl3", InputControl::Main, true));
         let play = |running| Op::SetFunctionRunning {
-            id: "c1".into(),
+            id: "c2".into(),
             running,
         };
-        assert_eq!(cue_list_op(&s, op(InputControl::Main, true)), play(true));
-        run(&mut s, "c1");
-        assert_eq!(cue_list_op(&s, op(InputControl::Main, true)), play(false));
-        assert_eq!(cue_list_op(&s, op(InputControl::Stop, true)), play(false));
-        let step = Op::StepChaser {
-            id: "c1".into(),
-            action: StepAction::Next,
+        let step = |action| Op::StepChaser {
+            id: "c2".into(),
+            action,
         };
-        assert_eq!(cue_list_op(&s, op(InputControl::Next, true)), step);
+        let pause = |paused| Op::SetFunctionPaused {
+            id: "c2".into(),
+            paused,
+        };
+        // Parado, o Go começa; rodando, vai para o passo seguinte; pausado, continua
+        assert_eq!(go(&s), play(true));
+        run(&mut s, "c2");
+        assert_eq!(go(&s), step(StepAction::Next));
+        let back = op("cl3", InputControl::Previous, true);
+        assert_eq!(console_op(&s, back), step(StepAction::Previous));
+        let paused = console_op(&s, op("cl3", InputControl::Pause, true));
+        assert_eq!(paused, pause(true));
+        apply(&mut s, paused).unwrap();
+        assert_eq!(go(&s), pause(false));
+        let stop = console_op(&s, op("cl3", InputControl::Stop, true));
+        assert_eq!(stop, play(false));
+        // Os botões Voltar e Pausar do roteiro fazem o mesmo
+        assert_eq!(
+            console_op(&s, op("b13", InputControl::Main, true)),
+            step(StepAction::Previous)
+        );
+        assert_eq!(
+            console_op(&s, op("b14", InputControl::Main, true)),
+            pause(false)
+        );
+        // Com um passo carregado, o Go (e o "próximo" de outro lugar) vai para ele
+        let load = Op::LoadStep {
+            id: "c2".into(),
+            step: Some(3),
+        };
+        apply(&mut s, load).unwrap();
+        apply(&mut s, pause(false)).unwrap();
+        assert_eq!(go(&s), step(StepAction::Go(3)));
+        assert_eq!(
+            console_op(&s, step(StepAction::Next)),
+            step(StepAction::Go(3))
+        );
         // Soltar não vira nada
-        let up = op(InputControl::Next, false);
-        assert_eq!(cue_list_op(&s, up.clone()), up);
+        let up = op("cl3", InputControl::Main, false);
+        assert_eq!(console_op(&s, up.clone()), up);
+    }
+
+    #[test]
+    fn pause_and_the_loaded_step_follow_the_running_chaser() {
+        let mut s = example();
+        let pause = |paused| Op::SetFunctionPaused {
+            id: "c2".into(),
+            paused,
+        };
+        // Parada, a criação não pausa
+        assert!(apply(&mut s, pause(true)).unwrap().0.is_empty());
+        run(&mut s, "c2");
+        apply(&mut s, pause(true)).unwrap();
+        assert_eq!(s.paused, ["c2"]);
+        assert!(
+            running_programs(&s)
+                .iter()
+                .any(|r| r.id == "c2" && r.paused)
+        );
+        // Ir para um passo continua a criação pausada; ir para o carregado o desfaz
+        let load = |step| Op::LoadStep {
+            id: "c2".into(),
+            step,
+        };
+        assert!(apply(&mut s, load(Some(9))).is_err());
+        apply(&mut s, load(Some(2))).unwrap();
+        let go = |i| Op::StepChaser {
+            id: "c2".into(),
+            action: StepAction::Go(i),
+        };
+        let (topics, _) = apply(&mut s, go(1)).unwrap();
+        assert_eq!(topics, [Topic::Paused]);
+        assert_eq!(s.loaded_steps.len(), 1);
+        apply(&mut s, go(2)).unwrap();
+        assert!(s.loaded_steps.is_empty());
+        // Parada, deixa de estar pausada; o passo carregado fica para o próximo Go
+        apply(&mut s, pause(true)).unwrap();
+        apply(&mut s, load(Some(1))).unwrap();
+        let stop = Op::SetFunctionRunning {
+            id: "c2".into(),
+            running: false,
+        };
+        let (topics, _) = apply(&mut s, stop).unwrap();
+        assert_eq!(topics, [Topic::Running, Topic::Paused]);
+        assert_eq!(s.loaded_steps.len(), 1);
+        // O passo carregado sai quando o passo deixa de existir
+        let mut f = s
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "c2")
+            .unwrap()
+            .clone();
+        if let FunctionKind::Chaser(c) = &mut f.kind {
+            c.steps.truncate(1);
+        }
+        let (topics, _) = apply(&mut s, Op::SaveFunction { function: f }).unwrap();
+        assert!(topics.contains(&Topic::LoadedSteps) && s.loaded_steps.is_empty());
     }
 
     /// A cena de uma criação rodando.
@@ -2653,7 +2936,7 @@ mod tests {
         let runs = running_programs(&s);
         let ids: Vec<&str> = runs.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(ids, ["s4", "s1"]);
-        assert_eq!(scene_of(&runs[0].program).fade_in, Span::Ms(1000));
+        assert_eq!(scene_of(&runs[0].program).times.fade_in, Span::Ms(1000));
         // MH 1 no 101: pan e tilt levam o fino junto, em 16 bits (sem o fino na cena, ele vale 0)
         let at = |runs: &[Run], channel: u16| {
             let levels = &scene_of(&runs[0].program).levels;
@@ -2712,7 +2995,7 @@ mod tests {
         let fades = |s: &Snapshot| {
             let times = |r: &Run| {
                 let scene = scene_of(&r.program);
-                (scene.fade_in, scene.fade_out)
+                (scene.times.fade_in, scene.times.fade_out)
             };
             running_programs(s).iter().map(times).collect::<Vec<_>>()
         };
@@ -2773,19 +3056,92 @@ mod tests {
     }
 
     #[test]
+    fn scenes_go_with_delays_curve_priority_and_times_by_attribute() {
+        let mut s = example();
+        for id in ["s6", "s7", "s8", "s9"] {
+            run(&mut s, id);
+        }
+        let runs = running_programs(&s);
+        let run_of = |id: &str| runs.iter().find(|r| r.id == id).unwrap();
+        let priorities = ["s6", "s7", "s8"].map(|id| run_of(id).priority);
+        assert_eq!(
+            priorities,
+            [Priority::Low, Priority::High, Priority::Normal]
+        );
+        let t = scene_of(&run_of("s8").program).times;
+        assert_eq!(
+            (t.delay_in, t.fade_in, t.delay_out, t.fade_out, t.curve),
+            (
+                Span::Ms(1000),
+                Span::Ms(3000),
+                Span::Ms(2000),
+                Span::Ms(3000),
+                Curve::EaseInOut
+            )
+        );
+        // "Cor no escuro" vira três partes: a com os tempos da cena (o strobo), a da intensidade (o
+        // dimmer) e a da cor (as cores e a macro). O ParLed #01 vai do 63 ao 71
+        let Program::Collection(parts) = &run_of("s9").program else {
+            panic!("a cena não foi dividida");
+        };
+        let channels = |i: usize| -> Vec<u16> {
+            let levels = &scene_of(&parts[i]).levels;
+            let first = levels.iter().filter(|l| (63..=71).contains(&l.channel));
+            first.map(|l| l.channel).collect()
+        };
+        assert_eq!(
+            [channels(0), channels(1), channels(2)],
+            [vec![70], vec![63], vec![64, 65, 66, 67, 68, 69, 71]]
+        );
+        let times = |i: usize| scene_of(&parts[i]).times;
+        assert_eq!(
+            (times(1).delay_in, times(1).fade_in, times(1).fade_out),
+            (Span::Ms(2000), Span::Ms(3000), Span::Ms(3000))
+        );
+        assert_eq!(
+            (times(2).fade_in, times(2).delay_out),
+            (Span::Ms(0), Span::Ms(3000))
+        );
+
+        // O roteiro: o hold infinito não muda com a velocidade, e o passo usa os tempos da cena
+        let mut rate = widget(&s, "sl3");
+        rate.id = "rt".into();
+        let rt = slider(&mut rate);
+        (rt.mode, rt.functions) = (SliderMode::Rate, vec!["c2".into()]);
+        save_widget(&mut s, rate);
+        set_value(&mut s, "rt", vec![255]);
+        run(&mut s, "c2");
+        let roteiro = |s: &Snapshot| {
+            let runs = running_programs(s);
+            let c2 = runs.iter().find(|r| r.id == "c2").unwrap();
+            chaser_of(&c2.program).steps[2].clone()
+        };
+        let step = roteiro(&s);
+        assert_eq!(step.hold, Span::Ms(INFINITE));
+        assert_eq!(step.times, Imposed::default());
+        // Em "Comum", o passo impõe o delay, o fade e a curva comuns a todas as partes da cena
+        chaser_mut(&mut s, "c2").fade_in_mode = SpeedMode::Common;
+        let imposed = roteiro(&s).times;
+        assert_eq!(
+            (imposed.delay_in, imposed.fade_in, imposed.curve),
+            (Some(Span::Ms(0)), Some(Span::Ms(0)), Some(Curve::Linear))
+        );
+    }
+
+    #[test]
     fn chasers_go_with_their_steps_and_the_times_that_hold() {
         let mut s = example();
         run(&mut s, "c1");
         let times = |s: &Snapshot| {
             let runs = running_programs(s);
             let step = &chaser_of(&runs[0].program).steps[0];
-            (step.fade_in, step.hold, step.fade_out)
+            (step.times.fade_in, step.hold, step.times.fade_out)
         };
         // "Troca de cores": fade in e hold por passo (1 s e 2 s), fade out da cena
         let c1 = &running_programs(&s)[0].program;
         assert_eq!(chaser_of(c1).steps.len(), 3);
         assert_eq!(
-            scene_of(&chaser_of(c1).steps[0].program).fade_out,
+            scene_of(&chaser_of(c1).steps[0].program).times.fade_out,
             Span::Ms(1000)
         );
         assert_eq!(times(&s), (Some(Span::Ms(1000)), Span::Ms(2000), None));
@@ -2846,8 +3202,8 @@ mod tests {
             panic!("q1 não é sequência")
         };
         assert_eq!(first.levels.len(), sequence.steps[0].values.len());
-        assert_eq!(first.fade_in, Span::Ms(1000));
-        assert_eq!(q1.steps[0].fade_in, Some(Span::Ms(800)));
+        assert_eq!(first.times.fade_in, Span::Ms(1000));
+        assert_eq!(q1.steps[0].times.fade_in, Some(Span::Ms(800)));
         // "Abertura": o chaser, as duas cenas e o EFX
         let Program::Collection(k1) = &runs[1].program else {
             panic!("k1 não é coleção")
@@ -3121,8 +3477,12 @@ mod tests {
                 ],
             }],
             channel_groups: vec![],
+            delay_in_ms: 0,
             fade_in_ms: 0,
+            delay_out_ms: 0,
             fade_out_ms: 0,
+            curve: Curve::Linear,
+            attribute_times: vec![],
         };
         let values = scene_values(&s.project, &scene);
         let of = |channel| {

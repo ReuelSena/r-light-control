@@ -12,8 +12,14 @@ export type ConsoleFormat = keyof VcLayouts
 
 export const layoutFormats: ConsoleFormat[] = ['phone', 'tablet', 'desktop']
 
-/** Colunas da grade de cada formato. A célula é quadrada e acompanha a largura da tela. */
+/** Colunas da grade de cada formato. */
 export const formatColumns: Record<ConsoleFormat, number> = { phone: 64, tablet: 128, desktop: 192 }
+
+/**
+ * Lado da célula (px) de cada formato, no zoom de 100% do console. É fixo: a janela não o muda, então a
+ * área do console tem sempre o mesmo tamanho (colunas × célula) e rola se não couber na tela.
+ */
+export const formatCell: Record<ConsoleFormat, number> = { phone: 7, tablet: 4, desktop: 6 }
 
 /** Linhas do cabeçalho de uma moldura, onde os elementos de dentro não entram. */
 export const frameHeader = 4
@@ -22,7 +28,7 @@ export const frameHeader = 4
 export const widgetKinds: Record<WidgetType, { icon: Component; size: [number, number]; inputs: InputControl[]; keys: boolean }> = {
   button: { icon: RectangleHorizontal, size: [16, 16], inputs: ['main'], keys: true },
   slider: { icon: SlidersVertical, size: [16, 48], inputs: ['main'], keys: false },
-  cueList: { icon: ListOrdered, size: [64, 48], inputs: ['main', 'previous', 'next', 'stop'], keys: true },
+  cueList: { icon: ListOrdered, size: [64, 48], inputs: ['main', 'previous', 'pause', 'stop'], keys: true },
   xyPad: { icon: Move, size: [32, 48], inputs: ['x', 'y'], keys: false },
   speedDial: { icon: Timer, size: [48, 32], inputs: ['tap'], keys: true },
   frame: { icon: SquareDashed, size: [64, 48], inputs: [], keys: false },

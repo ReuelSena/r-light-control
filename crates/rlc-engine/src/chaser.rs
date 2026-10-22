@@ -6,12 +6,12 @@ use std::time::{Duration, Instant};
 
 use rlc_core::{Direction, RunOrder, StepAction};
 
-use crate::{ChaserProgram, Ctx, Fades, Node, Program, Span, TICK};
+use crate::{ChaserProgram, Ctx, Imposed, Node, Program, Span, TICK};
 
 pub(crate) struct Runner {
     chaser: ChaserProgram,
     /// Tempos impostos pelo passo de um chaser de fora (um chaser dentro do outro).
-    fades: Fades,
+    imposed: Imposed,
     /// Último passo que começou.
     pub(crate) step: Option<usize>,
     pub(crate) active: Option<Active>,
@@ -33,17 +33,17 @@ pub(crate) struct Active {
     /// pedido da cue list).
     start: u64,
     chained: bool,
-    /// Fade in do passo, já em tempo: conta na duração dele.
-    fade_in: Duration,
+    /// Delay e fade de entrada do passo, já em tempo: contam na duração dele.
+    entry: Duration,
 }
 
 impl Runner {
-    pub(crate) fn new(chaser: ChaserProgram, fades: Fades) -> Self {
+    pub(crate) fn new(chaser: ChaserProgram, imposed: Imposed) -> Self {
         Self {
             forward: chaser.direction == Direction::Forward,
             order: shuffled(chaser.steps.len()),
             chaser,
-            fades,
+            imposed,
             step: None,
             active: None,
             pending: None,
@@ -104,11 +104,8 @@ impl Runner {
             ctx.stop(&old.node);
         }
         let step = &self.chaser.steps[index];
-        let fades = (
-            self.fades.0.or(step.fade_in),
-            self.fades.1.or(step.fade_out),
-        );
-        let mut node = ctx.start(step.program.clone(), fades);
+        let imposed = self.imposed.or(step.times);
+        let mut node = ctx.start(step.program.clone(), imposed);
         // Um chaser dentro do passo já acende o primeiro passo dele neste quadro
         ctx.tick(&mut node);
         self.active = Some(Active {
@@ -116,9 +113,18 @@ impl Runner {
             since,
             start: start.unwrap_or(ctx.beat_pos),
             chained: start.is_some(),
-            fade_in: fade_in(fades.0, &step.program, ctx.beat),
+            entry: entry(imposed, &step.program, ctx.beat),
         });
         self.step = Some(index);
+    }
+
+    /// Pausado: o passo não anda, nem o que ele acendeu.
+    pub(crate) fn shift(&mut self, gap: Duration, beats: u64) {
+        if let Some(active) = &mut self.active {
+            active.since += gap;
+            active.start += beats;
+            active.node.shift(gap, beats);
+        }
     }
 
     /// O passo atual acabou? Devolve de onde conta o seguinte, para os passos não atrasarem: no
@@ -129,7 +135,7 @@ impl Runner {
         let step = self.chaser.steps.get(self.step?)?;
         match step.hold {
             Span::Ms(hold) => {
-                let length = active.fade_in + Duration::from_millis(hold.into());
+                let length = active.entry + Duration::from_millis(hold.into());
                 let due = active.since + length.max(TICK);
                 if ctx.now + TICK / 2 < due {
                     return None;
@@ -143,8 +149,8 @@ impl Runner {
                 Some((since, None))
             }
             Span::Beats(hold) => {
-                // O fade in em tempo (o da cena, no "Padrão") conta pelas batidas de agora
-                let fade = active.fade_in.as_micros() * 1000 / ctx.beat.as_micros().max(1);
+                // A entrada em tempo (a da cena, no "Padrão") conta pelas batidas de agora
+                let fade = active.entry.as_micros() * 1000 / ctx.beat.as_micros().max(1);
                 let length = fade as u64 + u64::from(hold);
                 // Disparado fora da grade da batida (ou da fração dela, num passo menor que uma
                 // batida), o passo acaba no ponto seguinte da grade: o primeiro pode ser mais curto,
@@ -212,7 +218,7 @@ impl Runner {
 
     /// Edição com o chaser rodando: o passo atual continua, com os valores e os tempos novos; a ordem,
     /// o sentido e os passos novos valem a partir da próxima troca.
-    pub(crate) fn update(&mut self, chaser: ChaserProgram, fades: Fades, ctx: &mut Ctx) {
+    pub(crate) fn update(&mut self, chaser: ChaserProgram, imposed: Imposed, ctx: &mut Ctx) {
         if chaser.direction != self.chaser.direction {
             self.forward = chaser.direction == Direction::Forward;
         }
@@ -220,18 +226,15 @@ impl Runner {
             self.order = shuffled(chaser.steps.len());
         }
         self.chaser = chaser;
-        self.fades = fades;
+        self.imposed = imposed;
         let (Some(i), Some(active)) = (self.step, &mut self.active) else {
             return;
         };
         match self.chaser.steps.get(i) {
             Some(step) => {
-                let fades = (
-                    self.fades.0.or(step.fade_in),
-                    self.fades.1.or(step.fade_out),
-                );
-                active.fade_in = fade_in(fades.0, &step.program, ctx.beat);
-                ctx.update(&mut active.node, step.program.clone(), fades);
+                let imposed = self.imposed.or(step.times);
+                active.entry = entry(imposed, &step.program, ctx.beat);
+                ctx.update(&mut active.node, step.program.clone(), imposed);
             }
             // O passo atual saiu do chaser: vai para o seguinte
             None => self.pending = self.pending.or(Some(StepAction::Next)),
@@ -239,19 +242,22 @@ impl Runner {
     }
 }
 
-/// Fade in do passo, em tempo, que conta na duração dele: o imposto pelo chaser ou, sem ele, o da
-/// própria criação do passo.
-fn fade_in(imposed: Option<Span>, program: &Program, beat: Duration) -> Duration {
-    match (imposed, program) {
-        (Some(span), _) => span.duration(beat),
-        (None, Program::Scene(scene)) => scene.fade_in.duration(beat),
-        (None, Program::Efx(efx)) => efx.fade_in.duration(beat),
-        (None, Program::Collection(programs)) => programs
+/// Delay e fade de entrada do passo, em tempo, que contam na duração dele: os impostos pelo chaser ou,
+/// sem eles, os da própria criação do passo (numa coleção, os da mais longa).
+fn entry(imposed: Imposed, program: &Program, beat: Duration) -> Duration {
+    let own = |delay: Span, fade: Span| {
+        imposed.delay_in.unwrap_or(delay).duration(beat)
+            + imposed.fade_in.unwrap_or(fade).duration(beat)
+    };
+    match program {
+        Program::Scene(scene) => own(scene.times.delay_in, scene.times.fade_in),
+        Program::Efx(efx) => own(Span::Ms(0), efx.fade_in),
+        Program::Collection(programs) if !programs.is_empty() => programs
             .iter()
-            .map(|p| fade_in(None, p, beat))
+            .map(|p| entry(imposed, p, beat))
             .max()
             .unwrap_or_default(),
-        (None, Program::Chaser(_)) => Duration::ZERO,
+        Program::Collection(_) | Program::Chaser(_) => own(Span::Ms(0), Span::Ms(0)),
     }
 }
 
@@ -266,7 +272,7 @@ mod tests {
     use super::*;
     use crate::Step;
     use crate::tests::{patched, run, scene};
-    use crate::{Command, State};
+    use crate::{Command, Run, State};
     use Direction::*;
     use RunOrder::*;
 
@@ -275,9 +281,8 @@ mod tests {
         let steps = (1..=n)
             .map(|k| Step {
                 program: scene(&[(3, 10 * k)], 0),
-                fade_in: None,
+                times: Imposed::default(),
                 hold: Span::Ms(hold_ms),
-                fade_out: None,
             })
             .collect();
         ChaserProgram {
@@ -371,9 +376,12 @@ mod tests {
         let blue = scene(&[(1, 255), (2, 0), (5, 255)], 0);
         let step = |program| Step {
             program,
-            fade_in: Some(Span::Ms(40)),
+            times: Imposed {
+                fade_in: Some(Span::Ms(40)),
+                fade_out: Some(Span::Ms(40)),
+                ..Imposed::default()
+            },
             hold: Span::Ms(60),
-            fade_out: Some(Span::Ms(40)),
         };
         let (mut s, t0) = started(ChaserProgram {
             steps: vec![step(red), step(blue)],
@@ -528,9 +536,8 @@ mod tests {
         // O passo 1 é outro chaser (pan 10 e 20, um quadro cada); o passo 2, uma cena com o pan em 90
         let step = |program| Step {
             program,
-            fade_in: None,
+            times: Imposed::default(),
             hold: Span::Ms(100),
-            fade_out: None,
         };
         let (mut s, t0) = started(ChaserProgram {
             steps: vec![
@@ -540,5 +547,46 @@ mod tests {
             ..chaser(0, 0, Loop, Forward)
         });
         assert_eq!(played(&mut s, t0, 0..10), [1, 2, 1, 2, 1, 9, 9, 9, 9, 9]);
+    }
+
+    #[test]
+    fn an_infinite_hold_waits_for_the_go() {
+        let (mut s, t0) = started(chaser(3, u32::MAX, Loop, Forward));
+        assert_eq!(played(&mut s, t0, 0..500), vec![1; 500]);
+        go(&mut s, t0 + TICK * 500, StepAction::Next);
+        assert_eq!(played(&mut s, t0, 500..502), [2, 2]);
+    }
+
+    #[test]
+    fn the_entry_delay_counts_in_the_step() {
+        // Delay de entrada de 2 quadros e hold de 3: cada passo dura 5 quadros, e o que sai apaga
+        // enquanto o seguinte espera
+        let mut c = chaser(2, 60, Loop, Forward);
+        for step in &mut c.steps {
+            step.times.delay_in = Some(Span::Ms(40));
+        }
+        let (mut s, t0) = started(c);
+        assert_eq!(
+            played(&mut s, t0, 0..12),
+            [0, 0, 1, 1, 1, 0, 0, 2, 2, 2, 0, 0]
+        );
+    }
+
+    #[test]
+    fn a_paused_chaser_holds_its_step() {
+        // Passos de 5 quadros: pausado no quarto, o passo continua o mesmo; ao continuar, faltam 2
+        let (mut s, t0) = started(chaser(2, 100, Loop, Forward));
+        let pause = |s: &mut State, k: u32, paused: bool| {
+            let c = Run {
+                paused,
+                ..run("c", Program::Chaser(chaser(2, 100, Loop, Forward)))
+            };
+            s.apply(Command::Running(vec![c]), t0 + TICK * k);
+        };
+        assert_eq!(played(&mut s, t0, 0..3), [1, 1, 1]);
+        pause(&mut s, 3, true);
+        assert_eq!(played(&mut s, t0, 3..20), vec![1; 17]);
+        pause(&mut s, 20, false);
+        assert_eq!(played(&mut s, t0, 20..24), [1, 1, 2, 2]);
     }
 }

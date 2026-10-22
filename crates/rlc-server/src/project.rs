@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 8;
+const SCHEMA_VERSION: u32 = 9;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -202,6 +202,60 @@ fn migrate(project: &mut Value, version: u32) {
             g.entry("attributes").or_insert(json!([]));
         }
     }
+    // 8 → 9 (F10c): a prioridade Normal (a mistura de antes), os delays zerados e a curva linear nas
+    // cenas e nos tempos dos chasers, e nenhum tipo de atributo com tempos próprios. Na cue list, o
+    // "próximo" virou o Go (o principal)
+    if version < 9 {
+        let delays = |t: &mut serde_json::Map<String, Value>| {
+            t.entry("delayInMs").or_insert(0.into());
+            t.entry("delayOutMs").or_insert(0.into());
+            t.entry("curve").or_insert("linear".into());
+        };
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+        {
+            f.entry("priority").or_insert("normal".into());
+            match f.get("type").and_then(Value::as_str) {
+                Some("scene") => {
+                    delays(f);
+                    f.entry("attributeTimes").or_insert(json!([]));
+                }
+                Some("chaser" | "sequence") => {
+                    if let Some(common) = f.get_mut("common").and_then(Value::as_object_mut) {
+                        delays(common);
+                    }
+                    let steps = f.get_mut("steps").and_then(Value::as_array_mut);
+                    for timing in steps
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|s| s.get_mut("timing").and_then(Value::as_object_mut))
+                    {
+                        delays(timing);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let widgets = project
+            .pointer_mut("/console/widgets")
+            .and_then(Value::as_array_mut);
+        for w in widgets.into_iter().flatten() {
+            if w["type"] != "cueList" {
+                continue;
+            }
+            let Some(inputs) = w.get_mut("inputs").and_then(Value::as_array_mut) else {
+                continue;
+            };
+            let main = inputs.iter().any(|i| i["control"] == "main");
+            inputs.retain(|i| !(main && i["control"] == "next"));
+            for i in inputs.iter_mut().filter(|i| i["control"] == "next") {
+                i["control"] = "main".into();
+            }
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -285,7 +339,12 @@ mod tests {
     fn version_1_opens_migrated() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let project = crate::hub::example_snapshot(None).project;
+        let mut project = crate::hub::example_snapshot(None).project;
+        for f in &mut project.functions {
+            if let rlc_core::FunctionKind::Chaser(c) = &mut f.kind {
+                c.keep_last = false;
+            }
+        }
         // O arquivo como a versão 1 gravava: os chasers sem o "keepLast" (abrem apagando no fim) e o
         // elemento "Tempos" sem o "beats" (abre seguindo o BPM)
         let mut old = serde_json::to_value(&project).unwrap();
@@ -393,6 +452,65 @@ mod tests {
         let file = dir.join("antigo.rlc");
         let v7 = json!({ "format": FORMAT, "schemaVersion": 7, "project": old });
         std::fs::write(&file, v7.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_8_opens_with_normal_priority_linear_fades_and_the_go_in_the_cue_list() {
+        use rlc_core::{Curve, FunctionKind, Priority};
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut project = crate::hub::example_snapshot(None).project;
+        for f in &mut project.functions {
+            f.priority = Priority::Normal;
+            match &mut f.kind {
+                FunctionKind::Scene(scene) => {
+                    (scene.delay_in_ms, scene.delay_out_ms) = (0, 0);
+                    scene.curve = Curve::Linear;
+                    scene.attribute_times.clear();
+                }
+                FunctionKind::Chaser(c) | FunctionKind::Sequence(c) => {
+                    let steps = c.steps.iter_mut().map(|s| &mut s.timing);
+                    for t in std::iter::once(&mut c.common).chain(steps) {
+                        (t.delay_in_ms, t.delay_out_ms) = (0, 0);
+                        t.curve = Curve::Linear;
+                    }
+                }
+                _ => {}
+            }
+        }
+        // A versão 8 não tinha nada disso, e o Go da cue list era o "próximo"
+        fn strip(v: &mut Value) {
+            match v {
+                Value::Object(o) => {
+                    for key in [
+                        "priority",
+                        "delayInMs",
+                        "delayOutMs",
+                        "curve",
+                        "attributeTimes",
+                    ] {
+                        o.remove(key);
+                    }
+                    o.values_mut().for_each(strip);
+                }
+                Value::Array(a) => a.iter_mut().for_each(strip),
+                _ => {}
+            }
+        }
+        let mut old = serde_json::to_value(&project).unwrap();
+        strip(&mut old["functions"]);
+        let cue_list = old["console"]["widgets"].as_array_mut().unwrap();
+        let cl1 = cue_list.iter_mut().find(|w| w["id"] == "cl1").unwrap();
+        for input in cl1["inputs"].as_array_mut().unwrap() {
+            if input["control"] == "main" {
+                input["control"] = "next".into();
+            }
+        }
+        let file = dir.join("antigo.rlc");
+        let v8 = json!({ "format": FORMAT, "schemaVersion": 8, "project": old });
+        std::fs::write(&file, v8.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

@@ -29,6 +29,8 @@ function defaultIcon() {
   const w = props.widget
   if (w.type !== 'button') return null
   if (w.action === 'stopAll') return 'OctagonX'
+  if (w.action === 'previous') return 'ChevronLeft'
+  if (w.action === 'pause') return 'Pause'
   if (w.action !== 'function' && w.action !== 'exclusive') return 'LightbulbOff'
   const type = project.value.functions.find((f) => f.id === w.function)?.type ?? 'scene'
   return { scene: 'Camera', chaser: 'Repeat', sequence: 'Film', collection: 'Layers', efx: 'Orbit', rgbMatrix: 'LayoutGrid' }[type]
@@ -95,14 +97,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
       <label class="field-label">
         {{ t('vc.action') }}
         <select class="field" :value="widget.action" @change="save({ action: pick($event) })">
-          <option v-for="a in ['function', 'exclusive', 'blackout', 'blackoutFixtures', 'stopAll']" :key="a" :value="a">{{ t(`vc.actions.${a}`) }}</option>
+          <option v-for="a in ['function', 'exclusive', 'previous', 'pause', 'blackout', 'blackoutFixtures', 'stopAll']" :key="a" :value="a">{{ t(`vc.actions.${a}`) }}</option>
         </select>
       </label>
-      <label v-if="widget.action === 'function' || widget.action === 'exclusive'" class="field-label">
-        {{ t('vc.function') }}
+      <!-- O Voltar anda só chasers e sequências -->
+      <label v-if="['function', 'exclusive', 'previous', 'pause'].includes(widget.action)" class="field-label">
+        {{ widget.action === 'previous' ? t('vc.chaser') : t('vc.function') }}
         <select class="field" :value="widget.function ?? ''" @change="save({ function: pick($event) })">
           <option value="">—</option>
-          <optgroup v-for="type in functionTypes" :key="type" :label="t(`functionTypePlural.${type}`)">
+          <optgroup v-for="type in widget.action === 'previous' ? (['chaser', 'sequence'] as const) : functionTypes" :key="type" :label="t(`functionTypePlural.${type}`)">
             <option v-for="f in functionsOf(type)" :key="f.id" :value="f.id">{{ f.name }}</option>
           </optgroup>
         </select>
@@ -133,16 +136,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
           </RlButton>
         </div>
       </div>
-      <template v-if="widget.action !== 'stopAll'">
-        <div class="field-label">
-          <span class="flex items-center gap-1">{{ t('vc.mode') }} <RlInfo :text="t('vc.info.buttonMode')" /></span>
-          <RlSegmented :model-value="widget.mode" :options="(['toggle', 'flash', 'temp'] as const).map((value) => ({ value, label: t(`vc.modes.${value}`) }))" @update:model-value="(mode) => save({ mode })" />
-        </div>
-        <div class="field-label">
-          {{ t('vc.highlight') }}
-          <RlSegmented :model-value="widget.highlight" :options="[{ value: 'face', label: t('vc.highlights.face') }, { value: 'led', label: t('vc.highlights.led') }]" @update:model-value="(highlight) => save({ highlight })" />
-        </div>
-      </template>
+      <!-- As ações de um toque não têm modo; o Pausar acende enquanto a criação está pausada -->
+      <div v-if="!['stopAll', 'previous', 'pause'].includes(widget.action)" class="field-label">
+        <span class="flex items-center gap-1">{{ t('vc.mode') }} <RlInfo :text="t('vc.info.buttonMode')" /></span>
+        <RlSegmented :model-value="widget.mode" :options="(['toggle', 'flash', 'temp'] as const).map((value) => ({ value, label: t(`vc.modes.${value}`) }))" @update:model-value="(mode) => save({ mode })" />
+      </div>
+      <div v-if="!['stopAll', 'previous'].includes(widget.action)" class="field-label">
+        {{ t('vc.highlight') }}
+        <RlSegmented :model-value="widget.highlight" :options="[{ value: 'face', label: t('vc.highlights.face') }, { value: 'led', label: t('vc.highlights.led') }]" @update:model-value="(highlight) => save({ highlight })" />
+      </div>
       <div class="field-label">
         {{ t('vc.icon') }}
         <div class="flex min-h-11 items-center gap-3">
@@ -210,7 +212,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
     </template>
 
     <label v-else-if="widget.type === 'cueList'" class="field-label">
-      {{ t('vc.chaser') }}
+      <span class="flex items-center gap-1">{{ t('vc.chaser') }} <RlInfo :text="t('vc.info.cueList')" /></span>
       <select class="field" :value="widget.chaser ?? ''" @change="save({ chaser: pick($event) })">
         <option value="">—</option>
         <option v-for="f in functionsOf('chaser', 'sequence')" :key="f.id" :value="f.id">{{ f.name }}</option>
@@ -295,7 +297,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
     <section v-if="kind.inputs.length" class="divider flex flex-col gap-3">
       <h3 class="heading flex items-center gap-1">{{ t('vc.inputs') }} <RlInfo :text="t('vc.info.inputs')" /></h3>
       <div v-for="control in kind.inputs" :key="control" class="flex flex-col gap-1.5">
-        <span v-if="kind.inputs.length > 1" class="text-xs font-bold text-fg-muted uppercase">{{ t(`vc.control.${control}`) }}</span>
+        <span v-if="kind.inputs.length > 1" class="text-xs font-bold text-fg-muted uppercase">
+          {{ t(`vc.control.${widget.type === 'cueList' && control === 'main' ? 'go' : control}`) }}
+        </span>
         <div class="flex items-center gap-2">
           <span class="min-w-0 flex-1 text-xs" :class="{ 'text-fg-dim': !inputOf(control).midi }">
             {{ learning === control ? t('vc.learning') : inputOf(control).midi ? midiText(inputOf(control).midi!) : t('vc.noMidi') }}

@@ -32,6 +32,10 @@ pub struct Snapshot {
     pub running: Vec<Id>,
     /// Passo atual de cada chaser (ou sequência) da lista `running`, vindo do motor.
     pub chaser_steps: Vec<CurrentStep>,
+    /// Criações da lista `running` pausadas: os fades, os delays e os passos delas não andam (R1).
+    pub paused: Vec<Id>,
+    /// Passo carregado de cada chaser na cue list: o próximo Go vai para ele (R1).
+    pub loaded_steps: Vec<CurrentStep>,
     /// Mesa simples (não é salva no projeto).
     pub desk: Desk,
     pub master: Master,
@@ -273,8 +277,20 @@ pub struct Function {
     pub name: String,
     /// Pasta do Studio (do mesmo tipo); `None` fica solta no tipo.
     pub folder: Option<Id>,
+    pub priority: Priority,
     #[serde(flatten)]
     pub kind: FunctionKind,
+}
+
+/// Prioridade da criação na mistura (R6): num canal disputado, a maior ganha, também no dimmer e nas
+/// cores (o valor dela vale, mesmo que seja menor). Na mesma prioridade, vale a regra de sempre: HTP
+/// no dimmer e nas cores, LTP no resto.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "camelCase")]
+pub enum Priority {
+    Low,
+    Normal,
+    High,
 }
 
 /// Pasta do Studio: agrupa criações (e outras pastas) de um tipo só.
@@ -324,8 +340,51 @@ pub struct Scene {
     /// Grupos de canais usados no editor e o nível de cada um (os canais também ficam em `values`, ou
     /// no grupo de fixtures que o grupo de canais acompanha).
     pub channel_groups: Vec<GroupLevel>,
+    /// Espera antes do fade in e antes do fade out (R2).
+    pub delay_in_ms: u32,
     pub fade_in_ms: u32,
+    pub delay_out_ms: u32,
     pub fade_out_ms: u32,
+    /// Curva dos dois fades.
+    pub curve: Curve,
+    /// Tipos de atributo com tempos próprios (R3); os que não estão aqui usam os da cena.
+    pub attribute_times: Vec<AttributeTiming>,
+}
+
+/// Como o valor anda do começo ao fim de um fade (R2).
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Curve {
+    Linear,
+    /// Lento no começo, rápido no fim.
+    EaseIn,
+    /// Rápido no começo, lento no fim.
+    EaseOut,
+    /// Em S: lento nas duas pontas.
+    EaseInOut,
+}
+
+/// Tempos de um tipo de atributo da cena, no lugar dos dela (a curva é a da cena).
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributeTiming {
+    pub kind: AttributeKind,
+    pub delay_in_ms: u32,
+    pub fade_in_ms: u32,
+    pub delay_out_ms: u32,
+    pub fade_out_ms: u32,
+}
+
+/// Tipos de atributo com tempos próprios na cena: as abas do editor. Intensidade é o dimmer; Cor, as
+/// cores, as rodas e as macros de cor; Posição, o pan e o tilt; Efeitos, o shutter, o gobo, o prisma,
+/// o zoom, o foco e a íris. O resto (velocidade, manutenção…) usa os tempos da cena.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum AttributeKind {
+    Intensity,
+    Color,
+    Position,
+    Effects,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -375,8 +434,9 @@ pub struct Chaser {
     pub fade_in_mode: SpeedMode,
     pub hold_mode: SpeedMode,
     pub fade_out_mode: SpeedMode,
-    /// Tempos dos modos "comum".
-    pub common: Timing,
+    /// Tempos dos modos "comum". O delay de entrada e a curva vão com o fade in; o de saída, com o
+    /// fade out.
+    pub common: StepTiming,
     /// No Single Shot, o último passo fica aceso até o chaser ser parado (senão, apaga no fim).
     pub keep_last: bool,
 }
@@ -386,7 +446,7 @@ pub struct Chaser {
 pub struct ChaserStep {
     /// Função do passo; em sequências, a própria cena.
     pub function: Id,
-    pub timing: Timing,
+    pub timing: StepTiming,
     pub note: String,
     /// Só em sequências: valores dos canais da cena neste passo.
     pub values: Vec<SceneValue>,
@@ -400,6 +460,22 @@ pub struct Timing {
     pub hold_ms: u32,
     pub fade_out_ms: u32,
 }
+
+/// Tempos de um passo de chaser (e os comuns): o delay e o fade da entrada, o hold, o delay e o fade
+/// da saída e a curva dos fades (R2). O hold em [`INFINITE`] espera o Go.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StepTiming {
+    pub delay_in_ms: u32,
+    pub fade_in_ms: u32,
+    pub hold_ms: u32,
+    pub delay_out_ms: u32,
+    pub fade_out_ms: u32,
+    pub curve: Curve,
+}
+
+/// Hold infinito (∞), como no QLC+: o passo só sai com o Go, o anterior, outro passo ou o parar (R1).
+pub const INFINITE: u32 = u32::MAX;
 
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -588,11 +664,12 @@ pub struct WidgetInput {
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum InputControl {
-    /// O botão, o fader ou o play da lista.
+    /// O botão, o fader ou o Go da cue list.
     Main,
     Previous,
     Next,
     Stop,
+    Pause,
     Tap,
     X,
     Y,
@@ -661,6 +738,10 @@ pub enum ButtonAction {
     Blackout,
     BlackoutFixtures,
     StopAll,
+    /// O passo anterior do chaser (ou sequência) do botão.
+    Previous,
+    /// Pausa ou continua a criação do botão.
+    Pause,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
@@ -869,7 +950,7 @@ pub struct WidgetValue {
     pub value: Vec<u32>,
 }
 
-/// Passo em que um chaser rodando está.
+/// Um passo de um chaser: o atual (vindo do motor) ou o carregado na cue list.
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CurrentStep {
@@ -1043,11 +1124,22 @@ pub enum Op {
         id: Id,
         running: bool,
     },
+    /// Pausa uma criação rodando (os fades, os delays e os passos dela param onde estão) ou a
+    /// continua de onde parou.
+    SetFunctionPaused {
+        id: Id,
+        paused: bool,
+    },
     /// Cue list: leva um chaser (ou sequência) a outro passo. Parado, ele passa a rodar: "próximo"
-    /// começa no primeiro passo e "anterior", no último.
+    /// começa no primeiro passo (ou no carregado) e "anterior", no último. Pausado, ele continua.
     StepChaser {
         id: Id,
         action: StepAction,
+    },
+    /// Cue list: o passo do próximo Go, sem disparar; `None` desfaz.
+    LoadStep {
+        id: Id,
+        step: Option<u16>,
     },
     /// Para todas as criações rodando, cada uma com o seu fade out (Studio e Stop All do console).
     StopAllFunctions,
@@ -1192,6 +1284,7 @@ mod tests {
             id: "c1".into(),
             name: "Tudo".into(),
             folder: None,
+            priority: Priority::Normal,
             kind: FunctionKind::Collection(Collection {
                 functions: vec!["s1".into()],
             }),
@@ -1199,7 +1292,7 @@ mod tests {
         let value = serde_json::to_value(&function).unwrap();
         assert_eq!(
             value,
-            json!({ "id": "c1", "name": "Tudo", "folder": null, "type": "collection", "functions": ["s1"] })
+            json!({ "id": "c1", "name": "Tudo", "folder": null, "priority": "normal", "type": "collection", "functions": ["s1"] })
         );
         assert_eq!(serde_json::from_value::<Function>(value).unwrap(), function);
     }

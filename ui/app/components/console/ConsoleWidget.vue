@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Play, RotateCcw, Square } from 'lucide-vue-next'
+import { ChevronLeft, Pause, Play, RotateCcw, Square } from 'lucide-vue-next'
+import type { StepTiming } from '~/types/generated/StepTiming'
 import type { VcWidget } from '~/types/generated/VcWidget'
 
 // Elemento do console em operação. A moldura é desenhada pelo ConsoleCanvas, por baixo dos filhos.
@@ -13,8 +14,8 @@ const fn = (id: string | null) => project.value.functions.find((f) => f.id === i
 // Só o relógio precisa do tempo correndo
 const now = props.widget.type === 'clock' ? useClock(200) : ref(0)
 
-// Flash e Temp valem enquanto o dedo está no botão; o resto age no toque
-const momentary = computed(() => props.widget.type === 'button' && props.widget.mode !== 'toggle' && props.widget.action !== 'stopAll')
+// Flash e Temp valem enquanto o dedo está no botão; o resto (e as ações de um toque) age no toque
+const momentary = computed(() => props.widget.type === 'button' && props.widget.mode !== 'toggle' && !['stopAll', 'previous', 'pause'].includes(props.widget.action))
 // O botão só mostra ícone quando o usuário liga a opção (VC-1)
 const { icon } = useIconLibrary()
 const buttonIcon = computed(() => (props.widget.type === 'button' ? icon(props.widget.icon) : undefined))
@@ -49,10 +50,34 @@ const xy = computed({
   set: (v: { x: number; y: number }) => vc.setValue(props.widget.id, [Math.round(v.x * 255), Math.round(v.y * 255)]),
 })
 
-// Cue list
+// Cue list: tocar num passo vai para ele; o toque longo (500 ms) o carrega para o próximo Go
 const chaser = computed(() => (props.widget.type === 'cueList' ? vc.chaserOf(props.widget) : undefined))
 const step = computed(() => (props.widget.type === 'cueList' ? vc.currentStep(props.widget) : -1))
+const loaded = computed(() => (props.widget.type === 'cueList' ? vc.loadedStep(props.widget) : -1))
 const playing = computed(() => props.widget.type === 'cueList' && vc.running(props.widget.chaser))
+const pausedCue = computed(() => props.widget.type === 'cueList' && vc.paused(props.widget.chaser))
+let cueTimer: ReturnType<typeof setTimeout> | undefined
+let cueHeld = false
+function cueDown(i: number) {
+  const w = props.widget
+  cueHeld = false
+  cueTimer = setTimeout(() => {
+    cueHeld = true
+    if (w.type === 'cueList') vc.load(w, i)
+  }, 500)
+}
+function cueUp(i: number) {
+  const w = props.widget
+  clearTimeout(cueTimer)
+  if (!cueHeld && w.type === 'cueList') vc.step(w, { go: i })
+}
+const cueCancel = () => clearTimeout(cueTimer)
+// O hold que vale no passo: o dele ou o comum
+function cueTime(timing: StepTiming) {
+  const c = chaser.value!
+  const hold = c.holdMode === 'perStep' ? timing.holdMs : c.common.holdMs
+  return hold === INFINITE ? '∞' : seconds(timing.fadeInMs + hold)
+}
 
 // Speed dial (VC-3), sem valor, valem os tempos gravados. Em segundos, o knob vai de 0 a 20 s, com mais
 // precisão nos tempos curtos; seguindo o BPM, ele escolhe frações e múltiplos da batida (em milésimos)
@@ -151,28 +176,37 @@ function setColor(i: number, color: string) {
           :key="i"
           type="button"
           class="cue"
-          :class="{ current: i === step }"
-          @click="vc.step(widget, { go: i })"
+          :class="{ current: i === step, loaded: i === loaded }"
+          :title="i === loaded ? t('vc.loaded') : undefined"
+          @pointerdown="cueDown(i)"
+          @pointerup="cueUp(i)"
+          @pointercancel="cueCancel"
+          @contextmenu.prevent
+          @click="$event.detail === 0 && vc.step(widget, { go: i })"
         >
           <span class="font-lcd">{{ i + 1 }}</span>
           <span class="flex-1 truncate">{{ s.note || fn(s.function)?.name }}</span>
-          <span class="font-lcd text-fg-muted">{{ seconds(s.timing.fadeInMs + s.timing.holdMs) }}</span>
+          <span class="font-lcd text-sm text-fg-muted">{{ cueTime(s.timing) }}</span>
         </button>
         <p v-if="!chaser" class="p-2 text-xs text-fg-muted">{{ t('vc.noChaser') }}</p>
       </div>
-      <div class="grid grid-cols-3 gap-1">
+      <!-- Voltar, Go, Pausar e Parar -->
+      <div class="grid grid-cols-4 gap-1">
         <RlButton size="sm" :aria-label="t('vc.control.previous')" @press="vc.press(widget, 'previous', true)"><ChevronLeft :size="18" /></RlButton>
+        <RlButton size="sm" highlight="led" color="var(--color-on)" :model-value="playing && !pausedCue" @press="vc.press(widget, 'main', true)">
+          {{ t('vc.control.go') }}
+        </RlButton>
         <RlButton
           size="sm"
           highlight="led"
-          color="var(--color-on)"
-          :model-value="playing"
-          :aria-label="t('vc.control.main')"
-          @press="vc.press(widget, 'main', true)"
+          color="var(--color-flash)"
+          :model-value="pausedCue"
+          :aria-label="t('vc.control.pause')"
+          @press="vc.press(widget, 'pause', true)"
         >
-          <component :is="playing ? Square : Play" :size="16" />
+          <Pause :size="16" />
         </RlButton>
-        <RlButton size="sm" :aria-label="t('vc.control.next')" @press="vc.press(widget, 'next', true)"><ChevronRight :size="18" /></RlButton>
+        <RlButton size="sm" :aria-label="t('vc.control.stop')" @press="vc.press(widget, 'stop', true)"><Square :size="14" /></RlButton>
       </div>
     </template>
 
@@ -295,6 +329,11 @@ function setColor(i: number, color: string) {
 .current {
   background: color-mix(in srgb, var(--color-select) 30%, transparent);
   color: #fff;
+}
+
+/* O passo carregado para o próximo Go */
+.loaded {
+  box-shadow: inset 4px 0 0 var(--color-flash);
 }
 
 .swatch {

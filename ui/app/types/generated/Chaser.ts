@@ -3,7 +3,7 @@ import type { ChaserStep } from "./ChaserStep";
 import type { Direction } from "./Direction";
 import type { RunOrder } from "./RunOrder";
 import type { SpeedMode } from "./SpeedMode";
-import type { Timing } from "./Timing";
+import type { StepTiming } from "./StepTiming";
 
 export type Chaser = { 
 /**
@@ -15,9 +15,10 @@ scene: string | null, steps: Array<ChaserStep>, runOrder: RunOrder, direction: D
  */
 beats: boolean, fadeInMode: SpeedMode, holdMode: SpeedMode, fadeOutMode: SpeedMode, 
 /**
- * Tempos dos modos "comum".
+ * Tempos dos modos "comum". O delay de entrada e a curva vão com o fade in; o de saída, com o
+ * fade out.
  */
-common: Timing, 
+common: StepTiming, 
 /**
  * No Single Shot, o último passo fica aceso até o chaser ser parado (senão, apaga no fim).
  */

@@ -22,6 +22,13 @@ export const functionIcons: Record<FunctionType, Component> = {
 
 export const functionTypes = Object.keys(functionIcons) as FunctionType[]
 
+/** Hold infinito (∞) dos passos de chaser: o passo espera o Go. O mesmo valor do contrato (`INFINITE`). */
+export const INFINITE = 4294967295
+
+/** Curvas dos fades (R2) e os tipos de atributo com tempos próprios na cena (R3), na ordem das telas. */
+export const curves = ['linear', 'easeIn', 'easeOut', 'easeInOut'] as const
+export const attributeKinds = ['intensity', 'color', 'position', 'effects'] as const
+
 const TAU = Math.PI * 2
 
 /** Ponto do desenho do EFX (-1 a 1) no ângulo `t` (0 a 2π). Algoritmos portados do QLC+ (NOTICE). */

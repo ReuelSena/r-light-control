@@ -21,7 +21,7 @@ use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
 use crate::apply::{
-    Topic, apply, cue_list_op, empty_project, fixture_blackout, highlight, is_live, new_id,
+    Topic, apply, console_op, empty_project, fixture_blackout, highlight, is_live, new_id,
     preview_levels, running_programs, universe_patch,
 };
 use crate::{library, project};
@@ -75,6 +75,8 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
         },
         running: vec![],
         chaser_steps: vec![],
+        paused: vec![],
+        loaded_steps: vec![],
         desk: Desk {
             levels: vec![],
             groups: vec![],
@@ -214,7 +216,7 @@ impl Hub {
 
     /// Aplica uma operação de um cliente. Recusada, nada muda e ninguém é avisado.
     pub fn command(&mut self, op: Op) -> Result<Value, String> {
-        let op = cue_list_op(&self.snapshot, op);
+        let op = console_op(&self.snapshot, op);
         // O pânico, o "Novo" e o "Abrir" param as cenas sem fade out
         let cut = matches!(
             op,
@@ -253,6 +255,10 @@ impl Hub {
         if s.running.iter().any(|id| frames.done.contains(id)) {
             s.running.retain(|id| !frames.done.contains(id));
             topics.push(Topic::Running);
+            if s.paused.iter().any(|id| frames.done.contains(id)) {
+                s.paused.retain(|id| !frames.done.contains(id));
+                topics.push(Topic::Paused);
+            }
         }
         let steps: Vec<CurrentStep> = frames
             .chasers
@@ -558,6 +564,7 @@ impl Hub {
             Topic::ChannelGroups,
             Topic::Functions,
             Topic::Running,
+            Topic::Paused,
             Topic::Console,
             Topic::WidgetValues,
         ]) {

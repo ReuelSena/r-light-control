@@ -164,12 +164,11 @@ watch(folderDialog, () => (confirmRemove.value = false))
         <template v-if="row.fn">
           <component :is="functionIcons[row.type]" :size="18" class="shrink-0 text-fg-muted" />
           <span class="min-w-0 flex-1 truncate">{{ row.label }}</span>
-          <!-- O botão não deixa o toque nele começar um arrasto -->
+          <!-- O botão não deixa o toque nele começar um arrasto. Aceso enquanto roda; pausada, em amarelo -->
           <span @pointerdown.stop>
             <RlButton
               size="sm"
-              highlight="led"
-              color="var(--color-on)"
+              :color="state.paused.includes(row.fn.id) ? 'var(--color-flash)' : 'var(--color-on)'"
               :model-value="running(row.fn.id)"
               :aria-label="running(row.fn.id) ? t('studio.stop') : t('studio.run')"
               @press="send({ op: 'setFunctionRunning', id: row.fn.id, running: !running(row.fn.id) })"

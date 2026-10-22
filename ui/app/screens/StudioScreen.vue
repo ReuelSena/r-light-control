@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, Copy, Eye, Play, Plus, Search, Square, Trash2 } from 'lucide-vue-next'
+import { ChevronLeft, Copy, Eye, Pause, Play, Plus, Search, Square, Trash2 } from 'lucide-vue-next'
 import type { Chaser } from '~/types/generated/Chaser'
 import type { Function } from '~/types/generated/Function'
 
@@ -19,6 +19,7 @@ watch(selectedId, () => (confirmRemove.value = false))
 const selected = computed(() => project.value.functions.find((f) => f.id === selectedId.value))
 const running = (id: string) => state.value.running.includes(id)
 const toggleRun = (id: string) => send({ op: 'setFunctionRunning', id, running: !running(id) })
+const paused = (id: string) => state.value.paused.includes(id)
 
 // Prévia (o programador, E12): a cena em edição vai para a luz. Desligada ao abrir a cena; este aparelho
 // desliga a prévia que ele ligou ao sair do editor ou trocar de criação
@@ -37,27 +38,31 @@ onBeforeUnmount(stopPreview)
 
 // Conteúdo inicial de cada tipo
 function blank(type: FunctionType): Function {
-  const id = uuidv7()
-  const folder = null
   const name = t('studio.newName', { type: t(`functionType.${type}`), n: project.value.functions.filter((f) => f.type === type).length + 1 })
+  const base = { id: uuidv7(), name, folder: null, priority: 'normal' } as const
   const timing = { fadeInMs: 0, holdMs: 1000, fadeOutMs: 0 }
   const playback = { runOrder: 'loop', direction: 'forward', timing } as const
   const chaser: Chaser = {
     scene: null, steps: [], runOrder: 'loop', direction: 'forward', beats: false,
-    fadeInMode: 'default', holdMode: 'default', fadeOutMode: 'default', common: timing, keepLast: false,
+    fadeInMode: 'default', holdMode: 'default', fadeOutMode: 'default', keepLast: false,
+    common: { delayInMs: 0, ...timing, delayOutMs: 0, curve: 'linear' },
   }
   switch (type) {
-    case 'scene': return { id, name, folder, type, values: [], groups: [], channelGroups: [], fadeInMs: 0, fadeOutMs: 0 }
-    case 'chaser': return { id, name, folder, type, ...chaser }
-    case 'sequence': return { id, name, folder, type, ...chaser, scene: project.value.functions.find((f) => f.type === 'scene')?.id ?? null }
-    case 'collection': return { id, name, folder, type, functions: [] }
+    case 'scene':
+      return {
+        ...base, type, values: [], groups: [], channelGroups: [],
+        delayInMs: 0, fadeInMs: 0, delayOutMs: 0, fadeOutMs: 0, curve: 'linear', attributeTimes: [],
+      }
+    case 'chaser': return { ...base, type, ...chaser }
+    case 'sequence': return { ...base, type, ...chaser, scene: project.value.functions.find((f) => f.type === 'scene')?.id ?? null }
+    case 'collection': return { ...base, type, functions: [] }
     case 'efx':
       return {
-        id, name, folder, type, algorithm: 'circle', width: 127, height: 127, xOffset: 127, yOffset: 127, rotation: 0,
+        ...base, type, algorithm: 'circle', width: 127, height: 127, xOffset: 127, yOffset: 127, rotation: 0,
         xFrequency: 2, yFrequency: 3, xPhase: 90, yPhase: 0, relative: false, propagation: 'parallel', fixtures: [], ...playback,
       }
     case 'rgbMatrix':
-      return { id, name, folder, type, group: project.value.fixtureGroups[0]?.id ?? null, algorithm: 'plain', colors: ['#ff0000', '#0000ff'], ...playback }
+      return { ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, algorithm: 'plain', colors: ['#ff0000', '#0000ff'], ...playback }
   }
 }
 
@@ -99,7 +104,6 @@ function remove() {
         </label>
         <!-- Para todas as criações; o LED fica aceso enquanto alguma está rodando -->
         <RlButton
-          highlight="led"
           color="var(--color-on)"
           :model-value="state.running.length > 0"
           :aria-label="t('studio.stopAll')"
@@ -117,7 +121,10 @@ function remove() {
     </section>
 
     <section v-if="selected" class="panel @container min-h-0 overflow-auto">
-      <header class="flex flex-wrap items-center gap-2">
+      <!-- Fica no topo da área rolável: o nome e os botões (rodar, pausar…) estão sempre à mão. Os valores
+           negativos (o respiro do painel) fazem a barra encostar nas bordas, para o que rola não aparecer
+           atrás dela -->
+      <header class="sticky -top-3 z-10 -mx-3 -mt-3 flex flex-wrap items-center gap-2 bg-[#1b1d21] px-3 pt-3 pb-2 shadow-[0_2px_4px_rgb(0_0_0/0.5)]">
         <RlButton size="sm" class="@3xl:hidden!" :aria-label="t('studio.back')" @press="selectedId = undefined"><ChevronLeft :size="18" /></RlButton>
         <component :is="functionIcons[selected.type]" :size="22" class="shrink-0 text-fg-muted" :title="t(`functionType.${selected.type}`)" />
         <input
@@ -129,9 +136,25 @@ function remove() {
           <Eye :size="16" />
           {{ t('studio.preview') }}
         </RlButton>
-        <RlButton highlight="led" color="var(--color-on)" :model-value="running(selected.id)" @press="toggleRun(selected.id)">
+        <!-- Rodar/Parar e Pausar: só o ícone, com o botão aceso enquanto vale -->
+        <RlButton
+          color="var(--color-on)"
+          :model-value="running(selected.id)"
+          :aria-label="running(selected.id) ? t('studio.stop') : t('studio.run')"
+          :title="running(selected.id) ? t('studio.stop') : t('studio.run')"
+          @press="toggleRun(selected.id)"
+        >
           <component :is="running(selected.id) ? Square : Play" :size="16" />
-          {{ running(selected.id) ? t('studio.stop') : t('studio.run') }}
+        </RlButton>
+        <RlButton
+          v-if="running(selected.id)"
+          color="var(--color-flash)"
+          :model-value="paused(selected.id)"
+          :aria-label="t('studio.pause')"
+          :title="t('studio.pause')"
+          @press="send({ op: 'setFunctionPaused', id: selected.id, paused: !paused(selected.id) })"
+        >
+          <Pause :size="16" />
         </RlButton>
         <RlButton :aria-label="t('studio.duplicate')" :title="t('studio.duplicate')" @press="duplicate"><Copy :size="16" /></RlButton>
         <RlButton :model-value="confirmRemove" color="var(--color-danger)" :aria-label="t('common.remove')" @press="remove">
@@ -139,6 +162,17 @@ function remove() {
           <template v-if="confirmRemove">{{ t('common.confirmRemove') }}</template>
         </RlButton>
       </header>
+      <!-- A prioridade vale para todos os tipos: fica logo abaixo da barra do editor -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="flex items-center gap-1 text-xs text-fg-muted">{{ t('studio.priority') }} <RlInfo :text="t('studio.priorityInfo')" /></span>
+        <RlSegmented
+          size="sm"
+          class="w-fit!"
+          :model-value="selected.priority"
+          :options="(['low', 'normal', 'high'] as const).map((value) => ({ value, label: t(`priority.${value}`) }))"
+          @update:model-value="(priority) => send({ op: 'saveFunction', function: { ...selected!, priority } })"
+        />
+      </div>
       <StudioScene v-if="selected.type === 'scene'" :key="selected.id" :fn="selected" />
       <StudioChaser v-else-if="selected.type === 'chaser' || selected.type === 'sequence'" :key="`c${selected.id}`" :fn="selected" />
       <StudioCollection v-else-if="selected.type === 'collection'" :fn="selected" />

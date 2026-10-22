@@ -48,3 +48,8 @@ Itens do [fase-10b.md](fases/fase-10b.md) (validados na tela e na prévia, sem o
 - [ ] O EFX num grupo de Beams: tirar um Beam do grupo e o EFX seguir só com os outros.
 - [ ] A "Defasagem" do grupo separa os Beams no movimento (ex.: 90° com 4, um atrás do outro).
 - [ ] Um Beam do grupo incluído também sozinho, com "Inverter" e outro "Início", é a exceção: anda do jeito dele, no lugar dele no grupo.
+
+## F10c — Tempos por tipo de atributo
+
+Item do [fase-10c.md](fases/fase-10c.md):
+- [ ] Uma cena dos Beams com a Posição lenta (fade de 6 s) e a Cor rápida (sem fade), em "Por tipo de atributo": disparada sobre outra cena dos Beams, a cor troca na hora e os Beams andam devagar até a posição nova.

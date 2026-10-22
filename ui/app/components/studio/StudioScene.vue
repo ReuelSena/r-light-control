@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Asterisk, Grid3x3, LocateFixed, Plus, Undo2 } from 'lucide-vue-next'
 import type { Attribute } from '~/types/generated/Attribute'
+import type { AttributeKind } from '~/types/generated/AttributeKind'
+import type { AttributeTiming } from '~/types/generated/AttributeTiming'
 import type { AttributeValue } from '~/types/generated/AttributeValue'
 import type { Fixture } from '~/types/generated/Fixture'
 import type { Function } from '~/types/generated/Function'
@@ -223,6 +225,25 @@ function setGroup(id: string, v: number) {
   const groupChannels = cg?.channels.filter((c) => inScene(c.fixture)) ?? []
   save({ channelGroups, values: merge(groupChannels.map((c) => ({ ...c, value }))) })
 }
+
+// Tempos (R2) e tempos por tipo de atributo (R3): ligar um tipo começa com os tempos da cena; desligar
+// volta a eles
+const times = [
+  { key: 'delayInMs', label: 'studio.delayIn' },
+  { key: 'fadeInMs', label: 'studio.fadeIn' },
+  { key: 'delayOutMs', label: 'studio.delayOut' },
+  { key: 'fadeOutMs', label: 'studio.fadeOut' },
+] as const
+const own = (kind: AttributeKind) => props.fn.attributeTimes.find((a) => a.kind === kind)
+function toggleKind(kind: AttributeKind) {
+  const rest = props.fn.attributeTimes.filter((a) => a.kind !== kind)
+  if (own(kind)) return save({ attributeTimes: rest })
+  const { delayInMs, fadeInMs, delayOutMs, fadeOutMs } = props.fn
+  save({ attributeTimes: [...rest, { kind, delayInMs, fadeInMs, delayOutMs, fadeOutMs }] })
+}
+function setKind(kind: AttributeKind, changes: Partial<AttributeTiming>) {
+  save({ attributeTimes: props.fn.attributeTimes.map((a) => (a.kind === kind ? { ...a, ...changes } : a)) })
+}
 </script>
 
 <template>
@@ -373,17 +394,42 @@ function setGroup(id: string, v: number) {
     </section>
 
     <!-- Tempos por último: no show, o console também ajusta os fades na hora (VC-3) -->
-    <section class="divider grid gap-2">
-      <h3 class="heading">{{ t('scene.times') }}</h3>
-      <div class="grid grid-cols-2 gap-2 @xl:max-w-sm">
-        <label class="field-label">
-          {{ t('studio.fadeIn') }}
-          <RlTimeField :model-value="fn.fadeInMs" @update:model-value="(ms) => save({ fadeInMs: ms })" />
+    <section class="divider grid gap-3">
+      <h3 class="heading flex items-center gap-2">
+        {{ t('scene.times') }}
+        <RlInfo :text="t('scene.timesInfo')" />
+      </h3>
+      <div class="grid grid-cols-2 gap-2 @xl:max-w-xl @xl:grid-cols-4">
+        <label v-for="time in times" :key="time.key" class="field-label">
+          {{ t(time.label) }}
+          <RlTimeField :model-value="fn[time.key]" @update:model-value="(ms) => save({ [time.key]: ms })" />
         </label>
-        <label class="field-label">
-          {{ t('studio.fadeOut') }}
-          <RlTimeField :model-value="fn.fadeOutMs" @update:model-value="(ms) => save({ fadeOutMs: ms })" />
-        </label>
+      </div>
+      <div class="field-label @xl:max-w-xl">
+        {{ t('studio.curve') }}
+        <RlSegmented :model-value="fn.curve" :options="curves.map((value) => ({ value, label: t(`curve.${value}`) }))" @update:model-value="(curve) => save({ curve })" />
+      </div>
+      <!-- Por tipo de atributo: ligado, o tipo ganha os próprios tempos, começando com os da cena -->
+      <div class="overflow-x-auto">
+        <table class="rl-table min-w-120 @xl:max-w-xl">
+          <thead>
+            <tr>
+              <th>{{ t('scene.byAttribute') }}</th>
+              <th v-for="time in times" :key="time.key">{{ t(time.label) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="kind in attributeKinds" :key="kind">
+              <td>
+                <RlButton size="sm" class="w-full" highlight="led" :model-value="!!own(kind)" @press="toggleKind(kind)">{{ t(`scene.${kind}`) }}</RlButton>
+              </td>
+              <td v-for="time in times" :key="time.key">
+                <RlTimeField v-if="own(kind)" :model-value="own(kind)![time.key]" @update:model-value="(ms) => setKind(kind, { [time.key]: ms })" />
+                <span v-else class="text-xs text-fg-dim">{{ fn[time.key] / 1000 }} s</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 

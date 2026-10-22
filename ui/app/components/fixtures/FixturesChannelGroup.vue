@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Copy, Trash2 } from 'lucide-vue-next'
+import { Copy, Grid3x3, Trash2 } from 'lucide-vue-next'
 import type { Attribute } from '~/types/generated/Attribute'
 import type { ChannelGroup } from '~/types/generated/ChannelGroup'
 
 // Grupo de canais: toque nos canais de cada fixture para incluir ou tirar do grupo. Os atalhos
 // por atributo incluem (ou tiram) de uma vez esse atributo em todas as fixtures, sem os canais finos.
+// Acompanhando um grupo de fixtures (N1), os canais são os atributos escolhidos das fixtures que estão
+// nele, e o servidor refaz a lista quando o grupo muda.
 const props = defineProps<{ group: ChannelGroup }>()
 const emit = defineEmits<{ duplicated: [id: string] }>()
 const { t } = useI18n()
@@ -14,13 +16,16 @@ const confirmRemove = ref(false)
 
 watch(() => props.group.id, () => (confirmRemove.value = false))
 
-const fixtures = computed(() => project.value.fixtures.map((f) => ({ ...f, channels: modeChannels(project.value, f) })))
+const following = computed(() => props.group.fixtureGroup)
+const fixtures = computed(() =>
+  (following.value ? groupFixtures(project.value, following.value) : project.value.fixtures).map((f) => ({ ...f, channels: modeChannels(project.value, f) })),
+)
 const attributes = computed(() => [...new Set(fixtures.value.flatMap((f) => f.channels.map((c) => c.attribute)))])
 const look = computed(() => channelGroupLook(project.value, props.group))
 const has = (fixture: string, channel: number) => props.group.channels.some((c) => c.fixture === fixture && c.channel === channel)
 const withAttribute = (a: Attribute) =>
   fixtures.value.flatMap((f) => f.channels.flatMap((c, channel) => (c.attribute === a && !c.fine ? [{ fixture: f.id, channel }] : [])))
-const hasAll = (a: Attribute) => withAttribute(a).every((c) => has(c.fixture, c.channel))
+const hasAll = (a: Attribute) => (following.value ? props.group.attributes.includes(a) : withAttribute(a).every((c) => has(c.fixture, c.channel)))
 
 function save(changes: Partial<ChannelGroup>) {
   send({ op: 'saveChannelGroup', group: { ...props.group, ...changes } })
@@ -32,9 +37,21 @@ function toggle(fixture: string, channel: number) {
 }
 
 function toggleAttribute(a: Attribute) {
+  if (following.value) return save({ attributes: hasAll(a) ? props.group.attributes.filter((x) => x !== a) : [...props.group.attributes, a] })
   const all = withAttribute(a)
   const rest = props.group.channels.filter((c) => !all.some((x) => x.fixture === c.fixture && x.channel === c.channel))
   save({ channels: hasAll(a) ? rest : [...rest, ...all] })
+}
+
+// Passa a acompanhar um grupo de fixtures, com os atributos que os canais de agora têm; sem grupo, os
+// canais de agora ficam como lista fixa
+function follow(fixtureGroup: string | null) {
+  const of = (c: { fixture: string; channel: number }) => {
+    const f = project.value.fixtures.find((f) => f.id === c.fixture)
+    return f && modeChannels(project.value, f)[c.channel]?.attribute
+  }
+  const attributes = [...new Set(props.group.channels.flatMap((c) => of(c) ?? []))]
+  save({ fixtureGroup, attributes: fixtureGroup ? attributes : [] })
 }
 
 async function duplicate() {
@@ -70,7 +87,26 @@ function remove() {
       {{ t('groups.channelCount', group.channels.length) }}
     </p>
 
-    <h3 class="heading">{{ t('groups.byAttribute') }}</h3>
+    <h3 class="heading flex items-center gap-2">
+      {{ t('groups.follow') }}
+      <RlInfo :text="t('groups.followInfo')" />
+    </h3>
+    <div class="flex flex-wrap gap-1.5">
+      <RlButton size="sm" highlight="led" :model-value="!following" @press="following && follow(null)">{{ t('groups.pickedChannels') }}</RlButton>
+      <RlButton
+        v-for="g in project.fixtureGroups"
+        :key="g.id"
+        size="sm"
+        highlight="led"
+        :model-value="following === g.id"
+        @press="following !== g.id && follow(g.id)"
+      >
+        <Grid3x3 :size="14" />
+        {{ g.name }}
+      </RlButton>
+    </div>
+
+    <h3 class="heading">{{ following ? t('groups.attributes') : t('groups.byAttribute') }}</h3>
     <div class="flex flex-wrap gap-1.5">
       <RlButton
         v-for="a in attributes"
@@ -86,26 +122,28 @@ function remove() {
       </RlButton>
     </div>
 
-    <h3 class="heading">{{ t('groups.channelsByFixture') }}</h3>
-    <div v-for="f in fixtures" :key="f.id" class="grid gap-1.5 border-t border-black pt-2 @3xl:grid-cols-[110px_1fr]">
-      <span class="flex items-center gap-2 text-sm">
-        <span class="rl-led" :style="{ '--led': f.color }" />
-        {{ f.name }}
-      </span>
-      <div class="flex flex-wrap gap-1.5">
-        <RlButton
-          v-for="(c, i) in f.channels"
-          :key="i"
-          size="sm"
-          highlight="led"
-          :color="attributeLook[c.attribute].color"
-          :model-value="has(f.id, i)"
-          @press="toggle(f.id, i)"
-        >
-          <component :is="attributeLook[c.attribute].icon" :size="14" :style="{ color: attributeLook[c.attribute].color }" />
-          {{ c.name }}
-        </RlButton>
+    <template v-if="!following">
+      <h3 class="heading">{{ t('groups.channelsByFixture') }}</h3>
+      <div v-for="f in fixtures" :key="f.id" class="grid gap-1.5 border-t border-black pt-2 @3xl:grid-cols-[110px_1fr]">
+        <span class="flex items-center gap-2 text-sm">
+          <span class="rl-led" :style="{ '--led': f.color }" />
+          {{ f.name }}
+        </span>
+        <div class="flex flex-wrap gap-1.5">
+          <RlButton
+            v-for="(c, i) in f.channels"
+            :key="i"
+            size="sm"
+            highlight="led"
+            :color="attributeLook[c.attribute].color"
+            :model-value="has(f.id, i)"
+            @press="toggle(f.id, i)"
+          >
+            <component :is="attributeLook[c.attribute].icon" :size="14" :style="{ color: attributeLook[c.attribute].color }" />
+            {{ c.name }}
+          </RlButton>
+        </div>
       </div>
-    </div>
+    </template>
   </section>
 </template>

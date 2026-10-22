@@ -42,9 +42,11 @@ function move(i: number, by: number) {
   selectedStep.value = i + by
 }
 
-// No chaser, o passo dispara uma função; na sequência, copia os valores do passo escolhido (ou da cena)
+// No chaser, o passo dispara uma função; na sequência, copia os valores do passo escolhido (ou da cena,
+// com os grupos dela já aplicados: o passo guarda os valores por fixture)
 function addStep(functionId: string) {
-  const base = step.value?.values ?? (functionOf(functionId) as Extract<Function, { type: 'scene' }> | undefined)?.values ?? []
+  const scene = functionOf(functionId) as Extract<Function, { type: 'scene' }> | undefined
+  const base = step.value?.values ?? (scene ? sceneValues(project.value, scene) : [])
   const values = isSequence.value ? base.map((v) => ({ ...v })) : []
   save({ steps: [...props.fn.steps, { function: functionId, timing: { ...props.fn.common }, note: '', values }] })
   selectedStep.value = props.fn.steps.length

@@ -170,8 +170,8 @@ async fn scenes_fade_in_take_live_edits_and_panic_cuts_them() {
     frame_until(&mut ws, "u1", |f| f[0] > 0 && f[0] < 255).await;
     frame_until(&mut ws, "u1", |f| f[..3] == [255, 255, 140]).await;
 
-    // Editada rodando, vale na hora
-    scene["values"][2]["value"] = json!(60);
+    // Editada rodando, vale na hora (o verde do grupo "PARs frente")
+    scene["groups"][0]["values"][2]["value"] = json!(60);
     cmd(
         &mut ws,
         2,

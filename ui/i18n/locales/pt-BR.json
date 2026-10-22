@@ -152,6 +152,10 @@
     "channelCount": "Nenhum canal | 1 canal | {n} canais",
     "byAttribute": "Por atributo, em todas as fixtures",
     "channelsByFixture": "Canais por fixture",
+    "follow": "Fixtures",
+    "followInfo": "Canais escolhidos: os canais tocados abaixo, uma lista fixa.\nGrupo de fixtures: os atributos escolhidos das fixtures que estão no grupo. Incluir ou tirar uma fixture do grupo muda os canais sozinho, na Mesa simples, nos sliders do console e nas cenas.",
+    "pickedChannels": "Canais escolhidos",
+    "attributes": "Atributos",
     "paletteInfo": "Toque numa cabeça e depois nas células da grade. Com Apagar ligado, tocar numa célula a esvazia."
   },
   "patch": {
@@ -376,13 +380,16 @@
     "position": "Posição",
     "effects": "Efeitos",
     "channels": "Canais",
-    "groupsHint": "Ligar um grupo traz para a cena todas as fixtures dele; para tirar uma, use Adicionar fixtures.\nO fader grava nos canais das fixtures do grupo que estão na cena.",
+    "groupsHint": "Ligar um grupo traz para a cena todas as fixtures dele; para tirar uma, use Adicionar fixtures.\nO fader grava nos canais das fixtures do grupo que estão na cena.\nO grupo de canais que acompanha um grupo de fixtures traz o grupo de fixtures, e o fader grava nele: vale para quem estiver no grupo.",
     "addFixtures": "Adicionar fixtures",
     "clearFixtures": "Desmarcar todos",
     "sameType": "Selecionar do mesmo tipo",
     "pickGroup": "Selecionar grupo",
-    "addFixturesInfo": "Toque numa fixture para incluir ou tirar da cena; ao entrar, todos os canais dela vêm zerados.\nSelecionar do mesmo tipo: o toque vale para todas as fixtures do mesmo modelo.\nSelecionar grupo: inclui todas as fixtures de um grupo de fixtures.",
-    "fixturesInfo": "Toque numa fixture para escolher a que recebe os valores.\nCtrl + clique (ou toque longo, no celular) soma outras do mesmo tipo: o que mexer vale para todas.",
+    "addFixturesInfo": "Toque numa fixture para incluir ou tirar da cena; ao entrar, todos os canais dela vêm zerados. Numa fixture de um grupo da cena, tirar apaga só as exceções dela.\nSelecionar do mesmo tipo: o toque vale para todas as fixtures do mesmo modelo.\nSelecionar grupo: inclui o grupo de fixtures na cena (ou o tira). Os valores dele valem para quem estiver no grupo, também quem entrar depois. As fixtures do grupo que já estavam na cena guardam só o que difere do grupo.",
+    "fixturesInfo": "Toque num grupo ou numa fixture para escolher o que recebe os valores.\nNo grupo, os valores valem para quem estiver nele. Numa fixture do grupo, o que mexer vira uma exceção (*), que vence o grupo; Voltar ao grupo tira as exceções.\nCtrl + clique (ou toque longo, no celular) soma fixtures do mesmo tipo: o que mexer vale para todas.",
+    "backToGroup": "Voltar ao grupo",
+    "exception": "Exceção: valor próprio, vence o grupo",
+    "inGroup": "Num grupo da cena",
     "times": "Tempos"
   },
   "chaser": {
@@ -438,10 +445,11 @@
     "cycle": "Duração da volta",
     "fixtures": "Fixtures ({n})",
     "addFixture": "Adicionar fixture",
-    "addFixtureInfo": "Toque numa fixture com pan ou tilt para incluir no EFX.\nSelecionar grupo: inclui as fixtures de um grupo de fixtures que têm pan ou tilt, na ordem da grade (linha por linha), que é a ordem da propagação.",
+    "addFixtureInfo": "Toque numa fixture com pan ou tilt para incluir no EFX.\nSelecionar grupo: inclui o grupo de fixtures. Andam as fixtures dele com pan ou tilt que estão no grupo na hora, na ordem da grade (linha por linha), que é a ordem da propagação; o Inverter e o Início do grupo valem para todas.\nDefasagem (no grupo): cada fixture começa esse tanto da volta depois da anterior. Em 0°, andam juntas; com 4 fixtures e 90°, uma atrás da outra.\nUma fixture do grupo incluída também sozinha é a exceção: fica no lugar dela no grupo, com o Inverter e o Início do item dela.",
     "pickGroup": "Selecionar grupo",
     "reverse": "Inverter",
     "startOffset": "Início (°)",
+    "spread": "Defasagem (°)",
     "noCandidates": "Nenhuma outra fixture com pan/tilt.",
     "relativeInfo": "Soma o desenho à posição que as fixtures já têm (de uma cena rodando ou da prévia). O centro desloca o desenho em relação a essa posição; em 127, não desloca."
   },

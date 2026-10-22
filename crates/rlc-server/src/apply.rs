@@ -283,7 +283,9 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                             step.values.retain(|v| !gone(&v.fixture));
                         }
                     }
-                    FunctionKind::Efx(efx) => efx.fixtures.retain(|x| !gone(&x.fixture)),
+                    FunctionKind::Efx(efx) => efx
+                        .fixtures
+                        .retain(|x| !matches!(&x.target, EfxTarget::Fixture(id) if gone(id))),
                     _ => {}
                 }
             }
@@ -330,27 +332,96 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             upsert(&mut p.fixture_groups, group, |g| &g.id)?;
             vec![T::FixtureGroups]
         }
+        // O grupo fica congelado onde era usado, e a luz não muda: os valores dele nas cenas passam
+        // para as fixtures, e o EFX, o grupo de canais e o blackout de fixtures ficam com as fixtures
+        // que estavam nele. Só o RGB Matrix fica sem grupo.
         Op::RemoveFixtureGroup { id } => {
+            let members: Vec<Id> = group_fixtures(p, &id)
+                .iter()
+                .map(|f| f.id.clone())
+                .collect();
+            // Nas cenas, os canais que mudariam sem o grupo ganham o valor de agora
+            let frozen: Vec<(Id, Vec<SceneValue>)> = p
+                .functions
+                .iter()
+                .filter_map(|f| match &f.kind {
+                    FunctionKind::Scene(scene) if scene.groups.iter().any(|g| g.group == id) => {
+                        let mut without = scene.clone();
+                        without.groups.retain(|g| g.group != id);
+                        let after = scene_values(p, &without);
+                        let values = scene_values(p, scene)
+                            .into_iter()
+                            .filter(|v| !after.contains(v));
+                        Some((f.id.clone(), values.collect()))
+                    }
+                    _ => None,
+                })
+                .collect();
+            // No EFX, o item do grupo vira as fixtures dele, com a defasagem já no início de cada uma
+            let frozen_efx: Vec<(Id, Vec<EfxFixture>)> = p
+                .functions
+                .iter()
+                .filter_map(|f| match &f.kind {
+                    FunctionKind::Efx(efx) => {
+                        let fixtures = efx_expand(p, efx, Some(&id));
+                        (fixtures != efx.fixtures).then(|| (f.id.clone(), fixtures))
+                    }
+                    _ => None,
+                })
+                .collect();
             p.fixture_groups.retain(|g| g.id != id);
-            for w in &mut p.console.widgets {
-                if let VcWidgetKind::Button(b) = &mut w.kind {
-                    b.groups.retain(|g| *g != id);
-                }
-            }
             for f in &mut p.functions {
-                if let FunctionKind::RgbMatrix(m) = &mut f.kind
-                    && m.group.as_ref() == Some(&id)
-                {
-                    m.group = None;
+                match &mut f.kind {
+                    FunctionKind::Scene(scene) => {
+                        let Some((_, values)) = frozen.iter().find(|(s, _)| *s == f.id) else {
+                            continue;
+                        };
+                        scene.groups.retain(|g| g.group != id);
+                        for v in values {
+                            scene
+                                .values
+                                .retain(|o| o.fixture != v.fixture || o.channel != v.channel);
+                            scene.values.push(v.clone());
+                        }
+                    }
+                    FunctionKind::Efx(efx) => {
+                        if let Some((_, fixtures)) = frozen_efx.iter().find(|(e, _)| *e == f.id) {
+                            efx.fixtures = fixtures.clone();
+                        }
+                    }
+                    FunctionKind::RgbMatrix(m) if m.group.as_ref() == Some(&id) => m.group = None,
+                    _ => {}
                 }
             }
-            vec![T::FixtureGroups, T::Functions, T::Console]
+            for g in &mut p.channel_groups {
+                if g.fixture_group.as_ref() == Some(&id) {
+                    g.fixture_group = None;
+                }
+            }
+            for w in &mut p.console.widgets {
+                if let VcWidgetKind::Button(b) = &mut w.kind
+                    && b.groups.contains(&id)
+                {
+                    b.groups.retain(|g| *g != id);
+                    for m in &members {
+                        if !b.fixtures.contains(m) {
+                            b.fixtures.push(m.clone());
+                        }
+                    }
+                }
+            }
+            vec![T::FixtureGroups, T::ChannelGroups, T::Functions, T::Console]
         }
         Op::MoveFixtureGroup { id, to } => {
             move_to(&mut p.fixture_groups, &id, to, |g| &g.id)?;
             vec![T::FixtureGroups]
         }
         Op::SaveChannelGroup { group } => {
+            if let Some(g) = &group.fixture_group
+                && !p.fixture_groups.iter().any(|x| x.id == *g)
+            {
+                return Err("Grupo de fixtures não encontrado.".into());
+            }
             upsert(&mut p.channel_groups, group, |g| &g.id)?;
             vec![T::ChannelGroups]
         }
@@ -372,8 +443,19 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             if contains(&p.functions, &function.kind, &function.id) {
                 return Err("Uma criação não pode conter a si mesma.".into());
             }
-            if let FunctionKind::Efx(efx) = &function.kind {
-                check_efx(p, efx)?;
+            match &function.kind {
+                FunctionKind::Efx(efx) => check_efx(p, efx)?,
+                FunctionKind::Scene(scene) => {
+                    for (i, g) in scene.groups.iter().enumerate() {
+                        if !p.fixture_groups.iter().any(|x| x.id == g.group) {
+                            return Err("Grupo de fixtures não encontrado.".into());
+                        }
+                        if scene.groups[..i].iter().any(|o| o.group == g.group) {
+                            return Err("Grupo repetido na cena.".into());
+                        }
+                    }
+                }
+                _ => {}
             }
             upsert(&mut p.functions, function, |f| &f.id)?;
             vec![T::Functions]
@@ -773,7 +855,105 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Interfaces]
         }
     };
+    // Os grupos de canais que acompanham um grupo de fixtures refazem os canais (N1)
+    let mut topics = topics;
+    let patch = [
+        T::Fixtures,
+        T::FixtureDefs,
+        T::FixtureGroups,
+        T::ChannelGroups,
+    ];
+    if topics.iter().any(|t| patch.contains(t))
+        && follow_groups(&mut s.project)
+        && !topics.contains(&T::ChannelGroups)
+    {
+        topics.push(T::ChannelGroups);
+    }
     Ok((topics, Value::Null))
+}
+
+/// Refaz os canais dos grupos de canais que acompanham um grupo de fixtures: os atributos deles (sem
+/// os finos) nas fixtures que estão no grupo agora. Diz se algum mudou.
+fn follow_groups(p: &mut Project) -> bool {
+    let mut changed = false;
+    for i in 0..p.channel_groups.len() {
+        let g = &p.channel_groups[i];
+        let Some(group) = &g.fixture_group else {
+            continue;
+        };
+        let channels: Vec<FixtureChannel> = group_fixtures(p, group)
+            .into_iter()
+            .flat_map(|f| {
+                mode_channels(p, f)
+                    .enumerate()
+                    .filter(|(_, c)| !c.fine && g.attributes.contains(&c.attribute))
+                    .map(|(channel, _)| FixtureChannel {
+                        fixture: f.id.clone(),
+                        channel: channel as u16,
+                    })
+            })
+            .collect();
+        if channels != g.channels {
+            p.channel_groups[i].channels = channels;
+            changed = true;
+        }
+    }
+    changed
+}
+
+/// Fixtures de um grupo de fixtures, na ordem da grade (linha por linha), cada uma uma vez.
+fn group_fixtures<'a>(p: &'a Project, group: &Id) -> Vec<&'a Fixture> {
+    let mut cells: Vec<&GroupCell> = p
+        .fixture_groups
+        .iter()
+        .filter(|g| g.id == *group)
+        .flat_map(|g| &g.cells)
+        .collect();
+    cells.sort_by_key(|c| (c.y, c.x));
+    let mut fixtures: Vec<&Fixture> = vec![];
+    for c in cells {
+        if let Some(f) = p.fixtures.iter().find(|f| f.id == c.fixture)
+            && !fixtures.iter().any(|x| x.id == f.id)
+        {
+            fixtures.push(f);
+        }
+    }
+    fixtures
+}
+
+/// Valores de uma cena por fixture (N1): os dos grupos dela nas fixtures que estão em cada um agora
+/// (o grupo de depois vence) e, por cima, os valores próprios das fixtures.
+fn scene_values(p: &Project, scene: &Scene) -> Vec<SceneValue> {
+    let mut values: Vec<SceneValue> = vec![];
+    for group in &scene.groups {
+        for f in group_fixtures(p, &group.group) {
+            let channels: Vec<&Channel> = mode_channels(p, f).collect();
+            for (i, c) in channels.iter().enumerate() {
+                // O k-ésimo canal do atributo recebe o k-ésimo valor dele
+                let index = channels[..i]
+                    .iter()
+                    .filter(|o| o.attribute == c.attribute)
+                    .count();
+                if let Some(v) = group
+                    .values
+                    .iter()
+                    .find(|v| v.attribute == c.attribute && usize::from(v.index) == index)
+                {
+                    values.push(SceneValue {
+                        fixture: f.id.clone(),
+                        channel: i as u16,
+                        value: v.value,
+                    });
+                }
+            }
+        }
+    }
+    let mut merged: Vec<SceneValue> = vec![];
+    for v in values.into_iter().chain(scene.values.iter().cloned()) {
+        merged.retain(|o| o.fixture != v.fixture || o.channel != v.channel);
+        merged.push(v);
+    }
+    merged
 }
 
 /// UUIDv7 (A4), para o que o servidor cria sem receber o id (fixtures, universos).
@@ -910,7 +1090,7 @@ fn program(
     let program = match &function.kind {
         FunctionKind::Scene(scene) => Some(scene_program(
             p,
-            &scene.values,
+            &scene_values(p, scene),
             fade(dial[0], scene.fade_in_ms),
             fade(dial[1], scene.fade_out_ms),
         )),
@@ -987,18 +1167,25 @@ fn program(
                 keep_last: c.keep_last,
             }))
         }
-        // Só as fixtures com pan ou tilt andam no desenho; a duração do elemento "Tempos" é a da volta
+        // Só as fixtures com pan ou tilt andam no desenho, e um grupo entra com as que estão nele agora
+        // (cada fixture uma vez); a duração do elemento "Tempos" é a da volta
         FunctionKind::Efx(efx) => {
-            let mut efx = efx.clone();
+            let fixtures = efx_expand(p, efx, None);
+            let mut efx = Efx {
+                fixtures: vec![],
+                ..efx.clone()
+            };
             let mut heads = vec![];
-            efx.fixtures.retain(|x| {
-                let head = pan_tilt(p, &x.fixture);
-                let moves = head.iter().any(Option::is_some);
-                if moves {
+            for x in fixtures {
+                let EfxTarget::Fixture(id) = &x.target else {
+                    continue;
+                };
+                let head = pan_tilt(p, id);
+                if head.iter().any(Option::is_some) {
                     heads.push(head);
+                    efx.fixtures.push(x);
                 }
-                moves
-            });
+            }
             Some(Program::Efx(EfxProgram {
                 cycle: ms(dial[2].unwrap_or(Span::Ms(efx.timing.hold_ms))),
                 fade_in: fade(dial[0], efx.timing.fade_in_ms),
@@ -1434,6 +1621,40 @@ fn pan_tilt(p: &Project, fixture: &Id) -> [Option<SceneLevel>; 2] {
     })
 }
 
+/// A lista do EFX com os grupos (todos, ou só `only`) trocados pelas fixtures deles que têm pan ou tilt,
+/// na ordem da grade, cada uma `spread` graus depois da anterior (a defasagem vai para o início de cada
+/// uma). Cada fixture fica no primeiro lugar em que aparece; a que tem item próprio na lista usa os
+/// ajustes dele, também dentro de um grupo (a exceção, como na cena).
+fn efx_expand(p: &Project, efx: &Efx, only: Option<&Id>) -> Vec<EfxFixture> {
+    let mut list: Vec<EfxFixture> = vec![];
+    for x in &efx.fixtures {
+        let items = match &x.target {
+            EfxTarget::Group(group) if only.is_none_or(|id| id == group) => {
+                group_fixtures(p, group)
+                    .into_iter()
+                    .filter(|f| pan_tilt(p, &f.id) != [None, None])
+                    .enumerate()
+                    .map(|(k, f)| EfxFixture {
+                        target: EfxTarget::Fixture(f.id.clone()),
+                        start_offset: ((usize::from(x.start_offset) + k * usize::from(x.spread))
+                            % 360) as u16,
+                        spread: 0,
+                        ..x.clone()
+                    })
+                    .collect()
+            }
+            _ => vec![x.clone()],
+        };
+        for x in items {
+            let own = efx.fixtures.iter().find(|o| o.target == x.target);
+            if !list.iter().any(|o| o.target == x.target) {
+                list.push(own.cloned().unwrap_or(x));
+            }
+        }
+    }
+    list
+}
+
 /// Os limites do QLC+ para o EFX e as ordens que um desenho tem; só fixtures com pan ou tilt, sem
 /// repetir.
 fn check_efx(p: &Project, efx: &Efx) -> Result<(), String> {
@@ -1444,7 +1665,7 @@ fn check_efx(p: &Project, efx: &Efx) -> Result<(), String> {
         return Err("As frequências do EFX vão até 32.".into());
     }
     let angles = [efx.rotation, efx.x_phase, efx.y_phase];
-    let starts = efx.fixtures.iter().map(|x| x.start_offset);
+    let starts = efx.fixtures.iter().flat_map(|x| [x.start_offset, x.spread]);
     if angles.into_iter().chain(starts).any(|a| a > 359) {
         return Err("Os ângulos do EFX vão até 359°.".into());
     }
@@ -1452,11 +1673,17 @@ fn check_efx(p: &Project, efx: &Efx) -> Result<(), String> {
         return Err("O EFX não tem a ordem aleatória.".into());
     }
     for (i, x) in efx.fixtures.iter().enumerate() {
-        if efx.fixtures[..i].iter().any(|o| o.fixture == x.fixture) {
-            return Err("Fixture repetida no EFX.".into());
+        if efx.fixtures[..i].iter().any(|o| o.target == x.target) {
+            return Err("Fixture ou grupo repetido no EFX.".into());
         }
-        if pan_tilt(p, &x.fixture) == [None, None] {
-            return Err("Só fixtures com pan ou tilt entram no EFX.".into());
+        match &x.target {
+            EfxTarget::Fixture(f) if pan_tilt(p, f) == [None, None] => {
+                return Err("Só fixtures com pan ou tilt entram no EFX.".into());
+            }
+            EfxTarget::Group(g) if !p.fixture_groups.iter().any(|x| x.id == *g) => {
+                return Err("Grupo de fixtures não encontrado.".into());
+            }
+            _ => {}
         }
     }
     Ok(())
@@ -1609,8 +1836,7 @@ pub fn preview_levels(s: &Snapshot) -> Vec<DeskLevel> {
     let Some(FunctionKind::Scene(scene)) = scene.map(|f| &f.kind) else {
         return vec![];
     };
-    scene
-        .values
+    scene_values(p, scene)
         .iter()
         .filter_map(|v| {
             let level = channel_address(p, &v.fixture, v.channel)?;
@@ -2438,26 +2664,23 @@ mod tests {
         assert_eq!(at(&runs, 103), Some((Some(104), 128 << 8)));
         assert_eq!(at(&runs, 106), Some((None, 255)));
 
-        // Com o fino na cena, ele vai junto do grosso; só o fino (MH 2 no 115) muda só o fino
-        let Some(FunctionKind::Scene(scene)) = s
-            .project
-            .functions
-            .iter_mut()
-            .find(|f| f.id == "s4")
-            .map(|f| &mut f.kind)
-        else {
+        // Com o fino na cena, ele vai junto do grosso; só o fino (MH 2 no 115) muda só o fino. A cena
+        // (do grupo dos MHs) passa a ter os valores por fixture, para o MH 2 ficar sem o tilt grosso
+        let s4 = s.project.functions.iter_mut().find(|f| f.id == "s4");
+        let Some(FunctionKind::Scene(scene)) = s4.map(|f| &mut f.kind) else {
             panic!("s4 não é cena");
         };
+        let mut values = scene_values(&example().project, scene);
         let value = |fixture: &str, channel, value| SceneValue {
             fixture: fixture.into(),
             channel,
             value,
         };
-        scene.values.push(value("mh1", 1, 7));
-        scene
-            .values
-            .retain(|v| v.fixture != "mh2" || v.channel != 2);
-        scene.values.push(value("mh2", 3, 9));
+        values.push(value("mh1", 1, 7));
+        values.retain(|v| v.fixture != "mh2" || v.channel != 2);
+        values.push(value("mh2", 3, 9));
+        scene.groups.clear();
+        scene.values = values;
         let runs = running_programs(&s);
         assert_eq!(at(&runs, 101), Some((Some(102), 128 << 8 | 7)));
         assert_eq!(at(&runs, 102), None);
@@ -2734,14 +2957,15 @@ mod tests {
             )
         };
         assert!(save(&mut s, |e| e.width = 127).is_ok());
-        let refused: [fn(&mut Efx); 6] = [
+        let refused: [fn(&mut Efx); 7] = [
             |e| e.width = 128,
             |e| e.y_frequency = 33,
             |e| e.fixtures[0].start_offset = 360,
             |e| e.run_order = RunOrder::Random,
-            |e| e.fixtures[1].fixture = "mh1".into(),
+            |e| e.fixtures.push(e.fixtures[0].clone()),
             // O PAR não tem pan nem tilt
-            |e| e.fixtures[0].fixture = "par1".into(),
+            |e| e.fixtures[0].target = EfxTarget::Fixture("par1".into()),
+            |e| e.fixtures[0].target = EfxTarget::Group("inexistente".into()),
         ];
         for change in refused {
             assert!(save(&mut s, change).is_err());
@@ -2777,6 +3001,329 @@ mod tests {
             panic!("r1 não é RGB Matrix")
         };
         assert_eq!(m.group, None);
+    }
+
+    fn scene_mut<'a>(s: &'a mut Snapshot, id: &str) -> &'a mut Scene {
+        let f = s.project.functions.iter_mut().find(|f| f.id == id);
+        match f.map(|f| &mut f.kind) {
+            Some(FunctionKind::Scene(scene)) => scene,
+            _ => panic!("{id} não é cena"),
+        }
+    }
+
+    fn fixture_group(s: &Snapshot, id: &str) -> FixtureGroup {
+        let group = s.project.fixture_groups.iter().find(|g| g.id == id);
+        group.cloned().unwrap()
+    }
+
+    /// Valores (canal DMX, valor) da primeira criação rodando, uma cena.
+    fn scene_levels(s: &Snapshot) -> Vec<(u16, u16)> {
+        let runs = running_programs(s);
+        let mut levels: Vec<(u16, u16)> = scene_of(&runs[0].program)
+            .levels
+            .iter()
+            .map(|l| (l.channel, l.value))
+            .collect();
+        levels.sort();
+        levels
+    }
+
+    #[test]
+    fn a_group_scene_lights_who_is_in_the_group_now() {
+        let mut s = example();
+        run(&mut s, "s1");
+        let level = |s: &Snapshot, channel| {
+            let levels = scene_levels(s);
+            levels.iter().find(|l| l.0 == channel).map(|l| l.1)
+        };
+        // "Frente âmbar" no grupo "PARs frente": dimmer, vermelho e verde nos seis PARs
+        assert_eq!(scene_levels(&s).len(), 18);
+        assert_eq!(
+            (level(&s, 1), level(&s, 2), level(&s, 3)),
+            (Some(255), Some(255), Some(140))
+        );
+        // O PAR 7 (só RGB, no 41) entra no grupo e acende, sem editar a cena; "RGB PARs" acompanha
+        let mut g1 = fixture_group(&s, "g1");
+        g1.width = 7;
+        g1.cells.push(GroupCell {
+            x: 6,
+            y: 0,
+            fixture: "par7".into(),
+            head: 0,
+        });
+        let (topics, _) = apply(&mut s, Op::SaveFixtureGroup { group: g1 }).unwrap();
+        assert!(topics.contains(&Topic::ChannelGroups));
+        assert_eq!((level(&s, 41), level(&s, 42)), (Some(255), Some(140)));
+        // A exceção vence o grupo: o PAR 2 (no 8) sem o vermelho
+        scene_mut(&mut s, "s1").values.push(SceneValue {
+            fixture: "par2".into(),
+            channel: 1,
+            value: 0,
+        });
+        assert_eq!((level(&s, 9), level(&s, 16)), (Some(0), Some(255)));
+        // Com o PAR 1 em dois grupos da cena, vence o de depois
+        let group = FixtureGroup {
+            id: "g9".into(),
+            name: "PAR 1".into(),
+            width: 1,
+            height: 1,
+            cells: vec![GroupCell {
+                x: 0,
+                y: 0,
+                fixture: "par1".into(),
+                head: 0,
+            }],
+        };
+        apply(&mut s, Op::SaveFixtureGroup { group }).unwrap();
+        let red = |value| AttributeValue {
+            attribute: Attribute::Red,
+            index: 0,
+            value,
+        };
+        scene_mut(&mut s, "s1").groups.push(SceneGroup {
+            group: "g9".into(),
+            values: vec![red(10)],
+        });
+        assert_eq!((level(&s, 2), level(&s, 16)), (Some(10), Some(255)));
+        // Um grupo repetido ou que não existe é recusado
+        for group in ["g9", "nada"] {
+            let mut s1 = s.project.functions.iter().find(|f| f.id == "s1").cloned();
+            if let Some(FunctionKind::Scene(scene)) = s1.as_mut().map(|f| &mut f.kind) {
+                scene.groups.push(SceneGroup {
+                    group: group.into(),
+                    values: vec![],
+                });
+            }
+            let op = Op::SaveFunction {
+                function: s1.unwrap(),
+            };
+            assert!(apply(&mut s, op).is_err());
+        }
+    }
+
+    #[test]
+    fn each_channel_of_the_same_kind_gets_its_own_value() {
+        let s = example();
+        // Beam 7R: prisma e prisma (4 e 5), pan e pan fino (9 e 10)
+        let value = |attribute, index, value| AttributeValue {
+            attribute,
+            index,
+            value,
+        };
+        let scene = Scene {
+            values: vec![],
+            groups: vec![SceneGroup {
+                group: "g5".into(),
+                values: vec![
+                    value(Attribute::Prism, 0, 50),
+                    value(Attribute::Prism, 1, 200),
+                    value(Attribute::Pan, 1, 7),
+                ],
+            }],
+            channel_groups: vec![],
+            fade_in_ms: 0,
+            fade_out_ms: 0,
+        };
+        let values = scene_values(&s.project, &scene);
+        let of = |channel| {
+            let v = values
+                .iter()
+                .find(|v| v.fixture == "rbeam1" && v.channel == channel);
+            v.map(|v| v.value)
+        };
+        assert_eq!(values.len(), 12);
+        assert_eq!(
+            (of(4), of(5), of(9), of(10)),
+            (Some(50), Some(200), None, Some(7))
+        );
+    }
+
+    #[test]
+    fn channel_groups_follow_their_fixture_group() {
+        let mut s = example();
+        let cg6 = |s: &Snapshot| {
+            let group = s.project.channel_groups.iter().find(|g| g.id == "cg6");
+            group.cloned().unwrap()
+        };
+        // "Dimmer ParLeds" acompanha o grupo "ParLeds": uma ParLed a menos, um canal a menos
+        let mut g4 = fixture_group(&s, "g4");
+        g4.cells.pop();
+        let (topics, _) = apply(&mut s, Op::SaveFixtureGroup { group: g4 }).unwrap();
+        assert!(topics.contains(&Topic::ChannelGroups));
+        assert_eq!(cg6(&s).channels.len(), 11);
+        // A Mesa simples segue
+        let op = Op::SetDeskGroupLevel {
+            group: "cg6".into(),
+            value: 9,
+        };
+        apply(&mut s, op).unwrap();
+        assert_eq!(s.desk.levels.len(), 11);
+        // Com mais um atributo, o servidor refaz a lista
+        let mut group = cg6(&s);
+        group.attributes.push(Attribute::Red);
+        group.channels.clear();
+        apply(&mut s, Op::SaveChannelGroup { group }).unwrap();
+        assert_eq!(cg6(&s).channels.len(), 22);
+        // Um grupo de fixtures que não existe é recusado
+        let mut group = cg6(&s);
+        group.fixture_group = Some("nada".into());
+        assert!(apply(&mut s, Op::SaveChannelGroup { group }).is_err());
+    }
+
+    #[test]
+    fn efx_takes_its_groups_in_grid_order() {
+        let mut s = example();
+        run(&mut s, "e1");
+        let efx = |s: &Snapshot| match running_programs(s).remove(0).program {
+            Program::Efx(efx) => efx,
+            _ => panic!("e1 não é EFX"),
+        };
+        // Pan de cada fixture do desenho, o "Inverter" e o início dela
+        let pans = |e: &EfxProgram| -> Vec<(Option<u16>, bool, u16)> {
+            let pan = e.heads.iter().map(|h| h[0].as_ref().map(|l| l.channel));
+            let set = e.efx.fixtures.iter().map(|x| (x.reverse, x.start_offset));
+            pan.zip(set)
+                .map(|(pan, (r, start))| (pan, r, start))
+                .collect()
+        };
+        // "Círculo nos MHs" no grupo "Moving heads": MH 1 a 4, com o pan no 101, 115, 129 e 143
+        assert_eq!(efx(&s).heads.len(), 4);
+        // O MH 4 vai para o começo da grade, o MH 1 para o fim, e o MH 2 sai do grupo
+        let mut g3 = fixture_group(&s, "g3");
+        g3.cells[0].x = 3;
+        g3.cells[3].x = 0;
+        g3.cells.remove(1);
+        apply(&mut s, Op::SaveFixtureGroup { group: g3 }).unwrap();
+        let e = efx(&s);
+        assert_eq!(
+            pans(&e),
+            [
+                (Some(143), false, 0),
+                (Some(129), false, 0),
+                (Some(101), false, 0)
+            ]
+        );
+        // A defasagem do grupo: cada fixture começa 100° depois da anterior, a partir do início dele
+        let e1 = efx_mut(&mut s, "e1");
+        e1.fixtures[0].start_offset = 10;
+        e1.fixtures[0].spread = 100;
+        assert_eq!(
+            pans(&efx(&s)),
+            [
+                (Some(143), false, 10),
+                (Some(129), false, 110),
+                (Some(101), false, 210)
+            ]
+        );
+        // Uma fixture solta antes do grupo vem primeiro, sem repetir; o "Inverter" do grupo vale para
+        // as fixtures dele
+        let e1 = efx_mut(&mut s, "e1");
+        e1.fixtures[0].reverse = true;
+        e1.fixtures.insert(
+            0,
+            EfxFixture {
+                target: EfxTarget::Fixture("mh1".into()),
+                reverse: false,
+                start_offset: 0,
+                spread: 0,
+            },
+        );
+        assert_eq!(
+            pans(&efx(&s)),
+            [
+                (Some(101), false, 0),
+                (Some(143), true, 10),
+                (Some(129), true, 110)
+            ]
+        );
+        // O item próprio de uma fixture do grupo, depois dele, é a exceção: ela fica no lugar do grupo,
+        // com o "Inverter" e o início do item dela
+        efx_mut(&mut s, "e1").fixtures.push(EfxFixture {
+            target: EfxTarget::Fixture("mh4".into()),
+            reverse: false,
+            start_offset: 77,
+            spread: 0,
+        });
+        assert_eq!(
+            pans(&efx(&s)),
+            [
+                (Some(101), false, 0),
+                (Some(143), false, 77),
+                (Some(129), true, 110)
+            ]
+        );
+        // A defasagem também tem o limite de 359°
+        let mut e1 = s.project.functions.iter().find(|f| f.id == "e1").cloned();
+        if let Some(FunctionKind::Efx(e)) = e1.as_mut().map(|f| &mut f.kind) {
+            e.fixtures[1].spread = 360;
+        }
+        let op = Op::SaveFunction {
+            function: e1.unwrap(),
+        };
+        assert!(apply(&mut s, op).is_err());
+    }
+
+    #[test]
+    fn removing_a_fixture_group_freezes_it_where_it_was_used() {
+        let mut s = example();
+        run(&mut s, "s1");
+        let scene = scene_levels(&s);
+        // Um botão de blackout de fixtures no grupo dos MHs, e o EFX dele invertido
+        let mut widgets = s.project.console.widgets.iter();
+        let mut w = widgets
+            .find(|w| matches!(w.kind, VcWidgetKind::Button(_)))
+            .cloned()
+            .unwrap();
+        button(&mut w).action = ButtonAction::BlackoutFixtures;
+        button(&mut w).groups = vec!["g3".into()];
+        button(&mut w).fixtures = vec![];
+        save_widget(&mut s, w.clone());
+        efx_mut(&mut s, "e1").fixtures[0].reverse = true;
+        efx_mut(&mut s, "e1").fixtures[0].spread = 30;
+        // O MH 2 com item próprio (a exceção) mantém os ajustes dele
+        efx_mut(&mut s, "e1").fixtures.push(EfxFixture {
+            target: EfxTarget::Fixture("mh2".into()),
+            reverse: false,
+            start_offset: 5,
+            spread: 0,
+        });
+        for id in ["g1", "g3"] {
+            let op = Op::RemoveFixtureGroup { id: id.into() };
+            apply(&mut s, op).unwrap();
+        }
+        // A cena fica com os valores nas fixtures, e a luz não muda
+        assert!(scene_mut(&mut s, "s1").groups.is_empty());
+        assert_eq!(scene_levels(&s), scene);
+        // O EFX fica com as fixtures, com o ajuste e a defasagem do grupo no início de cada uma
+        let targets: Vec<(EfxTarget, bool, u16)> = [
+            ("mh1", true, 0),
+            ("mh2", false, 5),
+            ("mh3", true, 60),
+            ("mh4", true, 90),
+        ]
+        .map(|(id, reverse, start)| (EfxTarget::Fixture(id.into()), reverse, start))
+        .into();
+        let efx = efx_mut(&mut s, "e1");
+        let after: Vec<(EfxTarget, bool, u16)> = efx
+            .fixtures
+            .iter()
+            .map(|x| (x.target.clone(), x.reverse, x.start_offset))
+            .collect();
+        assert_eq!(after, targets);
+        // Os grupos de canais ficam com os canais que tinham, e o botão com as fixtures
+        for id in ["cg1", "cg3", "cg4"] {
+            let g = s
+                .project
+                .channel_groups
+                .iter()
+                .find(|g| g.id == id)
+                .unwrap();
+            assert!(g.fixture_group.is_none() && !g.channels.is_empty());
+        }
+        let VcWidgetKind::Button(b) = widget(&s, &w.id).kind else {
+            panic!("não é botão")
+        };
+        assert!(b.groups.is_empty() && b.fixtures.len() == 4);
     }
 
     #[test]

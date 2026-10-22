@@ -47,7 +47,7 @@ function blank(type: FunctionType): Function {
     fadeInMode: 'default', holdMode: 'default', fadeOutMode: 'default', common: timing, keepLast: false,
   }
   switch (type) {
-    case 'scene': return { id, name, folder, type, values: [], channelGroups: [], fadeInMs: 0, fadeOutMs: 0 }
+    case 'scene': return { id, name, folder, type, values: [], groups: [], channelGroups: [], fadeInMs: 0, fadeOutMs: 0 }
     case 'chaser': return { id, name, folder, type, ...chaser }
     case 'sequence': return { id, name, folder, type, ...chaser, scene: project.value.functions.find((f) => f.type === 'scene')?.id ?? null }
     case 'collection': return { id, name, folder, type, functions: [] }

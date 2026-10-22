@@ -2589,12 +2589,160 @@
       "head": 7
      }
     ]
+   },
+   {
+    "id": "g3",
+    "name": "Moving heads",
+    "width": 4,
+    "height": 1,
+    "cells": [
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "mh1",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "mh2",
+      "head": 0
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "mh3",
+      "head": 0
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "mh4",
+      "head": 0
+     }
+    ]
+   },
+   {
+    "id": "g4",
+    "name": "ParLeds",
+    "width": 12,
+    "height": 1,
+    "cells": [
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "rpar1",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "rpar2",
+      "head": 0
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "rpar3",
+      "head": 0
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "rpar4",
+      "head": 0
+     },
+     {
+      "x": 4,
+      "y": 0,
+      "fixture": "rpar5",
+      "head": 0
+     },
+     {
+      "x": 5,
+      "y": 0,
+      "fixture": "rpar6",
+      "head": 0
+     },
+     {
+      "x": 6,
+      "y": 0,
+      "fixture": "rpar7",
+      "head": 0
+     },
+     {
+      "x": 7,
+      "y": 0,
+      "fixture": "rpar8",
+      "head": 0
+     },
+     {
+      "x": 8,
+      "y": 0,
+      "fixture": "rpar9",
+      "head": 0
+     },
+     {
+      "x": 9,
+      "y": 0,
+      "fixture": "rpar10",
+      "head": 0
+     },
+     {
+      "x": 10,
+      "y": 0,
+      "fixture": "rpar11",
+      "head": 0
+     },
+     {
+      "x": 11,
+      "y": 0,
+      "fixture": "rpar12",
+      "head": 0
+     }
+    ]
+   },
+   {
+    "id": "g5",
+    "name": "Beams",
+    "width": 4,
+    "height": 1,
+    "cells": [
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "rbeam1",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "rbeam2",
+      "head": 0
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "rbeam3",
+      "head": 0
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "rbeam4",
+      "head": 0
+     }
+    ]
    }
   ],
   "channelGroups": [
    {
     "id": "cg1",
     "name": "Dimmer PARs",
+    "fixtureGroup": "g1",
+    "attributes": [
+     "dimmer"
+    ],
     "channels": [
      {
       "fixture": "par1",
@@ -2625,6 +2773,8 @@
    {
     "id": "cg2",
     "name": "Vermelho geral",
+    "fixtureGroup": null,
+    "attributes": [],
     "channels": [
      {
       "fixture": "par1",
@@ -2659,6 +2809,12 @@
    {
     "id": "cg3",
     "name": "RGB PARs",
+    "fixtureGroup": "g1",
+    "attributes": [
+     "red",
+     "green",
+     "blue"
+    ],
     "channels": [
      {
       "fixture": "par1",
@@ -2737,6 +2893,11 @@
    {
     "id": "cg4",
     "name": "Pan/Tilt MHs",
+    "fixtureGroup": "g3",
+    "attributes": [
+     "pan",
+     "tilt"
+    ],
     "channels": [
      {
       "fixture": "mh1",
@@ -2775,6 +2936,8 @@
    {
     "id": "cg5",
     "name": "Strobe e haze",
+    "fixtureGroup": null,
+    "attributes": [],
     "channels": [
      {
       "fixture": "strobe",
@@ -2789,6 +2952,10 @@
    {
     "id": "cg6",
     "name": "Dimmer ParLeds",
+    "fixtureGroup": "g4",
+    "attributes": [
+     "dimmer"
+    ],
     "channels": [
      {
       "fixture": "rpar1",
@@ -2843,6 +3010,10 @@
    {
     "id": "cg7",
     "name": "Dimmer Beams",
+    "fixtureGroup": "g5",
+    "attributes": [
+     "dimmer"
+    ],
     "channels": [
      {
       "fixture": "rbeam1",
@@ -2869,96 +3040,27 @@
     "name": "Frente âmbar",
     "folder": "d1",
     "type": "scene",
-    "values": [
+    "values": [],
+    "groups": [
      {
-      "fixture": "par1",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par1",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par1",
-      "channel": 2,
-      "value": 140
-     },
-     {
-      "fixture": "par2",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par2",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par2",
-      "channel": 2,
-      "value": 140
-     },
-     {
-      "fixture": "par3",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par3",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par3",
-      "channel": 2,
-      "value": 140
-     },
-     {
-      "fixture": "par4",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par4",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par4",
-      "channel": 2,
-      "value": 140
-     },
-     {
-      "fixture": "par5",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par5",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par5",
-      "channel": 2,
-      "value": 140
-     },
-     {
-      "fixture": "par6",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par6",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par6",
-      "channel": 2,
-      "value": 140
+      "group": "g1",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 140
+       }
+      ]
      }
     ],
     "channelGroups": [
@@ -2975,66 +3077,22 @@
     "name": "Frente azul",
     "folder": "d1",
     "type": "scene",
-    "values": [
+    "values": [],
+    "groups": [
      {
-      "fixture": "par1",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par1",
-      "channel": 3,
-      "value": 255
-     },
-     {
-      "fixture": "par2",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par2",
-      "channel": 3,
-      "value": 255
-     },
-     {
-      "fixture": "par3",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par3",
-      "channel": 3,
-      "value": 255
-     },
-     {
-      "fixture": "par4",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par4",
-      "channel": 3,
-      "value": 255
-     },
-     {
-      "fixture": "par5",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par5",
-      "channel": 3,
-      "value": 255
-     },
-     {
-      "fixture": "par6",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par6",
-      "channel": 3,
-      "value": 255
+      "group": "g1",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 255
+       }
+      ]
      }
     ],
     "channelGroups": [
@@ -3051,66 +3109,22 @@
     "name": "Frente vermelha",
     "folder": "d1",
     "type": "scene",
-    "values": [
+    "values": [],
+    "groups": [
      {
-      "fixture": "par1",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par1",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par2",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par2",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par3",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par3",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par4",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par4",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par5",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par5",
-      "channel": 1,
-      "value": 255
-     },
-     {
-      "fixture": "par6",
-      "channel": 0,
-      "value": 255
-     },
-     {
-      "fixture": "par6",
-      "channel": 1,
-      "value": 255
+      "group": "g1",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 255
+       }
+      ]
      }
     ],
     "channelGroups": [
@@ -3127,106 +3141,37 @@
     "name": "MHs no centro",
     "folder": null,
     "type": "scene",
-    "values": [
+    "values": [],
+    "groups": [
      {
-      "fixture": "mh1",
-      "channel": 0,
-      "value": 128
-     },
-     {
-      "fixture": "mh1",
-      "channel": 2,
-      "value": 128
-     },
-     {
-      "fixture": "mh1",
-      "channel": 5,
-      "value": 255
-     },
-     {
-      "fixture": "mh1",
-      "channel": 6,
-      "value": 10
-     },
-     {
-      "fixture": "mh1",
-      "channel": 12,
-      "value": 100
-     },
-     {
-      "fixture": "mh2",
-      "channel": 0,
-      "value": 128
-     },
-     {
-      "fixture": "mh2",
-      "channel": 2,
-      "value": 128
-     },
-     {
-      "fixture": "mh2",
-      "channel": 5,
-      "value": 255
-     },
-     {
-      "fixture": "mh2",
-      "channel": 6,
-      "value": 10
-     },
-     {
-      "fixture": "mh2",
-      "channel": 12,
-      "value": 100
-     },
-     {
-      "fixture": "mh3",
-      "channel": 0,
-      "value": 128
-     },
-     {
-      "fixture": "mh3",
-      "channel": 2,
-      "value": 128
-     },
-     {
-      "fixture": "mh3",
-      "channel": 5,
-      "value": 255
-     },
-     {
-      "fixture": "mh3",
-      "channel": 6,
-      "value": 10
-     },
-     {
-      "fixture": "mh3",
-      "channel": 12,
-      "value": 100
-     },
-     {
-      "fixture": "mh4",
-      "channel": 0,
-      "value": 128
-     },
-     {
-      "fixture": "mh4",
-      "channel": 2,
-      "value": 128
-     },
-     {
-      "fixture": "mh4",
-      "channel": 5,
-      "value": 255
-     },
-     {
-      "fixture": "mh4",
-      "channel": 6,
-      "value": 10
-     },
-     {
-      "fixture": "mh4",
-      "channel": 12,
-      "value": 100
+      "group": "g3",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 10
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 100
+       }
+      ]
      }
     ],
     "channelGroups": [],
@@ -3250,6 +3195,7 @@
       "value": 120
      }
     ],
+    "groups": [],
     "channelGroups": [],
     "fadeInMs": 1000,
     "fadeOutMs": 1000
@@ -3660,22 +3606,7 @@
     "propagation": "asymmetric",
     "fixtures": [
      {
-      "fixture": "mh1",
-      "reverse": false,
-      "startOffset": 0
-     },
-     {
-      "fixture": "mh2",
-      "reverse": false,
-      "startOffset": 0
-     },
-     {
-      "fixture": "mh3",
-      "reverse": false,
-      "startOffset": 0
-     },
-     {
-      "fixture": "mh4",
+      "group": "g3",
       "reverse": false,
       "startOffset": 0
      }

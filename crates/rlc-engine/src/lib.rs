@@ -1408,9 +1408,10 @@ mod tests {
         let efx = Efx {
             fixtures: (0..heads.len())
                 .map(|k| rlc_core::EfxFixture {
-                    fixture: format!("mh{k}"),
+                    target: rlc_core::EfxTarget::Fixture(format!("mh{k}")),
                     reverse: false,
                     start_offset: 0,
+                    spread: 0,
                 })
                 .collect(),
             ..efx::tests::qlc(rlc_core::EfxAlgorithm::Lissajous)

@@ -136,7 +136,7 @@ impl EfxRunner {
             .zip(&efx.heads)
             .map(|(fixture, head)| {
                 let fixtures = &self.efx.efx.fixtures;
-                let i = fixtures.iter().position(|o| o.fixture == fixture.fixture)?;
+                let i = fixtures.iter().position(|o| o.target == fixture.target)?;
                 if restart || self.efx.heads[i] != *head {
                     return None;
                 }
@@ -230,7 +230,7 @@ fn scale(efx: &Efx, x: f64, y: f64) -> (f64, f64) {
 pub(crate) mod tests {
     use std::time::Instant;
 
-    use rlc_core::{EfxFixture, Timing};
+    use rlc_core::{EfxFixture, EfxTarget, Timing};
 
     use super::*;
     use crate::tests::{run, scene};
@@ -533,9 +533,10 @@ pub(crate) mod tests {
         let mut efx = qlc(Circle);
         efx.fixtures = (0..n)
             .map(|k| EfxFixture {
-                fixture: format!("f{k}"),
+                target: EfxTarget::Fixture(format!("f{k}")),
                 reverse: false,
                 start_offset: 0,
+                spread: 0,
             })
             .collect();
         EfxProgram {

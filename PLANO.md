@@ -25,14 +25,14 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Na [validação final](docs/validacao-final.md)**, antes do release:
-- com os moving beams: 3 itens da F6, 1 da F7 e 7 da F8 (o EFX);
+- com os moving beams: 3 itens da F6, 1 da F7, 7 da F8 (o EFX) e 3 da F10b (o EFX em grupo);
 - adiados por escolha dele, sem precisar dos Beams: o tick com 4 universos (F6), a sequência e a coleção (F7).
 
 **Na F16:** o instalador num PC limpo (adiado da F3).
 
 **Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
 
-**Ordem de execução (aprovada em 2026-10-21):** Ajustes rápidos → F10 → F10b → F10c → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md) e a [F10](docs/fases/fase-10.md) foram validados em 2026-10-21; o próximo passo é a F10b.
+**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21; o próximo passo é a F10c.
 
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
@@ -316,18 +316,23 @@ Validação:
 - [x] Rate acelera e desacelera os fades de uma cena rodando, sem mudar os gravados.
 - [x] Ligar e desligar uma criação pelo fader.
 
-### F10b — Rig flexível · ⬜ (nova, 2026-10-21)
+### F10b — Rig flexível · ✅ (nova, 2026-10-21)
+
+Mini-plano: [docs/fases/fase-10b.md](docs/fases/fase-10b.md) (aprovado e entregue em 2026-10-21). Validada pelo usuário em 2026-10-21.
 
 - **N1 (pedido do usuário):** as criações deixam de depender de quantas fixtures há. As cenas, os EFX e os grupos de canais passam a apontar para **grupos de fixtures**: o valor gravado para "ParLeds" vale para quem está no grupo agora. Um valor de uma fixture específica continua possível e vence o do grupo. O RGB Matrix já funciona assim.
 - **Resultado:** ir de 8 para 12 ParLeds é patchar as 4 e pô-las no grupo, sem editar as criações.
 - **Onde mexe:** o contrato (nova versão do projeto, com migração), a tradução em `running_programs` e `scene_program` (`apply.rs`) e os editores de cena e de EFX. O motor a 50 Hz não muda.
-- Detalhes: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (N1). As cenas atuais podem ser convertidas automaticamente se as ParLeds tiverem o mesmo valor.
+- **Na validação (pedidos do usuário):** a defasagem entre as fixtures de um grupo no EFX, a fixture sozinha como exceção do grupo no EFX e o topo do editor de cena reorganizado (ações numa linha; grupos e fixtures num painel, acesos). Os outros pedidos do EFX foram para a F10d.
+- **Projetos do usuário:** o "RSena Palco" e o "Show de exemplo" foram convertidos para os grupos pela tela, com a luz de cada cena igual antes e depois.
+- Detalhes: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (N1).
 
 Validação:
-- [ ] De 8 para 12 ParLeds: patchar as 4 novas e pô-las no grupo faz as cenas e os EFX acenderem as 12, sem edição.
-- [ ] Um valor de uma fixture específica vence o do grupo.
-- [ ] Os projetos antigos abrem (migração).
-- [ ] `pnpm check` passa.
+- [x] De 8 para 12 ParLeds: tirar e pôr ParLeds no grupo muda as cenas, o slider e a Mesa simples, sem editar as criações.
+- [x] Um valor de uma fixture específica vence o do grupo (na cena e no EFX).
+- [x] Os projetos antigos abrem (migração).
+- [x] `pnpm check` passa.
+- Com os Beams de verdade, o EFX em grupo fica na [validação final](docs/validacao-final.md).
 
 ### F10c — Tempos, cue list e prioridade · ⬜ (nova, 2026-10-21)
 
@@ -344,6 +349,20 @@ Validação:
 - [ ] Cor e dimmer com tempos diferentes na mesma cena.
 - [ ] Uma cena de prioridade baixa nunca cobre uma de prioridade alta no mesmo canal.
 - [ ] Posição lenta com cor rápida: na [validação final](docs/validacao-final.md), com os Beams.
+
+### F10d — EFX avançado · ⬜ (nova, 2026-10-21, pedido do usuário na validação da F10b)
+
+- **Parâmetros por item:** o desenho, a posição, o tamanho e os outros parâmetros do EFX valem para todos, e cada item da lista (fixture ou grupo) pode trocar os que quiser, como a exceção na cena. Ex.: os Beams da esquerda num círculo pequeno e os da direita num oito grande, no mesmo EFX.
+- **Desenho personalizado:** desenhar o caminho com o dedo ou o mouse na área da prévia; as fixtures percorrem o desenho.
+- **Curva de velocidade:** como a velocidade varia ao longo da volta (constante, acelera, desacelera, rápida no meio e lenta nas pontas, ou uma curva desenhada), reaproveitando as curvas dos fades da F10c (R2).
+- **Já entregue na F10b:** a defasagem entre as fixtures de um grupo.
+- **Onde mexe:** o contrato (nova versão do projeto, com migração), o motor (`efx.rs`), a tradução no servidor, o editor de EFX e a prévia (as mesmas contas em `utils/functions.ts`).
+
+Validação:
+- [ ] Dois itens do mesmo EFX com desenhos diferentes.
+- [ ] Um desenho feito à mão percorrido pelas fixtures (na 3D View).
+- [ ] A curva de velocidade se vê no movimento.
+- [ ] Com os Beams de verdade: na [validação final](docs/validacao-final.md).
 
 ### F11 — Virtual Console II, multi-cliente e segurança · ⬜
 

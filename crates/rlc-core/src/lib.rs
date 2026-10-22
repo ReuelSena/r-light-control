@@ -248,6 +248,10 @@ pub struct GroupCell {
 pub struct ChannelGroup {
     pub id: Id,
     pub name: String,
+    /// Com um grupo de fixtures, os canais são os `attributes` (sem os finos) das fixtures que estão
+    /// nele: o servidor refaz a lista quando o grupo, as fixtures ou o patch mudam (N1).
+    pub fixture_group: Option<Id>,
+    pub attributes: Vec<Attribute>,
     pub channels: Vec<FixtureChannel>,
 }
 
@@ -312,8 +316,13 @@ pub enum FunctionKind {
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Scene {
+    /// Valores próprios das fixtures; numa fixture de um grupo da cena, vencem os do grupo.
     pub values: Vec<SceneValue>,
-    /// Grupos de canais usados no editor e o nível de cada um (os canais também ficam em `values`).
+    /// Grupos de fixtures da cena (N1): os valores de cada um valem para as fixtures que estão nele na
+    /// hora de rodar. Com uma fixture em dois, vence o que vem depois.
+    pub groups: Vec<SceneGroup>,
+    /// Grupos de canais usados no editor e o nível de cada um (os canais também ficam em `values`, ou
+    /// no grupo de fixtures que o grupo de canais acompanha).
     pub channel_groups: Vec<GroupLevel>,
     pub fade_in_ms: u32,
     pub fade_out_ms: u32,
@@ -325,6 +334,24 @@ pub struct SceneValue {
     pub fixture: Id,
     /// Posição do canal no modo da fixture, a partir de 0.
     pub channel: u16,
+    pub value: u8,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SceneGroup {
+    /// Grupo de fixtures.
+    pub group: Id,
+    pub values: Vec<AttributeValue>,
+}
+
+/// Valor de um tipo de canal, para fixtures de qualquer modelo: vale para o `index`-ésimo canal com o
+/// atributo, na ordem do modo (os dois prismas do Beam 7R são 0 e 1; o Pan fino depois do Pan, 1).
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttributeValue {
+    pub attribute: Attribute,
+    pub index: u16,
     pub value: u8,
 }
 
@@ -459,10 +486,25 @@ pub enum Propagation {
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EfxFixture {
-    pub fixture: Id,
+    #[serde(flatten)]
+    pub target: EfxTarget,
+    /// Num grupo, vale para todas as fixtures dele.
     pub reverse: bool,
     /// Graus.
     pub start_offset: u16,
+    /// Só no grupo: graus que cada fixture começa depois da anterior, na ordem da grade (0 = juntas).
+    /// Ausente nos arquivos de antes, vale 0.
+    #[serde(default)]
+    pub spread: u16,
+}
+
+/// Item da lista do EFX: uma fixture ou um grupo de fixtures (N1), que entra com as fixtures que estão
+/// nele na hora de rodar, na ordem da grade.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum EfxTarget {
+    Fixture(Id),
+    Group(Id),
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]

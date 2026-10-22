@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 import { Aperture, CircleDot, Disc, Focus, Gauge, Move, Palette, SlidersVertical, Sparkles, Sun, Thermometer, Triangle, Wrench, Zap, ZoomIn } from 'lucide-vue-next'
 import type { Attribute } from '~/types/generated/Attribute'
+import type { Channel } from '~/types/generated/Channel'
 import type { ChannelGroup } from '~/types/generated/ChannelGroup'
 import type { Fixture } from '~/types/generated/Fixture'
 import type { FixturePosition } from '~/types/generated/FixturePosition'
@@ -48,6 +49,15 @@ export function modeChannels(project: Project, fixture: Fixture) {
   const def = findDef(project, fixture.defId)
   return def?.modes.find((m) => m.name === fixture.mode)?.channels.map((i) => def.channels[i]!) ?? []
 }
+
+/** Fixtures de um grupo de fixtures na ordem da grade (linha por linha), cada uma uma vez, como no servidor. */
+export function groupFixtures(project: Project, id: string) {
+  const cells = [...(project.fixtureGroups.find((g) => g.id === id)?.cells ?? [])].sort((a, b) => a.y - b.y || a.x - b.x)
+  return [...new Set(cells.map((c) => c.fixture))].flatMap((fixture) => project.fixtures.filter((f) => f.id === fixture))
+}
+
+/** Posição do canal `i` entre os canais do mesmo atributo (o `index` dos valores de um grupo na cena). */
+export const attributeIndex = (channels: Channel[], i: number) => channels.slice(0, i).filter((c) => c.attribute === channels[i]?.attribute).length
 
 /** Ícone de um grupo de canais: o dos atributos, se todos dividem o mesmo; senão (ou vazio), um genérico. */
 export function channelGroupLook(project: Project, group: ChannelGroup) {

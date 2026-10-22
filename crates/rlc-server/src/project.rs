@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 7;
+const SCHEMA_VERSION: u32 = 8;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -176,6 +176,32 @@ fn migrate(project: &mut Value, version: u32) {
             }
         }
     }
+    // 7 → 8 (F10b): a cena ganhou os grupos de fixtures, e o grupo de canais pode acompanhar um
+    // grupo de fixtures. O que já existe continua por fixture (o EFX não muda: o item antigo é uma
+    // fixture)
+    if version < 8 {
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+        {
+            if f.get("type").and_then(Value::as_str) == Some("scene") {
+                f.entry("groups").or_insert(json!([]));
+            }
+        }
+        let groups = project
+            .get_mut("channelGroups")
+            .and_then(Value::as_array_mut);
+        for g in groups
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+        {
+            g.entry("fixtureGroup").or_insert(Value::Null);
+            g.entry("attributes").or_insert(json!([]));
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -336,6 +362,37 @@ mod tests {
         let file = dir.join("antigo.rlc");
         let v6 = json!({ "format": FORMAT, "schemaVersion": 6, "project": old });
         std::fs::write(&file, v6.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_7_opens_with_the_scenes_and_channel_groups_by_fixture() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut project = crate::hub::example_snapshot(None).project;
+        for f in &mut project.functions {
+            if let rlc_core::FunctionKind::Scene(scene) = &mut f.kind {
+                scene.groups.clear();
+            }
+        }
+        for g in &mut project.channel_groups {
+            g.fixture_group = None;
+            g.attributes.clear();
+        }
+        // A versão 7 não tinha os grupos na cena nem no grupo de canais
+        let mut old = serde_json::to_value(&project).unwrap();
+        for f in old["functions"].as_array_mut().unwrap() {
+            f.as_object_mut().unwrap().remove("groups");
+        }
+        for g in old["channelGroups"].as_array_mut().unwrap() {
+            let g = g.as_object_mut().unwrap();
+            g.remove("fixtureGroup");
+            g.remove("attributes");
+        }
+        let file = dir.join("antigo.rlc");
+        let v7 = json!({ "format": FORMAT, "schemaVersion": 7, "project": old });
+        std::fs::write(&file, v7.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

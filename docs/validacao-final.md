@@ -41,3 +41,10 @@ Itens do [fase-08.md](fases/fase-08.md):
 - [ ] "Em sequência", "Vai e volta", "Uma vez", "Inverter" e "Para trás".
 - [ ] O EFX num passo de chaser e numa coleção, junto com a cena do dimmer.
 - [ ] Elemento "Tempos" com "Seguir o BPM": a volta em batidas acompanha o TAP.
+
+## F10b — EFX em grupo
+
+Itens do [fase-10b.md](fases/fase-10b.md) (validados na tela e na prévia, sem os Beams):
+- [ ] O EFX num grupo de Beams: tirar um Beam do grupo e o EFX seguir só com os outros.
+- [ ] A "Defasagem" do grupo separa os Beams no movimento (ex.: 90° com 4, um atrás do outro).
+- [ ] Um Beam do grupo incluído também sozinho, com "Inverter" e outro "Início", é a exceção: anda do jeito dele, no lugar dele no grupo.

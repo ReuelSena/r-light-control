@@ -19,7 +19,7 @@ async function createFixtureGroup() {
 
 async function createChannelGroup() {
   const id = uuidv7()
-  await send({ op: 'saveChannelGroup', group: { id, name: name(), channels: [] } })
+  await send({ op: 'saveChannelGroup', group: { id, name: name(), fixtureGroup: null, attributes: [], channels: [] } })
   selectedId.value = id
 }
 </script>

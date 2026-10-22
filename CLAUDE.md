@@ -26,7 +26,7 @@ Stack: Tauri 2 + Rust (motor, drivers, servidor) + Nuxt 4 SPA (UI).
 - `ui/`: Nuxt 4 em modo SPA (código em `ui/app/`, textos em `ui/i18n/locales/`).
   - `screens/`: telas do app; o registro fica em `utils/screens.ts`. A mesma tela vira página (`pages/[screen].vue`), painel do modo modular (`components/app/AppDock.vue`) ou janela externa (`pages/janela/[screen].vue`).
   - `composables/useEngine.ts`: a única porta das telas para o motor. `engine/ws.ts` é o cliente WebSocket do servidor. Protocolo em [docs/protocolo.md](docs/protocolo.md). O app só abre com o estado do servidor (`plugins/engine.client.ts`).
-  - `utils/functions.ts`: ícones dos tipos de criação, as contas do EFX (as mesmas do motor, em `efx.rs`) e do RGB Matrix (usadas pelas prévias do Studio e pelo console) e a regra de uma criação não conter a si mesma. O passo atual dos chasers vem do motor (`chaserSteps`).
+  - `utils/functions.ts`: ícones dos tipos de criação, as contas do EFX (as mesmas do motor, em `efx.rs`) e do RGB Matrix (usadas pelas prévias do Studio e pelo console), os grupos de fixtures aplicados na cena e no EFX (as mesmas contas do servidor, `scene_values` em `apply.rs`) e a regra de uma criação não conter a si mesma. O passo atual dos chasers vem do motor (`chaserSteps`).
   - `utils/console.ts`: formatos e grade do console, tipos de elemento e cópia de layout entre formatos (VC-2). `composables/useConsole.ts`: o que cada elemento faz em operação (toque e teclas).
   - Componentes do design system em `ui/app/components/rl/`; regras de uso em [docs/design-system.md](docs/design-system.md).
   - Páginas de desenvolvimento em `/dev/*`: catálogo (`showcase`), `faders`, `beams` e `dmx` (padrões de teste da saída).

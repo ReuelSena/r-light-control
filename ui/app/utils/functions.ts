@@ -1,8 +1,12 @@
 import type { Component } from 'vue'
 import { Camera, Film, Layers, LayoutGrid, Orbit, Repeat } from 'lucide-vue-next'
 import type { Efx } from '~/types/generated/Efx'
+import type { Fixture } from '~/types/generated/Fixture'
 import type { Function } from '~/types/generated/Function'
+import type { Project } from '~/types/generated/Project'
 import type { RgbMatrix } from '~/types/generated/RgbMatrix'
+import type { Scene } from '~/types/generated/Scene'
+import type { SceneValue } from '~/types/generated/SceneValue'
 
 export type { FunctionType } from '~/types/generated/FunctionType'
 
@@ -58,13 +62,33 @@ export function efxPoint(efx: Efx, t: number) {
   }
 }
 
-/** Posição de cada fixture do EFX no instante `ms`, com as regras do motor (crates/rlc-engine/src/efx.rs):
- * a propagação, o vai e volta, o sentido e o início. Na prévia, o desenho se repete sem parar. */
-export function efxPositions(efx: Efx, ms: number) {
+type EfxItem = { fixture: string; reverse: boolean; startOffset: number }
+
+/** Fixtures do EFX, como no servidor (`efx_expand`): só as com pan ou tilt, os grupos com as fixtures que estão
+ * neles agora (na ordem da grade, com os ajustes do item, cada uma `spread` graus depois da anterior), cada
+ * fixture no primeiro lugar em que aparece. A que tem item próprio usa os ajustes dele, também dentro de um
+ * grupo (a exceção). */
+export function efxFixtures(project: Project, efx: Efx) {
+  const moves = (f: Fixture) => modeChannels(project, f).some((c) => c.attribute === 'pan' || c.attribute === 'tilt')
+  const list: EfxItem[] = []
+  for (const x of efx.fixtures) {
+    const fixtures = 'group' in x ? groupFixtures(project, x.group).filter(moves) : project.fixtures.filter((f) => f.id === x.fixture && moves(f))
+    fixtures.forEach((f, k) => {
+      const own = efx.fixtures.find((o) => 'fixture' in o && o.fixture === f.id) ?? { ...x, startOffset: (x.startOffset + k * x.spread) % 360 }
+      if (!list.some((o) => o.fixture === f.id)) list.push({ fixture: f.id, reverse: own.reverse, startOffset: own.startOffset })
+    })
+  }
+  return list
+}
+
+/** Posição de cada fixture do EFX (`efxFixtures`) no instante `ms`, com as regras do motor
+ * (crates/rlc-engine/src/efx.rs): a propagação, o vai e volta, o sentido e o início. Na prévia, o desenho se
+ * repete sem parar. */
+export function efxPositions(efx: Efx, fixtures: EfxItem[], ms: number) {
   const { PI } = Math
   const turns = ms / Math.max(efx.timing.holdMs, 100)
-  const n = efx.fixtures.length
-  return efx.fixtures.map((f, i) => {
+  const n = fixtures.length
+  return fixtures.map((f, i) => {
     // "Defasadas", cada uma 1/n da volta à frente; "Em sequência", 1/n atrás
     const at = turns + (efx.propagation === 'asymmetric' ? i / n : efx.propagation === 'serial' ? -i / n : 0)
     const lap = Math.floor(at)
@@ -74,6 +98,23 @@ export function efxPositions(efx: Efx, ms: number) {
     if ((efx.direction === 'backward') !== f.reverse) a = efx.algorithm === 'line' ? (a > PI ? a - PI : a + PI) : TAU - a
     return efxPoint(efx, a + (f.startOffset * PI) / 180)
   })
+}
+
+/** Valores de uma cena por fixture, como no servidor (`scene_values` em crates/rlc-server/src/apply.rs): os
+ * dos grupos dela nas fixtures que estão em cada um agora (o de depois vence) e, por cima, os próprios. */
+export function sceneValues(project: Project, scene: Pick<Scene, 'values' | 'groups'>): SceneValue[] {
+  const values = new Map<string, SceneValue>()
+  for (const g of scene.groups) {
+    for (const f of groupFixtures(project, g.group)) {
+      const channels = modeChannels(project, f)
+      channels.forEach((c, channel) => {
+        const v = g.values.find((v) => v.attribute === c.attribute && v.index === attributeIndex(channels, channel))
+        if (v) values.set(`${f.id}:${channel}`, { fixture: f.id, channel, value: v.value })
+      })
+    }
+  }
+  for (const v of scene.values) values.set(`${v.fixture}:${v.channel}`, v)
+  return [...values.values()]
 }
 
 export const matrixAlgorithms = ['plain', 'chase', 'stripes', 'gradient', 'random']

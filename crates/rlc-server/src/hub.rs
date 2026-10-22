@@ -547,13 +547,15 @@ impl Hub {
                 }
             }
         }
-        // As criações rodando acompanham as edições, inclusive a delas mesmas, e os tempos ajustados
-        // ao vivo no console
+        // As criações rodando acompanham as edições, inclusive a delas mesmas e a dos grupos (N1), e os
+        // tempos ajustados ao vivo no console
         if any(&[
             Topic::Project,
             Topic::Universes,
             Topic::Fixtures,
             Topic::FixtureDefs,
+            Topic::FixtureGroups,
+            Topic::ChannelGroups,
             Topic::Functions,
             Topic::Running,
             Topic::Console,
@@ -575,12 +577,13 @@ impl Hub {
         if any(&[Topic::TestPattern]) {
             self.engine.send(Command::Test(self.snapshot.test_pattern));
         }
-        // A prévia acompanha cada mudança da cena em edição
+        // A prévia acompanha cada mudança da cena em edição e dos grupos dela
         if any(&[
             Topic::Project,
             Topic::Universes,
             Topic::Fixtures,
             Topic::FixtureDefs,
+            Topic::FixtureGroups,
             Topic::Functions,
             Topic::Preview,
             Topic::Highlight,

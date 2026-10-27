@@ -3659,9 +3659,14 @@
     "propagation": "asymmetric",
     "fixtures": [
      {
-      "group": "g3",
       "reverse": false,
-      "startOffset": 0
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false,
+      "group": "g3"
      }
     ],
     "runOrder": "loop",
@@ -3670,7 +3675,10 @@
      "fadeInMs": 0,
      "holdMs": 4000,
      "fadeOutMs": 0
-    }
+    },
+    "path": [],
+    "speed": "linear",
+    "speedPoints": null
    },
    {
     "id": "r1",
@@ -4071,6 +4079,357 @@
       "values": []
      }
     ]
+   },
+   {
+    "id": "fx1",
+    "name": "Dois desenhos",
+    "folder": "d3",
+    "priority": "normal",
+    "type": "efx",
+    "algorithm": "circle",
+    "width": 30,
+    "height": 30,
+    "xOffset": 127,
+    "yOffset": 127,
+    "rotation": 0,
+    "xFrequency": 2,
+    "yFrequency": 3,
+    "xPhase": 90,
+    "yPhase": 0,
+    "path": [],
+    "speed": "linear",
+    "speedPoints": null,
+    "relative": false,
+    "propagation": "parallel",
+    "fixtures": [
+     {
+      "fixture": "rbeam1",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     },
+     {
+      "fixture": "rbeam2",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     },
+     {
+      "fixture": "rbeam3",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": {
+       "algorithm": "eight",
+       "width": 100,
+       "height": 60,
+       "xOffset": 127,
+       "yOffset": 127,
+       "rotation": 0,
+       "xFrequency": 2,
+       "yFrequency": 3,
+       "xPhase": 90,
+       "yPhase": 0,
+       "path": [],
+       "speed": "linear",
+       "speedPoints": null
+      },
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     },
+     {
+      "fixture": "rbeam4",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": {
+       "algorithm": "eight",
+       "width": 100,
+       "height": 60,
+       "xOffset": 127,
+       "yOffset": 127,
+       "rotation": 0,
+       "xFrequency": 2,
+       "yFrequency": 3,
+       "xPhase": 90,
+       "yPhase": 0,
+       "path": [],
+       "speed": "linear",
+       "speedPoints": null
+      },
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     }
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 4000,
+     "fadeOutMs": 0
+    }
+   },
+   {
+    "id": "fx2",
+    "name": "Espelhados",
+    "folder": "d3",
+    "priority": "normal",
+    "type": "efx",
+    "algorithm": "circle",
+    "width": 60,
+    "height": 40,
+    "xOffset": 127,
+    "yOffset": 127,
+    "rotation": 0,
+    "xFrequency": 2,
+    "yFrequency": 3,
+    "xPhase": 90,
+    "yPhase": 0,
+    "path": [],
+    "speed": "linear",
+    "speedPoints": null,
+    "relative": false,
+    "propagation": "parallel",
+    "fixtures": [
+     {
+      "fixture": "rbeam1",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     },
+     {
+      "fixture": "rbeam2",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     },
+     {
+      "fixture": "rbeam3",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": true,
+      "invertTilt": false,
+      "swapAxes": false
+     },
+     {
+      "fixture": "rbeam4",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": true,
+      "invertTilt": false,
+      "swapAxes": false
+     }
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 4000,
+     "fadeOutMs": 0
+    }
+   },
+   {
+    "id": "fx3",
+    "name": "À mão (estrela)",
+    "folder": "d3",
+    "priority": "normal",
+    "type": "efx",
+    "algorithm": "freehand",
+    "width": 100,
+    "height": 100,
+    "xOffset": 127,
+    "yOffset": 127,
+    "rotation": 0,
+    "xFrequency": 2,
+    "yFrequency": 3,
+    "xPhase": 90,
+    "yPhase": 0,
+    "path": [
+     [
+      0,
+      127
+     ],
+     [
+      -29,
+      40
+     ],
+     [
+      -121,
+      39
+     ],
+     [
+      -48,
+      -15
+     ],
+     [
+      -75,
+      -103
+     ],
+     [
+      0,
+      -50
+     ],
+     [
+      75,
+      -103
+     ],
+     [
+      48,
+      -15
+     ],
+     [
+      121,
+      39
+     ],
+     [
+      29,
+      40
+     ]
+    ],
+    "speed": "linear",
+    "speedPoints": null,
+    "relative": false,
+    "propagation": "parallel",
+    "fixtures": [
+     {
+      "group": "g5",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     }
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 6000,
+     "fadeOutMs": 0
+    }
+   },
+   {
+    "id": "fx4",
+    "name": "Varredura em S",
+    "folder": "d3",
+    "priority": "normal",
+    "type": "efx",
+    "algorithm": "line2",
+    "width": 100,
+    "height": 0,
+    "xOffset": 127,
+    "yOffset": 127,
+    "rotation": 0,
+    "xFrequency": 2,
+    "yFrequency": 3,
+    "xPhase": 90,
+    "yPhase": 0,
+    "path": [],
+    "speed": "easeInOut",
+    "speedPoints": null,
+    "relative": false,
+    "propagation": "parallel",
+    "fixtures": [
+     {
+      "group": "g5",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     }
+    ],
+    "runOrder": "pingPong",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 3000,
+     "fadeOutMs": 0
+    }
+   },
+   {
+    "id": "fx5",
+    "name": "Curva desenhada (para no meio)",
+    "folder": "d3",
+    "priority": "normal",
+    "type": "efx",
+    "algorithm": "line2",
+    "width": 100,
+    "height": 0,
+    "xOffset": 127,
+    "yOffset": 127,
+    "rotation": 0,
+    "xFrequency": 2,
+    "yFrequency": 3,
+    "xPhase": 90,
+    "yPhase": 0,
+    "path": [],
+    "speed": "linear",
+    "speedPoints": [
+     0,
+     40,
+     80,
+     120,
+     128,
+     128,
+     128,
+     128,
+     128,
+     128,
+     128,
+     135,
+     170,
+     205,
+     240,
+     255
+    ],
+    "relative": false,
+    "propagation": "parallel",
+    "fixtures": [
+     {
+      "group": "g5",
+      "reverse": false,
+      "startOffset": 0,
+      "spread": 0,
+      "shape": null,
+      "invertPan": false,
+      "invertTilt": false,
+      "swapAxes": false
+     }
+    ],
+    "runOrder": "pingPong",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 0,
+     "holdMs": 4000,
+     "fadeOutMs": 0
+    }
    }
   ],
   "folders": [
@@ -4083,6 +4442,12 @@
     "id": "d2",
     "name": "Tempos e prioridade",
     "kind": "scene",
+    "parent": null
+   },
+   {
+    "id": "d3",
+    "name": "EFX avançado",
+    "kind": "efx",
     "parent": null
    }
   ],

@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 9;
+const SCHEMA_VERSION: u32 = 10;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -256,6 +256,28 @@ fn migrate(project: &mut Value, version: u32) {
             }
         }
     }
+    // 9 → 10 (F10d): o EFX sem desenho à mão e com a velocidade constante; os itens sem desenho
+    // próprio, sem espelho e sem trocar os eixos
+    if version < 10 {
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+            .filter(|f| f.get("type").and_then(Value::as_str) == Some("efx"))
+        {
+            f.entry("path").or_insert(json!([]));
+            f.entry("speed").or_insert("linear".into());
+            f.entry("speedPoints").or_insert(Value::Null);
+            let items = f.get_mut("fixtures").and_then(Value::as_array_mut);
+            for x in items.into_iter().flatten().filter_map(Value::as_object_mut) {
+                x.entry("shape").or_insert(Value::Null);
+                for key in ["invertPan", "invertTilt", "swapAxes"] {
+                    x.entry(key).or_insert(false.into());
+                }
+            }
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -381,10 +403,9 @@ mod tests {
         let file = dir.join("antigo.rlc");
         let v3 = json!({ "format": FORMAT, "schemaVersion": 3, "project": old });
         std::fs::write(&file, v3.to_string()).unwrap();
-        for f in &mut project.functions {
-            if let rlc_core::FunctionKind::Efx(efx) = &mut f.kind {
-                efx.width = 127;
-            }
+        let e1 = project.functions.iter_mut().find(|f| f.id == "e1");
+        if let Some(rlc_core::FunctionKind::Efx(efx)) = e1.map(|f| &mut f.kind) {
+            efx.shape.width = 127;
         }
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
@@ -511,6 +532,49 @@ mod tests {
         let file = dir.join("antigo.rlc");
         let v8 = json!({ "format": FORMAT, "schemaVersion": 8, "project": old });
         std::fs::write(&file, v8.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_9_opens_the_efx_with_the_general_shape_and_constant_speed() {
+        use rlc_core::{Curve, FunctionKind};
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut project = crate::hub::example_snapshot(None).project;
+        for f in &mut project.functions {
+            if let FunctionKind::Efx(efx) = &mut f.kind {
+                if efx.shape.algorithm == rlc_core::EfxAlgorithm::Freehand {
+                    efx.shape.algorithm = rlc_core::EfxAlgorithm::Circle;
+                }
+                (efx.shape.path, efx.shape.speed, efx.shape.speed_points) =
+                    (vec![], Curve::Linear, None);
+                for x in &mut efx.fixtures {
+                    x.shape = None;
+                    (x.invert_pan, x.invert_tilt, x.swap_axes) = (false, false, false);
+                }
+            }
+        }
+        // A versão 9 não tinha nada disso
+        let mut old = serde_json::to_value(&project).unwrap();
+        for f in old["functions"].as_array_mut().unwrap() {
+            if f["type"] != "efx" {
+                continue;
+            }
+            let f = f.as_object_mut().unwrap();
+            for key in ["path", "speed", "speedPoints"] {
+                f.remove(key);
+            }
+            for x in f["fixtures"].as_array_mut().unwrap() {
+                let x = x.as_object_mut().unwrap();
+                for key in ["shape", "invertPan", "invertTilt", "swapAxes"] {
+                    x.remove(key);
+                }
+            }
+        }
+        let file = dir.join("antigo.rlc");
+        let v9 = json!({ "format": FORMAT, "schemaVersion": 9, "project": old });
+        std::fs::write(&file, v9.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

@@ -468,9 +468,19 @@
     "cycle": "Duração da volta",
     "fixtures": "Fixtures ({n})",
     "addFixture": "Adicionar fixture",
-    "addFixtureInfo": "Toque numa fixture com pan ou tilt para incluir no EFX.\nSelecionar grupo: inclui o grupo de fixtures. Andam as fixtures dele com pan ou tilt que estão no grupo na hora, na ordem da grade (linha por linha), que é a ordem da propagação; o Inverter e o Início do grupo valem para todas.\nDefasagem (no grupo): cada fixture começa esse tanto da volta depois da anterior. Em 0°, andam juntas; com 4 fixtures e 90°, uma atrás da outra.\nUma fixture do grupo incluída também sozinha é a exceção: fica no lugar dela no grupo, com o Inverter e o Início do item dela.",
+    "addFixtureInfo": "Toque numa fixture com pan ou tilt para incluir no EFX.\nSelecionar grupo: inclui o grupo de fixtures. Andam as fixtures dele com pan ou tilt que estão no grupo na hora, na ordem da grade (linha por linha), que é a ordem da propagação; os ajustes do grupo (desenho próprio, Ao contrário, Início, inverter e trocar os eixos) valem para todas.\nDefasagem (no grupo): cada fixture começa esse tanto da volta depois da anterior. Em 0°, andam juntas; com 4 fixtures e 90°, uma atrás da outra.\nUma fixture do grupo incluída também sozinha é a exceção: fica no lugar dela no grupo, com os ajustes do item dela.\nDesenho próprio: o item ganha uma cópia do desenho geral e passa a ter o seu. Inverter pan e tilt espelham o movimento em volta do centro do desenho; Trocar pan e tilt troca um eixo pelo outro (a fixture montada de lado).",
     "pickGroup": "Selecionar grupo",
-    "reverse": "Inverter",
+    "reverse": "Ao contrário",
+    "ownShape": "Desenho próprio",
+    "invertPan": "Inverter pan",
+    "invertTilt": "Inverter tilt",
+    "swapAxes": "Trocar pan e tilt",
+    "editing": "Desenho de",
+    "general": "Geral",
+    "draw": "Desenhar",
+    "drawInfo": "Com Desenhar ligado, trace o caminho na prévia com o dedo ou o mouse; ao soltar, o fim se liga ao começo. O tamanho, o centro e a rotação voltam ao inteiro, para o desenho ficar onde foi traçado, e depois podem ser ajustados.",
+    "speed": "Velocidade",
+    "speedInfo": "Como a fixture anda ao longo da volta, pela posição no desenho: todas ficam lentas nos mesmos pontos do caminho. A duração da volta não muda.\nDesenhada: trace a curva no quadro (o tempo na horizontal, o quanto do desenho já foi andado na vertical).",
     "startOffset": "Início (°)",
     "spread": "Defasagem (°)",
     "noCandidates": "Nenhuma outra fixture com pan/tilt.",
@@ -486,7 +496,15 @@
     "squareChoppy": "Quadrado (saltos)",
     "squareTrue": "Quadrado (cantos)",
     "leaf": "Folha",
-    "lissajous": "Lissajous"
+    "lissajous": "Lissajous",
+    "freehand": "À mão"
+  },
+  "efxSpeed": {
+    "linear": "Constante",
+    "easeIn": "Acelera",
+    "easeOut": "Desacelera",
+    "easeInOut": "Lenta nas pontas",
+    "drawn": "Desenhada"
   },
   "propagation": {
     "parallel": "Juntas",

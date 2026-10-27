@@ -1846,15 +1846,35 @@ fn efx_expand(p: &Project, efx: &Efx, only: Option<&Id>) -> Vec<EfxFixture> {
 /// Os limites do QLC+ para o EFX e as ordens que um desenho tem; só fixtures com pan ou tilt, sem
 /// repetir.
 fn check_efx(p: &Project, efx: &Efx) -> Result<(), String> {
-    if efx.width > 127 || efx.height > 127 {
-        return Err("A largura e a altura do EFX vão até 127.".into());
+    let own = efx.fixtures.iter().filter_map(|x| x.shape.as_ref());
+    for shape in std::iter::once(&efx.shape).chain(own) {
+        if shape.width > 127 || shape.height > 127 {
+            return Err("A largura e a altura do EFX vão até 127.".into());
+        }
+        if shape.x_frequency > 32 || shape.y_frequency > 32 {
+            return Err("As frequências do EFX vão até 32.".into());
+        }
+        if [shape.rotation, shape.x_phase, shape.y_phase]
+            .iter()
+            .any(|&a| a > 359)
+        {
+            return Err("Os ângulos do EFX vão até 359°.".into());
+        }
+        if shape.path.len() > 64 || shape.path.iter().any(|&(x, y)| x < -127 || y < -127) {
+            return Err("O desenho à mão tem até 64 pontos, de -127 a 127.".into());
+        }
+        // A curva desenhada: 16 pontos, de 0 à volta inteira, sem descer
+        if let Some(points) = &shape.speed_points
+            && (points.len() != 16
+                || points[0] != 0
+                || points[15] != 255
+                || points.windows(2).any(|w| w[1] < w[0]))
+        {
+            return Err("A curva de velocidade vai de 0 à volta inteira, sem descer.".into());
+        }
     }
-    if efx.x_frequency > 32 || efx.y_frequency > 32 {
-        return Err("As frequências do EFX vão até 32.".into());
-    }
-    let angles = [efx.rotation, efx.x_phase, efx.y_phase];
     let starts = efx.fixtures.iter().flat_map(|x| [x.start_offset, x.spread]);
-    if angles.into_iter().chain(starts).any(|a| a > 359) {
+    if starts.into_iter().any(|a| a > 359) {
         return Err("Os ângulos do EFX vão até 359°.".into());
     }
     if efx.run_order == RunOrder::Random {
@@ -3312,11 +3332,26 @@ mod tests {
                 },
             )
         };
-        assert!(save(&mut s, |e| e.width = 127).is_ok());
-        let refused: [fn(&mut Efx); 7] = [
-            |e| e.width = 128,
-            |e| e.y_frequency = 33,
+        assert!(save(&mut s, |e| e.shape.width = 127).is_ok());
+        let refused: [fn(&mut Efx); 12] = [
+            |e| e.shape.width = 128,
+            |e| e.shape.y_frequency = 33,
             |e| e.fixtures[0].start_offset = 360,
+            // O desenho próprio do item também é conferido
+            |e| {
+                e.fixtures[0].shape = Some(EfxShape {
+                    rotation: 360,
+                    ..e.shape.clone()
+                })
+            },
+            |e| e.shape.path = vec![(0, 0); 65],
+            |e| e.shape.path = vec![(-128, 0)],
+            |e| e.shape.speed_points = Some(vec![0; 16]),
+            // Sobe e desce
+            |e| {
+                let points = (0..16).map(|k| if k == 3 || k == 15 { 255 } else { 0 });
+                e.shape.speed_points = Some(points.collect())
+            },
             |e| e.run_order = RunOrder::Random,
             |e| e.fixtures.push(e.fixtures[0].clone()),
             // O PAR não tem pan nem tilt
@@ -3326,7 +3361,7 @@ mod tests {
         for change in refused {
             assert!(save(&mut s, change).is_err());
         }
-        assert_eq!(efx_mut(&mut s, "e1").width, 127);
+        assert_eq!(efx_mut(&mut s, "e1").shape.width, 127);
     }
 
     #[test]
@@ -3586,6 +3621,10 @@ mod tests {
                 reverse: false,
                 start_offset: 0,
                 spread: 0,
+                shape: None,
+                invert_pan: false,
+                invert_tilt: false,
+                swap_axes: false,
             },
         );
         assert_eq!(
@@ -3603,6 +3642,10 @@ mod tests {
             reverse: false,
             start_offset: 77,
             spread: 0,
+            shape: None,
+            invert_pan: false,
+            invert_tilt: false,
+            swap_axes: false,
         });
         assert_eq!(
             pans(&efx(&s)),
@@ -3610,6 +3653,29 @@ mod tests {
                 (Some(101), false, 0),
                 (Some(143), false, 77),
                 (Some(129), true, 110)
+            ]
+        );
+        // O desenho próprio, o espelho e a troca dos eixos do grupo vão para as fixtures dele; a
+        // exceção fica com os do item dela
+        let e1 = efx_mut(&mut s, "e1");
+        let own = EfxShape {
+            algorithm: EfxAlgorithm::Eight,
+            ..e1.shape.clone()
+        };
+        e1.fixtures[1].shape = Some(own.clone());
+        (e1.fixtures[1].invert_pan, e1.fixtures[1].swap_axes) = (true, true);
+        let looks = |e: &EfxProgram| -> Vec<(Option<EfxShape>, bool, bool)> {
+            let items = e.efx.fixtures.iter();
+            items
+                .map(|x| (x.shape.clone(), x.invert_pan, x.swap_axes))
+                .collect()
+        };
+        assert_eq!(
+            looks(&efx(&s)),
+            [
+                (None, false, false),
+                (None, false, false),
+                (Some(own), true, true)
             ]
         );
         // A defasagem também tem o limite de 359°
@@ -3646,6 +3712,10 @@ mod tests {
             reverse: false,
             start_offset: 5,
             spread: 0,
+            shape: None,
+            invert_pan: false,
+            invert_tilt: false,
+            swap_axes: false,
         });
         for id in ["g1", "g3"] {
             let op = Op::RemoveFixtureGroup { id: id.into() };

@@ -53,3 +53,11 @@ Itens do [fase-10b.md](fases/fase-10b.md) (validados na tela e na prévia, sem o
 
 Item do [fase-10c.md](fases/fase-10c.md):
 - [ ] Uma cena dos Beams com a Posição lenta (fade de 6 s) e a Cor rápida (sem fade), em "Por tipo de atributo": disparada sobre outra cena dos Beams, a cor troca na hora e os Beams andam devagar até a posição nova.
+
+## F10d — EFX avançado
+
+Itens do [fase-10d.md](fases/fase-10d.md), com os EFX da pasta "EFX avançado" do Show de exemplo (validados na prévia e na 3D View, sem os Beams):
+- [ ] **Dois desenhos:** os Beams da esquerda num círculo pequeno e os da direita num oito grande.
+- [ ] **Espelhados:** com o pan invertido, os Beams da direita giram ao contrário dos da esquerda, no mesmo centro (conferir também o sentido real dos Beams pendurados).
+- [ ] **À mão (estrela):** os Beams percorrem a estrela.
+- [ ] **Varredura em S** e **Curva desenhada:** a velocidade se vê no movimento real (freia nas pontas; para no meio).

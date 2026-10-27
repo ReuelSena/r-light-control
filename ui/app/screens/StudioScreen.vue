@@ -59,7 +59,7 @@ function blank(type: FunctionType): Function {
     case 'efx':
       return {
         ...base, type, algorithm: 'circle', width: 127, height: 127, xOffset: 127, yOffset: 127, rotation: 0,
-        xFrequency: 2, yFrequency: 3, xPhase: 90, yPhase: 0, relative: false, propagation: 'parallel', fixtures: [], ...playback,
+        xFrequency: 2, yFrequency: 3, xPhase: 90, yPhase: 0, path: [], speed: 'linear', speedPoints: null, relative: false, propagation: 'parallel', fixtures: [], ...playback,
       }
     case 'rgbMatrix':
       return { ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, algorithm: 'plain', colors: ['#ff0000', '#0000ff'], ...playback }

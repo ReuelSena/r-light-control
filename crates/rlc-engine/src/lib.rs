@@ -1061,18 +1061,25 @@ fn fade(start: u16, target: u16, elapsed: Duration, time: Duration, curve: Curve
         elapsed.as_micros(),
         time.as_micros().max(1),
     );
-    let x = elapsed as f64 / time as f64;
-    let shape = |y: f64| (diff as f64 * y) as u128;
     let step = match curve {
         Curve::Linear => diff * elapsed / time,
-        Curve::EaseIn => shape(x * x),
-        Curve::EaseOut => shape(1.0 - (1.0 - x) * (1.0 - x)),
-        Curve::EaseInOut => shape(x * x * (3.0 - 2.0 * x)),
+        _ => (diff as f64 * ease(curve, elapsed as f64 / time as f64)) as u128,
     };
     if target > start {
         start + step as u16
     } else {
         start - step as u16
+    }
+}
+
+/// Quanto do caminho já foi andado (0 a 1) na fração `x` do tempo, em cada curva. Também a velocidade
+/// do EFX ao longo da volta.
+pub(crate) fn ease(curve: Curve, x: f64) -> f64 {
+    match curve {
+        Curve::Linear => x,
+        Curve::EaseIn => x * x,
+        Curve::EaseOut => 1.0 - (1.0 - x) * (1.0 - x),
+        Curve::EaseInOut => x * x * (3.0 - 2.0 * x),
     }
 }
 
@@ -1740,12 +1747,7 @@ mod tests {
         };
         let efx = Efx {
             fixtures: (0..heads.len())
-                .map(|k| rlc_core::EfxFixture {
-                    target: rlc_core::EfxTarget::Fixture(format!("mh{k}")),
-                    reverse: false,
-                    start_offset: 0,
-                    spread: 0,
-                })
+                .map(|k| efx::tests::item(&format!("mh{k}")))
                 .collect(),
             ..efx::tests::qlc(rlc_core::EfxAlgorithm::Lissajous)
         };

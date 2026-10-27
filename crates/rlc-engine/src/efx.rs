@@ -5,9 +5,9 @@
 
 use std::f64::consts::{FRAC_PI_2, PI, TAU};
 
-use rlc_core::{Direction, Efx, EfxAlgorithm, Propagation, RunOrder};
+use rlc_core::{Direction, EfxAlgorithm, EfxShape, Propagation, RunOrder};
 
-use crate::{Ctx, EfxProgram, Imposed, TICK, Times, valid};
+use crate::{Ctx, EfxProgram, Imposed, TICK, Times, ease, valid};
 
 pub(crate) struct EfxRunner {
     efx: EfxProgram,
@@ -81,14 +81,30 @@ impl EfxRunner {
             if efx.run_order == RunOrder::PingPong && lap % 2.0 != 0.0 {
                 angle = TAU - angle;
             }
+            // O desenho do item, ou o geral
+            let shape = fixture.shape.as_ref().unwrap_or(&efx.shape);
             if (efx.direction == Direction::Backward) != fixture.reverse {
-                angle = reverse(efx.algorithm, angle);
+                angle = reverse(shape.algorithm, angle);
             }
             angle += f64::from(fixture.start_offset % 360).to_radians();
             if angle >= TAU {
                 angle -= TAU;
             }
-            let (x, y) = point(efx, angle);
+            // A velocidade pela posição no desenho: todas ficam lentas nos mesmos pontos
+            let (x, y) = point(shape, speed(shape, angle / TAU) * TAU);
+            // A troca dos eixos e o espelho, em volta do centro do desenho
+            let (cx, cy) = (f64::from(shape.x_offset), f64::from(shape.y_offset));
+            let (mut dx, mut dy) = (x - cx, y - cy);
+            if fixture.swap_axes {
+                (dx, dy) = (dy, dx);
+            }
+            if fixture.invert_pan {
+                dx = -dx;
+            }
+            if fixture.invert_tilt {
+                dy = -dy;
+            }
+            let (x, y) = (cx + dx, cy + dy);
 
             let serial = match self.faders[i] {
                 Some(serial) => serial,
@@ -180,9 +196,45 @@ fn reverse(algorithm: EfxAlgorithm, angle: f64) -> f64 {
     }
 }
 
+/// Quanto do desenho já foi andado (0 a 1) na fração `u` da volta: a curva desenhada (os pontos
+/// ligados por retas) ou a pronta.
+fn speed(shape: &EfxShape, u: f64) -> f64 {
+    let Some(points) = shape.speed_points.as_deref().filter(|p| p.len() > 1) else {
+        return ease(shape.speed, u);
+    };
+    let k = u * (points.len() - 1) as f64;
+    let i = (k as usize).min(points.len() - 2);
+    let (a, b) = (f64::from(points[i]), f64::from(points[i + 1]));
+    (a + (b - a) * (k - i as f64)) / 255.0
+}
+
+/// Ponto do desenho à mão (-1 a 1) na fração `u` do caminho fechado, pela distância percorrida: a
+/// fixture anda nele com velocidade constante.
+fn along(path: &[(i8, i8)], u: f64) -> (f64, f64) {
+    let points: Vec<(f64, f64)> = path
+        .iter()
+        .map(|&(x, y)| (f64::from(x) / 127.0, f64::from(y) / 127.0))
+        .collect();
+    let Some(&first) = points.first() else {
+        return (0.0, 0.0);
+    };
+    let segments = || points.iter().zip(points.iter().skip(1).chain([&first]));
+    let length = |(a, b): (&(f64, f64), &(f64, f64))| (b.0 - a.0).hypot(b.1 - a.1);
+    let mut left = u * segments().map(length).sum::<f64>();
+    for (a, b) in segments() {
+        let l = length((a, b));
+        if left <= l && l > 0.0 {
+            let f = left / l;
+            return (a.0 + (b.0 - a.0) * f, a.1 + (b.1 - a.1) * f);
+        }
+        left -= l;
+    }
+    first
+}
+
 /// Ponto do desenho no ângulo (0 a 2π), já girado, escalado e levado ao centro, na escala do pan e do
 /// tilt (0 a 255). As contas do `EFX::calculatePoint` do QLC+ (as mesmas da prévia da tela).
-fn point(efx: &Efx, angle: f64) -> (f64, f64) {
+fn point(efx: &EfxShape, angle: f64) -> (f64, f64) {
     use EfxAlgorithm::*;
     let (x, y) = match efx.algorithm {
         Circle => ((angle + FRAC_PI_2).cos(), angle.cos()),
@@ -206,6 +258,7 @@ fn point(efx: &Efx, angle: f64) -> (f64, f64) {
             wave(efx.x_frequency, efx.x_phase, angle),
             wave(efx.y_frequency, efx.y_phase, angle),
         ),
+        Freehand => along(&efx.path, angle / TAU),
     };
     scale(efx, x, y)
 }
@@ -222,7 +275,7 @@ fn wave(frequency: u8, phase: u16, angle: f64) -> f64 {
 }
 
 /// Gira, escala pela largura e pela altura e leva ao centro, como o `rotateAndScale` do QLC+.
-fn scale(efx: &Efx, x: f64, y: f64) -> (f64, f64) {
+fn scale(efx: &EfxShape, x: f64, y: f64) -> (f64, f64) {
     let (sin, cos) = f64::from(efx.rotation).to_radians().sin_cos();
     let (w, h) = (f64::from(efx.width), f64::from(efx.height));
     (
@@ -235,7 +288,7 @@ fn scale(efx: &Efx, x: f64, y: f64) -> (f64, f64) {
 pub(crate) mod tests {
     use std::time::Instant;
 
-    use rlc_core::{EfxFixture, EfxTarget, Timing};
+    use rlc_core::{Curve, Efx, EfxFixture, EfxTarget, Timing};
 
     use super::*;
     use crate::tests::{run, scene};
@@ -247,16 +300,21 @@ pub(crate) mod tests {
     /// O EFX padrão do QLC+: o desenho inteiro (largura e altura 127) no centro.
     pub(crate) fn qlc(algorithm: EfxAlgorithm) -> Efx {
         Efx {
-            algorithm,
-            width: 127,
-            height: 127,
-            x_offset: 127,
-            y_offset: 127,
-            rotation: 0,
-            x_frequency: 2,
-            y_frequency: 3,
-            x_phase: 90,
-            y_phase: 0,
+            shape: EfxShape {
+                algorithm,
+                width: 127,
+                height: 127,
+                x_offset: 127,
+                y_offset: 127,
+                rotation: 0,
+                x_frequency: 2,
+                y_frequency: 3,
+                x_phase: 90,
+                y_phase: 0,
+                path: vec![],
+                speed: Curve::Linear,
+                speed_points: None,
+            },
             relative: false,
             propagation: Propagation::Parallel,
             fixtures: vec![],
@@ -267,6 +325,20 @@ pub(crate) mod tests {
                 hold_ms: 4000,
                 fade_out_ms: 0,
             },
+        }
+    }
+
+    /// Uma fixture na lista do EFX, sem ajustes.
+    pub(crate) fn item(id: &str) -> EfxFixture {
+        EfxFixture {
+            target: EfxTarget::Fixture(id.into()),
+            reverse: false,
+            start_offset: 0,
+            spread: 0,
+            shape: None,
+            invert_pan: false,
+            invert_tilt: false,
+            swap_axes: false,
         }
     }
 
@@ -421,7 +493,7 @@ pub(crate) mod tests {
         let angles = preview_angles();
         for (algorithm, points) in cases {
             for (j, expected) in points.into_iter().enumerate() {
-                let (x, y) = point(&qlc(algorithm), angles[64 * j]);
+                let (x, y) = point(&qlc(algorithm).shape, angles[64 * j]);
                 assert_eq!(
                     (x.round() as i32, y.round() as i32),
                     expected,
@@ -438,8 +510,8 @@ pub(crate) mod tests {
             for i in 1..512 {
                 // Como os `preview…Backwards`: para trás, o ponto i é o 512 - i de para a frente
                 let (b, f) = (
-                    point(&qlc(algorithm), reverse(algorithm, a(512 - i))),
-                    point(&qlc(algorithm), a(i)),
+                    point(&qlc(algorithm).shape, reverse(algorithm, a(512 - i))),
+                    point(&qlc(algorithm).shape, a(i)),
                 );
                 assert!(
                     (b.0 - f.0).abs() < 1e-6 && (b.1 - f.1).abs() < 1e-6,
@@ -448,7 +520,7 @@ pub(crate) mod tests {
             }
         }
         // A linha para trás anda meia volta à frente
-        let line = |angle| point(&qlc(Line), angle);
+        let line = |angle| point(&qlc(Line).shape, angle);
         for i in 0..256 {
             for (b, f) in [(i + 256, i), (i, i + 256)] {
                 let (b, f) = (line(reverse(Line, a(b))), line(a(f)));
@@ -457,8 +529,8 @@ pub(crate) mod tests {
         }
         // Lissajous com a frequência 0: um vai e vem em linha reta
         let mut e = qlc(Lissajous);
-        (e.x_frequency, e.x_phase) = (0, 0);
-        let xs = [0.0, PI / 2.0, PI, 1.5 * PI].map(|a| point(&e, a).0.round());
+        (e.shape.x_frequency, e.shape.x_phase) = (0, 0);
+        let xs = [0.0, PI / 2.0, PI, 1.5 * PI].map(|a| point(&e.shape, a).0.round());
         assert_eq!(xs, [0.0, 127.0, 254.0, 127.0]);
     }
 
@@ -473,9 +545,9 @@ pub(crate) mod tests {
             (270, (1, 111)),
             (45, (205, 227)),
         ] {
-            let e = Efx {
+            let e = EfxShape {
                 rotation,
-                ..qlc(Circle)
+                ..qlc(Circle).shape
             };
             let (sx, sy) = scale(&e, x, y);
             assert_eq!(
@@ -485,7 +557,7 @@ pub(crate) mod tests {
             );
         }
         // O `widthHeightOffset`: a largura e a altura são para cada lado do centro
-        let bounds = |e: &Efx| {
+        let bounds = |e: &EfxShape| {
             let points: Vec<(f64, f64)> =
                 preview_angles().into_iter().map(|a| point(e, a)).collect();
             let max =
@@ -499,9 +571,9 @@ pub(crate) mod tests {
                 max(|p| p.1),
             )
         };
-        let mut e = Efx {
+        let mut e = EfxShape {
             width: 50,
-            ..qlc(Circle)
+            ..qlc(Circle).shape
         };
         assert_eq!(bounds(&e), (100.0, 254.0, 177.0, 254.0));
         e.height = 87;
@@ -536,14 +608,7 @@ pub(crate) mod tests {
     /// quadros (4 s) e sem fades.
     fn efx(n: u16) -> EfxProgram {
         let mut efx = qlc(Circle);
-        efx.fixtures = (0..n)
-            .map(|k| EfxFixture {
-                target: EfxTarget::Fixture(format!("f{k}")),
-                reverse: false,
-                start_offset: 0,
-                spread: 0,
-            })
-            .collect();
+        efx.fixtures = (0..n).map(|k| item(&format!("f{k}"))).collect();
         EfxProgram {
             efx,
             heads: (0..n)
@@ -582,7 +647,7 @@ pub(crate) mod tests {
 
     /// O ponto do círculo depois de `turns` voltas, em DMX (a conta trunca, então ±1 vale).
     fn at(turns: f64) -> (i32, i32) {
-        let (x, y) = point(&qlc(Circle), turns.fract() * TAU);
+        let (x, y) = point(&qlc(Circle).shape, turns.fract() * TAU);
         (i32::from(dmx(x, false)), i32::from(dmx(y, false)))
     }
 
@@ -667,8 +732,8 @@ pub(crate) mod tests {
         // Pan em 16 bits (1 e 2) e tilt em 8 (3), com o centro do pan fora do meio
         let mut e = efx(1);
         e.heads[0] = [Some(level(1, Some(2))), Some(level(3, None))];
-        e.efx.x_offset = 200;
-        let x = |turns: f64| point(&e.efx, turns * TAU).0;
+        e.efx.shape.x_offset = 200;
+        let x = |turns: f64| point(&e.efx.shape, turns * TAU).0;
         let (mut s, t0) = started(vec![("e", Program::Efx(e.clone()))]);
         let frame = |s: &mut State, tick: u32| s.render(t0 + TICK * tick)[0].1;
         frame(&mut s, 0);
@@ -716,11 +781,11 @@ pub(crate) mod tests {
         // Um círculo pequeno (10 para cada lado) em volta da posição de uma cena: pan 50 e tilt 200
         let mut e = efx(1);
         e.efx.relative = true;
-        (e.efx.width, e.efx.height) = (10, 10);
+        (e.efx.shape.width, e.efx.shape.height) = (10, 10);
         let below = scene(&[(1, 50), (2, 200)], 0);
         let (mut s, t0) = started(vec![("e", Program::Efx(e.clone())), ("s", below)]);
         let offset = |turns: f64| {
-            let (x, y) = point(&e.efx, turns * TAU);
+            let (x, y) = point(&e.efx.shape, turns * TAU);
             (
                 i32::from(dmx(x, false)) - 127,
                 i32::from(dmx(y, false)) - 127,
@@ -783,7 +848,7 @@ pub(crate) mod tests {
         positions(&mut s, t0, 0..20, 2);
         // A largura muda no quadro seguinte, no mesmo ponto da volta; a segunda fixture sai e apaga
         let mut edited = e.clone();
-        edited.efx.width = 20;
+        edited.efx.shape.width = 20;
         edited.efx.fixtures.pop();
         edited.heads.pop();
         s.apply(
@@ -791,7 +856,7 @@ pub(crate) mod tests {
             t0 + TICK * 20,
         );
         let p = positions(&mut s, t0, 20..21, 2);
-        let x = dmx(point(&edited.efx, 0.1 * TAU).0, false);
+        let x = dmx(point(&edited.efx.shape, 0.1 * TAU).0, false);
         assert_eq!((p[0][0].0, p[0][1]), (i32::from(x), (0, 0)));
         // A que entra ganha o fader e anda junto
         s.apply(
@@ -800,6 +865,113 @@ pub(crate) mod tests {
         );
         let p = positions(&mut s, t0, 21..22, 2);
         assert!(close(p[0][1], at(21.0 / 200.0)));
+    }
+
+    #[test]
+    fn each_item_draws_its_own_shape_and_can_be_mirrored() {
+        // A segunda fixture num oito pequeno com o centro em (150, 100); a terceira no geral, com o
+        // pan e o tilt espelhados; a quarta com os eixos trocados
+        let mut e = efx(4);
+        let own = EfxShape {
+            algorithm: Eight,
+            width: 20,
+            height: 30,
+            x_offset: 150,
+            y_offset: 100,
+            ..qlc(Circle).shape
+        };
+        e.efx.fixtures[1].shape = Some(own.clone());
+        (e.efx.fixtures[2].invert_pan, e.efx.fixtures[2].invert_tilt) = (true, true);
+        e.efx.fixtures[3].swap_axes = true;
+        let (mut s, t0) = started(vec![("e", Program::Efx(e.clone()))]);
+        let p = positions(&mut s, t0, 0..200, 4);
+        let dmx2 = |(x, y): (f64, f64)| (i32::from(dmx(x, false)), i32::from(dmx(y, false)));
+        for (t, frame) in p.iter().enumerate() {
+            let a = t as f64 / 200.0 * TAU;
+            let (x, y) = point(&e.efx.shape, a);
+            assert!(close(frame[0], at(t as f64 / 200.0)), "quadro {t}");
+            assert!(close(frame[1], dmx2(point(&own, a))), "quadro {t}");
+            assert!(close(frame[2], dmx2((254.0 - x, 254.0 - y))), "quadro {t}");
+            assert!(close(frame[3], dmx2((y, x))), "quadro {t}");
+        }
+        // No relativo, o espelho é em volta da posição de baixo
+        e.efx.relative = true;
+        (e.efx.shape.width, e.efx.shape.height) = (10, 10);
+        let below = scene(&[(5, 50), (6, 200)], 0);
+        let (mut s, t0) = started(vec![("e", Program::Efx(e.clone())), ("s", below)]);
+        let p = positions(&mut s, t0, 0..50, 4);
+        for (t, frame) in p.iter().enumerate() {
+            let (x, y) = point(&e.efx.shape, t as f64 / 200.0 * TAU);
+            let (dx, dy) = (127 - dmx(x, false) as i32, 127 - dmx(y, false) as i32);
+            assert!(close(frame[2], (50 + dx, 200 + dy)), "quadro {t}");
+        }
+    }
+
+    #[test]
+    fn the_freehand_path_goes_at_constant_speed() {
+        // Um quadrado desenhado: cada lado é um quarto da volta, e o meio do lado, um oitavo
+        let shape = EfxShape {
+            algorithm: Freehand,
+            path: vec![(-127, -127), (127, -127), (127, 127), (-127, 127)],
+            ..qlc(Circle).shape
+        };
+        let at = |u: f64| {
+            let (x, y) = point(&shape, u * TAU);
+            (x.round() as i32, y.round() as i32)
+        };
+        assert_eq!(at(0.0), (0, 0));
+        assert_eq!(at(0.125), (127, 0));
+        assert_eq!(at(0.25), (254, 0));
+        assert_eq!(at(0.5), (254, 254));
+        assert_eq!(at(0.875), (0, 127));
+        // Sem pontos, fica no centro
+        let empty = EfxShape {
+            path: vec![],
+            ..shape.clone()
+        };
+        assert_eq!(point(&empty, 1.0), (127.0, 127.0));
+    }
+
+    #[test]
+    fn the_speed_curve_slows_every_fixture_at_the_same_points() {
+        let mut shape = qlc(Circle).shape;
+        let at = |shape: &EfxShape| [0.25, 0.5, 0.75].map(|u| (speed(shape, u) * 100.0).round());
+        assert_eq!(at(&shape), [25.0, 50.0, 75.0]);
+        for (curve, expected) in [
+            (Curve::EaseIn, [6.0, 25.0, 56.0]),
+            (Curve::EaseOut, [44.0, 75.0, 94.0]),
+            (Curve::EaseInOut, [16.0, 50.0, 84.0]),
+        ] {
+            shape.speed = curve;
+            assert_eq!(at(&shape), expected, "{curve:?}");
+        }
+        // A desenhada: os pontos ligados por retas, de 0 à volta inteira
+        shape.speed_points = Some(vec![
+            0, 0, 0, 0, 0, 0, 0, 0, 51, 102, 153, 204, 230, 240, 250, 255,
+        ]);
+        assert_eq!(speed(&shape, 0.0), 0.0);
+        assert_eq!(speed(&shape, 0.4), 0.0);
+        assert_eq!(speed(&shape, 1.0), 1.0);
+        assert!((speed(&shape, 9.5 / 15.0) - 127.5 / 255.0).abs() < 1e-9);
+
+        // Defasadas em S: cada fixture no ponto da curva da posição dela, e a volta dura o mesmo
+        let mut e = efx(2);
+        e.efx.propagation = Propagation::Asymmetric;
+        e.efx.shape.speed = Curve::EaseInOut;
+        let (mut s, t0) = started(vec![("e", Program::Efx(e.clone()))]);
+        let p = positions(&mut s, t0, 0..201, 2);
+        for (t, frame) in p.iter().enumerate() {
+            for (k, &position) in frame.iter().enumerate() {
+                let u = ((t + 100 * k) as f64 / 200.0).fract();
+                assert!(close(position, at_curve(u)), "quadro {t}, fixture {k}");
+            }
+        }
+        assert!(close(p[0][0], p[200][0]) && close(p[0][1], p[200][1]));
+    }
+
+    /// O ponto do círculo na fração `u` da volta, com a velocidade em S.
+    fn at_curve(u: f64) -> (i32, i32) {
+        at(ease(Curve::EaseInOut, u))
     }
 
     #[test]

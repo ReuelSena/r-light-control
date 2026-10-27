@@ -511,6 +511,23 @@ pub struct Collection {
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Efx {
+    /// O desenho de todos os itens, menos os que têm o próprio (F10d).
+    #[serde(flatten)]
+    pub shape: EfxShape,
+    /// Soma o desenho à posição que as fixtures já têm (de uma cena, por exemplo).
+    pub relative: bool,
+    pub propagation: Propagation,
+    pub fixtures: Vec<EfxFixture>,
+    /// Sem a ordem aleatória, como no QLC+.
+    pub run_order: RunOrder,
+    pub direction: Direction,
+    pub timing: Timing,
+}
+
+/// O desenho do EFX: o caminho, o tamanho, o centro, a rotação e a velocidade ao longo da volta.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EfxShape {
     pub algorithm: EfxAlgorithm,
     /// Tamanho do desenho para cada lado do centro, de 0 a 127 (127 = o curso inteiro), como no QLC+.
     pub width: u8,
@@ -525,14 +542,14 @@ pub struct Efx {
     pub y_frequency: u8,
     pub x_phase: u16,
     pub y_phase: u16,
-    /// Soma o desenho à posição que as fixtures já têm (de uma cena, por exemplo).
-    pub relative: bool,
-    pub propagation: Propagation,
-    pub fixtures: Vec<EfxFixture>,
-    /// Sem a ordem aleatória, como no QLC+.
-    pub run_order: RunOrder,
-    pub direction: Direction,
-    pub timing: Timing,
+    /// Só no desenho à mão: até 64 pontos (x, y) de -127 a 127, num caminho fechado; o tilt cresce
+    /// para cima.
+    pub path: Vec<(i8, i8)>,
+    /// Como a fixture anda ao longo da volta, pela posição no desenho (Linear = constante).
+    pub speed: Curve,
+    /// Curva desenhada no lugar de `speed`: 16 pontos de 0 a 255 (o quanto do desenho já foi andado),
+    /// do começo ao fim da volta, sem descer, de 0 a 255.
+    pub speed_points: Option<Vec<u8>>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
@@ -548,6 +565,8 @@ pub enum EfxAlgorithm {
     SquareTrue,
     Leaf,
     Lissajous,
+    /// Desenhado à mão (`path`).
+    Freehand,
 }
 
 /// Como as fixtures dividem o desenho: juntas, uma depois da outra ou defasadas.
@@ -572,6 +591,13 @@ pub struct EfxFixture {
     /// Ausente nos arquivos de antes, vale 0.
     #[serde(default)]
     pub spread: u16,
+    /// Desenho próprio do item, no lugar do geral (num grupo, vale para todas as fixtures dele).
+    pub shape: Option<EfxShape>,
+    /// Espelham o movimento em volta do centro do desenho, no pan e no tilt; `swap_axes` troca um
+    /// eixo pelo outro (a fixture montada de lado). A troca vem antes do espelho.
+    pub invert_pan: bool,
+    pub invert_tilt: bool,
+    pub swap_axes: bool,
 }
 
 /// Item da lista do EFX: uma fixture ou um grupo de fixtures (N1), que entra com as fixtures que estão

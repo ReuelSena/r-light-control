@@ -514,16 +514,46 @@
   "matrix": {
     "group": "Grupo de fixtures",
     "algorithm": "Algoritmo",
+    "control": "Canais controlados",
+    "controlInfo": "No RGB, a cor vai para o vermelho, o verde e o azul de cada cabeça; o dimmer não é tocado, então deixe-o aceso por uma cena ou pela Mesa simples. Nos outros canais, cada cabeça recebe o brilho da cor: use branco para 100%.\nO fade que passa da duração do passo nunca chega ao valor, como no QLC+: com passos curtos, use fades curtos.",
+    "text": "Texto",
+    "chooseImage": "Escolher imagem…",
+    "imageError": "Não foi possível ler {name}.",
+    "offsetX": "Deslocamento X",
+    "offsetY": "Deslocamento Y",
+    "importScript": "Importar script…",
+    "removeScript": "Remover script",
+    "scriptError": "O script falhou",
+    "scriptProperties": "Propriedades do script",
+    "importReport": "Importação de scripts",
+    "color": "Cor",
     "startColor": "Cor inicial",
     "endColor": "Cor final",
     "step": "Duração do passo"
   },
   "matrixAlgorithm": {
     "plain": "Cor fixa",
-    "chase": "Perseguição",
-    "stripes": "Listras",
-    "gradient": "Degradê",
-    "random": "Aleatório"
+    "text": "Texto",
+    "image": "Imagem"
+  },
+  "matrixStyle": {
+    "text": {
+      "static": "Letras",
+      "horizontal": "Rolando ←",
+      "vertical": "Rolando ↑"
+    },
+    "image": {
+      "static": "Parada",
+      "horizontal": "Rolando ←",
+      "vertical": "Rolando ↑"
+    }
+  },
+  "matrixControl": {
+    "rgb": "RGB",
+    "dimmer": "Dimmer",
+    "white": "Branco",
+    "amber": "Âmbar",
+    "uv": "UV"
   },
   "desk": {
     "reset": "Zerar"

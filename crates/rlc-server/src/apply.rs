@@ -4,8 +4,8 @@
 
 use rlc_core::*;
 use rlc_engine::{
-    ChaserProgram, EfxProgram, Imposed, Program, Run, SceneLevel, SceneProgram, Span, Step, Times,
-    UniversePatch,
+    CellOutput, ChaserProgram, EfxProgram, Imposed, MatrixCell, MatrixProgram, MatrixSource,
+    Program, Run, SceneLevel, SceneProgram, Span, Step, Times, UniversePatch,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -24,6 +24,7 @@ pub enum Topic {
     Folders,
     Console,
     Stage,
+    Scripts,
     ProjectPath,
     Dirty,
     Recovered,
@@ -34,6 +35,7 @@ pub enum Topic {
     Running,
     ChaserSteps,
     Paused,
+    Failures,
     LoadedSteps,
     Desk,
     Master,
@@ -58,6 +60,7 @@ impl Topic {
             Topic::Folders => "project.folders",
             Topic::Console => "project.console",
             Topic::Stage => "project.stage",
+            Topic::Scripts => "project.scripts",
             Topic::ProjectPath => "projectPath",
             Topic::Dirty => "dirty",
             Topic::Recovered => "recovered",
@@ -68,6 +71,7 @@ impl Topic {
             Topic::Running => "running",
             Topic::ChaserSteps => "chaserSteps",
             Topic::Paused => "paused",
+            Topic::Failures => "failures",
             Topic::LoadedSteps => "loadedSteps",
             Topic::Desk => "desk",
             Topic::Master => "master",
@@ -108,6 +112,7 @@ impl Topic {
             Topic::Folders => set(&mut p.folders, value),
             Topic::Console => set(&mut p.console, value),
             Topic::Stage => set(&mut p.stage, value),
+            Topic::Scripts => set(&mut p.scripts, value),
             Topic::Library => set(&mut s.library, value),
             _ => Err(format!("{} não se desfaz.", self.path())),
         }
@@ -127,6 +132,7 @@ impl Topic {
             Topic::Folders => json!(p.folders),
             Topic::Console => json!(p.console),
             Topic::Stage => json!(p.stage),
+            Topic::Scripts => json!(p.scripts),
             Topic::ProjectPath => json!(s.project_path),
             Topic::Dirty => json!(s.dirty),
             Topic::Recovered => json!(s.recovered),
@@ -137,6 +143,7 @@ impl Topic {
             Topic::Running => json!(s.running),
             Topic::ChaserSteps => json!(s.chaser_steps),
             Topic::Paused => json!(s.paused),
+            Topic::Failures => json!(s.failures),
             Topic::LoadedSteps => json!(s.loaded_steps),
             Topic::Desk => json!(s.desk),
             Topic::Master => json!(s.master),
@@ -173,6 +180,7 @@ pub fn is_live(op: &Op) -> bool {
             | Op::SetInterfaceKind { .. }
             | Op::SetPreview { .. }
             | Op::SetHighlight { .. }
+            | Op::PreviewMatrix { .. }
     )
 }
 
@@ -189,6 +197,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             s.project_path = None;
             s.dirty = false;
             s.running.clear();
+            s.failures.clear();
             s.widget_values.clear();
             s.desk = Desk {
                 levels: vec![],
@@ -201,6 +210,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 T::ProjectPath,
                 T::Dirty,
                 T::Running,
+                T::Failures,
                 T::WidgetValues,
                 T::Desk,
                 T::Preview,
@@ -454,6 +464,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             }
             match &function.kind {
                 FunctionKind::Efx(efx) => check_efx(p, efx)?,
+                FunctionKind::RgbMatrix(m) => check_matrix(p, m)?,
                 FunctionKind::Scene(scene) => {
                     for (i, g) in scene.groups.iter().enumerate() {
                         if !p.fixture_groups.iter().any(|x| x.id == g.group) {
@@ -833,6 +844,65 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             }
             vec![T::Library]
         }
+        Op::ImportScript { file_name, source } => {
+            let meta = rlc_script::inspect(&source).map_err(|e| format!("{file_name}: {e}"))?;
+            let script = RgbScript {
+                id: meta.name.clone(),
+                name: meta.name,
+                author: meta.author,
+                api: meta.api,
+                accepts: meta.accepts,
+                properties: meta.properties,
+                source,
+            };
+            match p.scripts.iter_mut().find(|s| s.id == script.id) {
+                Some(old) => *old = script.clone(),
+                None => p.scripts.push(script.clone()),
+            }
+            // As criações que usavam o script antigo seguem com o novo; as propriedades que ele não
+            // tem saem, para o projeto continuar válido
+            for f in &mut p.functions {
+                if let FunctionKind::RgbMatrix(m) = &mut f.kind
+                    && let RgbAlgorithm::Script {
+                        script: id,
+                        properties,
+                    } = &mut m.algorithm
+                    && *id == script.id
+                {
+                    properties.retain(|v| script.properties.iter().any(|x| x.name == v.name));
+                }
+            }
+            return Ok((vec![T::Scripts, T::Functions], json!(script)));
+        }
+        Op::RemoveScript { id } => {
+            let used = |f: &Function| match &f.kind {
+                FunctionKind::RgbMatrix(m) => {
+                    matches!(&m.algorithm, RgbAlgorithm::Script { script, .. } if *script == id)
+                }
+                _ => false,
+            };
+            if p.functions.iter().any(used) {
+                return Err("Um RGB Matrix usa este script.".into());
+            }
+            p.scripts.retain(|s| s.id != id);
+            vec![T::Scripts]
+        }
+        Op::PreviewMatrix { id, step } => {
+            let Some(FunctionKind::RgbMatrix(m)) =
+                p.functions.iter().find(|f| f.id == id).map(|f| &f.kind)
+            else {
+                return Err("RGB Matrix não encontrado.".into());
+            };
+            let matrix = matrix_program(p, &id, m, Span::Ms(0), [Span::Ms(0); 2]);
+            let (Some(steps), Some(map)) = (matrix.steps(), matrix.map(step as usize)) else {
+                return Err("A prévia de um script vem do hub.".into());
+            };
+            let preview = MatrixPreview {
+                steps: steps as u32,
+                map,
+            };
+            return Ok((vec![], json!(preview)));
+        }
         Op::ImportQxf { file_name, content } => {
             let (def, mut warnings) =
                 rlc_qxf::import(&content).map_err(|e| format!("{file_name}: {e}"))?;
@@ -1049,6 +1119,7 @@ pub fn empty_project() -> Project {
         channel_groups: vec![],
         functions: vec![],
         folders: vec![],
+        scripts: vec![],
         console: Console {
             pages: vec![VcPage {
                 id: new_id(),
@@ -1103,7 +1174,7 @@ pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
 /// Criações disparadas pelo usuário, na ordem de início, já resolvidas para o motor: as cenas e o pan
 /// e o tilt dos EFX nos endereços DMX, e os chasers e as coleções com o que disparam, os tempos que
 /// valem agora, a intensidade, a prioridade e a pausa. Depois delas, os sliders de nível acesos, na
-/// prioridade Normal. O RGB Matrix só acende na F9.
+/// prioridade Normal.
 pub fn running_programs(s: &Snapshot) -> Vec<Run> {
     let mut runs: Vec<Run> = s
         .running
@@ -1207,7 +1278,7 @@ fn program(
                         let (times, parts) = scene.clone().unwrap_or(none);
                         scene_program(p, &step.values, times, &parts)
                     } else {
-                        // O passo com um EFX (ou um RGB Matrix) conta o tempo sem acender nada
+                        // O passo de uma criação que não existe mais conta o tempo sem acender nada
                         program(s, &step.function, [None; 3], path, inner)
                             .unwrap_or(Program::Collection(vec![]))
                     },
@@ -1290,10 +1361,91 @@ fn program(
                 efx,
             }))
         }
-        FunctionKind::RgbMatrix(_) => None,
+        // A duração do elemento "Tempos" é a do passo
+        FunctionKind::RgbMatrix(m) => Some(Program::RgbMatrix(matrix_program(
+            p,
+            id,
+            m,
+            ms(dial[2].unwrap_or(Span::Ms(m.timing.hold_ms))),
+            [
+                fade(dial[0], m.timing.fade_in_ms),
+                fade(dial[1], m.timing.fade_out_ms),
+            ],
+        ))),
     };
     path.pop();
     program
+}
+
+/// O RGB Matrix para o motor: a grade do grupo nos endereços DMX, com o passo e os fades que valem.
+/// Os valores das propriedades de um script vão como texto; as que não foram mexidas ficam com o
+/// padrão do script.
+pub fn matrix_program(
+    p: &Project,
+    id: &Id,
+    m: &RgbMatrix,
+    step: Span,
+    fades: [Span; 2],
+) -> MatrixProgram {
+    let group = m
+        .group
+        .as_ref()
+        .and_then(|id| p.fixture_groups.iter().find(|g| g.id == *id));
+    let (source, accepts) = match &m.algorithm {
+        RgbAlgorithm::Plain => (MatrixSource::Plain, 1),
+        // Duas cores: o texto muda de uma para a outra de um passo ao seguinte
+        RgbAlgorithm::Text { text, style, x, y } => (
+            MatrixSource::Text {
+                text: text.clone(),
+                style: *style,
+                x: *x,
+                y: *y,
+            },
+            2,
+        ),
+        RgbAlgorithm::Image { image, style, x, y } => {
+            let (width, height, pixels) = image.as_ref().map_or((0, 0, vec![]), image_pixels);
+            let source = MatrixSource::Image {
+                width,
+                height,
+                pixels: pixels.into(),
+                style: *style,
+                x: *x,
+                y: *y,
+            };
+            (source, 0)
+        }
+        // Um script que saiu do projeto vale como a cor fixa (o servidor não deixa isso acontecer)
+        RgbAlgorithm::Script { script, properties } => {
+            match p.scripts.iter().find(|s| s.id == *script) {
+                Some(s) => (
+                    MatrixSource::Script {
+                        source: s.source.as_str().into(),
+                        properties: properties
+                            .iter()
+                            .map(|v| (v.name.clone(), v.value.clone()))
+                            .collect(),
+                    },
+                    usize::from(s.accepts),
+                ),
+                None => (MatrixSource::Plain, 1),
+            }
+        }
+    };
+    MatrixProgram {
+        function: id.clone(),
+        source,
+        accepts,
+        colors: m.colors.iter().map(|c| hex_rgb(c)).collect(),
+        run_order: m.run_order,
+        direction: m.direction,
+        width: group.map_or(0, |g| g.width),
+        height: group.map_or(0, |g| g.height),
+        cells: group.map_or(vec![], |g| matrix_cells(p, g, m.control)),
+        step,
+        fade_in: fades[0],
+        fade_out: fades[1],
+    }
 }
 
 /// Um botão do console apertado ou solto (A2). O botão de Flash ou Temp marca `[1]` no valor dele
@@ -1807,6 +1959,180 @@ fn pan_tilt(p: &Project, fixture: &Id) -> [Option<SceneLevel>; 2] {
             value: 0,
         })
     })
+}
+
+/// Os pixels de uma imagem do projeto como 0xRRGGBB, linha a linha, com o transparente em 0 (o QLC+ trata
+/// o alfa 0 assim). Uma imagem que não bate com o tamanho que diz ter fica vazia.
+fn image_pixels(image: &RgbImage) -> (u16, u16, Vec<u32>) {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&image.pixels)
+        .unwrap_or_default();
+    let (width, height) = (image.width, image.height);
+    if bytes.len() != usize::from(width) * usize::from(height) * 4 {
+        return (0, 0, vec![]);
+    }
+    let pixels = bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| match p[3] {
+            0 => 0,
+            _ => u32::from(p[0]) << 16 | u32::from(p[1]) << 8 | u32::from(p[2]),
+        })
+        .collect();
+    (width, height, pixels)
+}
+
+/// O RGB Matrix `id` quando o algoritmo dele é um script: a prévia dele vem do hub, que espera a thread
+/// do script.
+pub fn script_matrix(p: &Project, id: &Id) -> Option<MatrixProgram> {
+    let function = p.functions.iter().find(|f| f.id == *id)?;
+    let FunctionKind::RgbMatrix(m) = &function.kind else {
+        return None;
+    };
+    matches!(m.algorithm, RgbAlgorithm::Script { .. })
+        .then(|| matrix_program(p, id, m, Span::Ms(0), [Span::Ms(0); 2]))
+}
+
+/// "#rrggbb" em [r, g, b]; o que não é cor vale preto.
+fn hex_rgb(color: &str) -> [u8; 3] {
+    let hex = color.strip_prefix('#').filter(|h| h.len() == 6);
+    let part = |i: usize| hex.and_then(|h| u8::from_str_radix(&h[i..i + 2], 16).ok());
+    [0, 2, 4].map(|i| part(i).unwrap_or(0))
+}
+
+/// As cabeças de um grupo de fixtures com os canais que recebem a cor, nos endereços DMX, como o
+/// `updateMapChannels` do QLC+. No RGB, os três canais de cor da cabeça (sem eles, ciano, magenta e
+/// amarelo; sem nenhum dos dois, a cabeça não acende); nos outros, o canal do atributo (o da cabeça
+/// ou, sem ele, o da fixture). Com o canal fino, o fade é em 16 bits.
+fn matrix_cells(p: &Project, group: &FixtureGroup, control: RgbControl) -> Vec<MatrixCell> {
+    let mut cells = vec![];
+    for cell in &group.cells {
+        let Some(fixture) = p.fixtures.iter().find(|f| f.id == cell.fixture) else {
+            continue;
+        };
+        let def = p.fixture_defs.iter().find(|d| d.id == fixture.def_id);
+        let mode = def.and_then(|d| d.modes.iter().find(|m| m.name == fixture.mode));
+        let channels: Vec<&Channel> = mode_channels(p, fixture).collect();
+        // Sem cabeças no modo, a fixture é uma cabeça só, com todos os canais
+        let all: Vec<usize> = (0..channels.len()).collect();
+        let head: Vec<usize> = match mode.and_then(|m| m.heads.get(usize::from(cell.head))) {
+            Some(head) => head.iter().map(|&i| usize::from(i)).collect(),
+            None => all.clone(),
+        };
+        let level = |attribute: Attribute, positions: &[usize]| {
+            let find = |fine: bool| {
+                let at =
+                    |&i: &usize| channels[i].attribute == attribute && channels[i].fine == fine;
+                positions.iter().copied().find(at)
+            };
+            let coarse = channel_address(p, &fixture.id, find(false)? as u16)?;
+            let fine = find(true).and_then(|i| channel_address(p, &fixture.id, i as u16));
+            Some(SceneLevel {
+                universe: coarse.universe,
+                channel: coarse.channel,
+                fine: fine.map(|l| l.channel),
+                value: 0,
+            })
+        };
+        let three = |attributes: [Attribute; 3]| {
+            let levels = attributes.map(|a| level(a, &head));
+            levels
+                .iter()
+                .all(Option::is_some)
+                .then(|| levels.map(Option::unwrap))
+        };
+        let output = match control {
+            RgbControl::Rgb => three([Attribute::Red, Attribute::Green, Attribute::Blue])
+                .map(CellOutput::Rgb)
+                .or_else(|| {
+                    three([Attribute::Cyan, Attribute::Magenta, Attribute::Yellow])
+                        .map(CellOutput::Cmy)
+                }),
+            _ => {
+                let attribute = match control {
+                    RgbControl::Dimmer => Attribute::Dimmer,
+                    RgbControl::White => Attribute::White,
+                    RgbControl::Amber => Attribute::Amber,
+                    _ => Attribute::Uv,
+                };
+                level(attribute, &head)
+                    .or_else(|| level(attribute, &all))
+                    .map(CellOutput::Grey)
+            }
+        };
+        if let Some(output) = output {
+            cells.push(MatrixCell {
+                x: cell.x,
+                y: cell.y,
+                output,
+            });
+        }
+    }
+    cells
+}
+
+/// O RGB Matrix salvo: de 1 a 5 cores #rrggbb, um grupo que existe e uma ordem que ele tem (o do QLC+
+/// não tem Aleatória).
+fn check_matrix(p: &Project, m: &RgbMatrix) -> Result<(), String> {
+    if m.colors.is_empty() || m.colors.len() > 5 || m.colors.iter().any(|c| !is_hex_color(c)) {
+        return Err("O RGB Matrix tem de 1 a 5 cores #rrggbb.".into());
+    }
+    if m.group
+        .as_ref()
+        .is_some_and(|g| !p.fixture_groups.iter().any(|x| x.id == *g))
+    {
+        return Err("Grupo de fixtures não encontrado.".into());
+    }
+    if m.run_order == RunOrder::Random {
+        return Err("O RGB Matrix não tem a ordem Aleatória.".into());
+    }
+    if let RgbAlgorithm::Text { text, .. } = &m.algorithm
+        && text.chars().count() > 256
+    {
+        return Err("O texto do RGB Matrix tem até 256 letras.".into());
+    }
+    if let RgbAlgorithm::Image {
+        image: Some(image), ..
+    } = &m.algorithm
+    {
+        let ok = (1..=128).contains(&image.width)
+            && (1..=128).contains(&image.height)
+            && image.pixels.len() <= 256 * 1024
+            && image_pixels(image).0 == image.width;
+        if !ok {
+            return Err("A imagem tem até 128 × 128 pontos e 256 KB.".into());
+        }
+    }
+    if let RgbAlgorithm::Script { script, properties } = &m.algorithm {
+        let Some(script) = p.scripts.iter().find(|s| s.id == *script) else {
+            return Err("Script não encontrado.".into());
+        };
+        for v in properties {
+            let property = script.properties.iter().find(|x| x.name == v.name);
+            let ok = match property.map(|x| &x.kind) {
+                Some(PropertyKind::List { values }) => values.contains(&v.value),
+                Some(PropertyKind::Range { min, max }) => v
+                    .value
+                    .parse::<i32>()
+                    .is_ok_and(|n| (*min..=*max).contains(&n)),
+                Some(PropertyKind::Float) => v.value.parse::<f64>().is_ok(),
+                Some(PropertyKind::Text) => true,
+                None => false,
+            };
+            if !ok {
+                return Err(format!("Propriedade {} inválida no script.", v.name));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn is_hex_color(color: &str) -> bool {
+    color
+        .strip_prefix('#')
+        .is_some_and(|h| h.len() == 6 && h.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 /// A lista do EFX com os grupos (todos, ou só `only`) trocados pelas fixtures deles que têm pan ou tilt,
@@ -2922,6 +3248,402 @@ mod tests {
         }
         let (topics, _) = apply(&mut s, Op::SaveFunction { function: f }).unwrap();
         assert!(topics.contains(&Topic::LoadedSteps) && s.loaded_steps.is_empty());
+    }
+
+    #[test]
+    fn the_rgb_matrix_reaches_the_color_channels_of_each_head() {
+        let mut s = example();
+        for id in ["r1", "r2"] {
+            let op = Op::SetFunctionRunning {
+                id: id.into(),
+                running: true,
+            };
+            apply(&mut s, op).unwrap();
+        }
+        let runs = running_programs(&s);
+        let matrix = |id: &str| match &runs.iter().find(|r| r.id == id).unwrap().program {
+            Program::RgbMatrix(m) => m.clone(),
+            _ => panic!("não é RGB Matrix"),
+        };
+        let channels = |cell: &MatrixCell| match &cell.output {
+            CellOutput::Rgb(l) => l.clone().map(|l| l.channel),
+            _ => panic!("não é RGB"),
+        };
+        let fixture = |g: &str, x: u16, y: u16| {
+            let cell =
+                |group: &FixtureGroup| group.cells.iter().find(|c| (c.x, c.y) == (x, y)).cloned();
+            let cell = s
+                .project
+                .fixture_groups
+                .iter()
+                .filter(|x| x.id == g)
+                .find_map(cell)
+                .unwrap();
+            let f = s
+                .project
+                .fixtures
+                .iter()
+                .find(|f| f.id == cell.fixture)
+                .unwrap();
+            (f.address, cell.head)
+        };
+        // "Barras LED": 8 × 2 pixels de 3 canais, uma cabeça por célula
+        let bars = matrix("r1");
+        assert_eq!((bars.width, bars.height, bars.cells.len()), (8, 2, 16));
+        for cell in &bars.cells {
+            let (address, head) = fixture("g2", cell.x, cell.y);
+            assert_eq!(channels(cell), [0, 1, 2].map(|k| address + 3 * head + k));
+        }
+        // ParLed 18x15w (dimmer, vermelho, verde, azul…): o RGB começa no segundo canal
+        let pars = matrix("r2");
+        assert_eq!((pars.width, pars.height, pars.cells.len()), (12, 1, 12));
+        let (address, _) = fixture("g4", 0, 0);
+        let first = pars.cells.iter().find(|c| (c.x, c.y) == (0, 0)).unwrap();
+        assert_eq!(channels(first), [1, 2, 3].map(|k| address + k));
+        // O dimmer: o canal do atributo vira o cinza
+        let g4 = s
+            .project
+            .fixture_groups
+            .iter()
+            .find(|g| g.id == "g4")
+            .unwrap();
+        let grey = matrix_cells(&s.project, g4, RgbControl::Dimmer);
+        assert!(matches!(&grey[0].output, CellOutput::Grey(l) if l.channel == address));
+        // Sem o canal do atributo (a barra não tem UV), a cabeça não acende
+        let g2 = s
+            .project
+            .fixture_groups
+            .iter()
+            .find(|g| g.id == "g2")
+            .unwrap();
+        assert!(matrix_cells(&s.project, g2, RgbControl::Uv).is_empty());
+    }
+
+    #[test]
+    fn text_and_image_matrices_draw_and_are_checked() {
+        use base64::Engine;
+        let mut s = example();
+        let Some(FunctionKind::RgbMatrix(m)) = s
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "r1")
+            .map(|f| f.kind.clone())
+        else {
+            panic!("r1 não é RGB Matrix")
+        };
+        let save = |s: &mut Snapshot, algorithm: RgbAlgorithm| {
+            let mut function = s
+                .project
+                .functions
+                .iter()
+                .find(|f| f.id == "r1")
+                .unwrap()
+                .clone();
+            function.kind = FunctionKind::RgbMatrix(RgbMatrix {
+                algorithm,
+                ..m.clone()
+            });
+            apply(s, Op::SaveFunction { function })
+        };
+        let preview = |s: &mut Snapshot, step: u32| {
+            let (_, reply) = apply(
+                s,
+                Op::PreviewMatrix {
+                    id: "r1".into(),
+                    step,
+                },
+            )
+            .unwrap();
+            let map: Vec<Vec<u64>> = serde_json::from_value(reply["map"].clone()).unwrap();
+            (reply["steps"].as_u64().unwrap(), map)
+        };
+        // Texto rolando: 2 letras de 6 pontos, 12 passos, numa grade de 8 × 2
+        let text = RgbAlgorithm::Text {
+            text: "OI".into(),
+            style: ScrollStyle::Horizontal,
+            x: 0,
+            y: 0,
+        };
+        save(&mut s, text).unwrap();
+        let (steps, map) = preview(&mut s, 0);
+        assert_eq!((steps, map.len(), map[0].len()), (12, 2, 8));
+        // Imagem de 2 × 2: vermelho, transparente / verde, azul; dá a volta na grade de 8 × 2
+        let pixels = [255, 0, 0, 255, 0, 0, 0, 0, 0, 255, 0, 255, 0, 0, 255, 255];
+        let image = |width, height, bytes: &[u8]| RgbImage {
+            name: "teste".into(),
+            width,
+            height,
+            pixels: base64::engine::general_purpose::STANDARD.encode(bytes),
+        };
+        let with = |style| RgbAlgorithm::Image {
+            image: Some(image(2, 2, &pixels)),
+            style,
+            x: 0,
+            y: 0,
+        };
+        save(&mut s, with(ScrollStyle::Static)).unwrap();
+        let (steps, map) = preview(&mut s, 0);
+        assert_eq!(steps, 1);
+        assert_eq!((map[0][0], map[0][1], map[0][2]), (0xFF0000, 0, 0xFF0000));
+        assert_eq!((map[1][0], map[1][1]), (0x00FF00, 0x0000FF));
+        // Rolando para o lado: uma coluna por passo, e 2 passos (a largura da imagem)
+        save(&mut s, with(ScrollStyle::Horizontal)).unwrap();
+        let (steps, map) = preview(&mut s, 1);
+        assert_eq!((steps, map[0][0], map[0][1]), (2, 0, 0xFF0000));
+        // Recusados: texto grande demais, imagem com bytes que não batem, imagem maior que 128
+        let long = RgbAlgorithm::Text {
+            text: "A".repeat(257),
+            style: ScrollStyle::Static,
+            x: 0,
+            y: 0,
+        };
+        assert!(save(&mut s, long).is_err());
+        let short = RgbAlgorithm::Image {
+            image: Some(image(2, 2, &pixels[..12])),
+            style: ScrollStyle::Static,
+            x: 0,
+            y: 0,
+        };
+        assert!(save(&mut s, short).is_err());
+        let wide = RgbAlgorithm::Image {
+            image: Some(image(129, 1, &[0; 129 * 4])),
+            style: ScrollStyle::Static,
+            x: 0,
+            y: 0,
+        };
+        assert!(save(&mut s, wide).is_err());
+        // Sem imagem, a grade fica apagada
+        let none = RgbAlgorithm::Image {
+            image: None,
+            style: ScrollStyle::Static,
+            x: 0,
+            y: 0,
+        };
+        save(&mut s, none).unwrap();
+        assert!(preview(&mut s, 0).1.iter().flatten().all(|&c| c == 0));
+    }
+
+    #[test]
+    fn the_example_text_and_image_matrices_light_the_panel() {
+        let mut s = example();
+        for id in ["r6", "r7"] {
+            let mut lit = false;
+            let steps = {
+                let (_, reply) = apply(
+                    &mut s,
+                    Op::PreviewMatrix {
+                        id: id.into(),
+                        step: 0,
+                    },
+                )
+                .unwrap();
+                reply["steps"].as_u64().unwrap() as u32
+            };
+            for step in 0..steps {
+                let (_, reply) = apply(
+                    &mut s,
+                    Op::PreviewMatrix {
+                        id: id.into(),
+                        step,
+                    },
+                )
+                .unwrap();
+                let map: Vec<Vec<u64>> = serde_json::from_value(reply["map"].clone()).unwrap();
+                assert_eq!((map.len(), map[0].len()), (8, 8), "{id}");
+                lit |= map.iter().flatten().any(|&c| c != 0);
+            }
+            assert!(lit, "{id} não acendeu o painel em {steps} passos");
+        }
+    }
+
+    #[test]
+    fn the_example_scripts_match_what_the_import_reads() {
+        let scripts = example().project.scripts;
+        assert!(!scripts.is_empty());
+        for s in scripts {
+            let meta = rlc_script::inspect(&s.source).unwrap();
+            let read = (
+                meta.name,
+                meta.author,
+                meta.api,
+                meta.accepts,
+                meta.properties,
+            );
+            assert_eq!(read, (s.name, s.author, s.api, s.accepts, s.properties));
+        }
+    }
+
+    #[test]
+    fn a_script_is_imported_checked_and_removed_only_when_unused() {
+        use crate::script::TEST_SCRIPT;
+        let mut s = example();
+        let import = |s: &mut Snapshot, source: &str| {
+            let op = Op::ImportScript {
+                file_name: "teste.js".into(),
+                source: source.into(),
+            };
+            apply(s, op)
+        };
+        let (topics, reply) = import(&mut s, TEST_SCRIPT).unwrap();
+        assert_eq!(topics, vec![Topic::Scripts, Topic::Functions]);
+        assert_eq!(reply["id"], "Teste");
+        assert_eq!(
+            reply["properties"][0]["kind"],
+            json!({ "type": "range", "min": 1, "max": 5 })
+        );
+        // Importar de novo troca o script, sem duplicar; o que não é script é recusado
+        let count = s.project.scripts.len();
+        import(&mut s, TEST_SCRIPT).unwrap();
+        assert_eq!(s.project.scripts.len(), count);
+        assert!(import(&mut s, "1 +").unwrap_err().starts_with("teste.js: "));
+
+        // Uma criação com o script e uma propriedade; valor fora da faixa, propriedade que o script
+        // não tem e script que não existe são recusados
+        let Some(FunctionKind::RgbMatrix(m)) = s
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "r1")
+            .map(|f| f.kind.clone())
+        else {
+            panic!("r1 não é RGB Matrix")
+        };
+        let with = |script: &str, name: &str, value: &str| RgbMatrix {
+            algorithm: RgbAlgorithm::Script {
+                script: script.into(),
+                properties: vec![PropertyValue {
+                    name: name.into(),
+                    value: value.into(),
+                }],
+            },
+            ..m.clone()
+        };
+        let save = |s: &mut Snapshot, m: RgbMatrix| {
+            let mut function = s
+                .project
+                .functions
+                .iter()
+                .find(|f| f.id == "r1")
+                .unwrap()
+                .clone();
+            function.kind = FunctionKind::RgbMatrix(m);
+            apply(s, Op::SaveFunction { function })
+        };
+        assert!(save(&mut s, with("Teste", "level", "9")).is_err());
+        assert!(save(&mut s, with("Teste", "nao-existe", "1")).is_err());
+        assert!(save(&mut s, with("outro", "level", "1")).is_err());
+        save(&mut s, with("Teste", "level", "3")).unwrap();
+
+        // O motor recebe o texto e o valor da propriedade; o script usa as cores que aceita (2, o padrão)
+        apply(
+            &mut s,
+            Op::SetFunctionRunning {
+                id: "r1".into(),
+                running: true,
+            },
+        )
+        .unwrap();
+        let runs = running_programs(&s);
+        let Program::RgbMatrix(program) = &runs.iter().find(|r| r.id == "r1").unwrap().program
+        else {
+            panic!("não é RGB Matrix")
+        };
+        assert_eq!(program.accepts, 2);
+        assert!(
+            matches!(&program.source, MatrixSource::Script { properties, .. } if *properties == [("level".to_string(), "3".to_string())])
+        );
+
+        // Usado, o script não sai; solto, sai
+        assert!(apply(&mut s, Op::RemoveScript { id: "Teste".into() }).is_err());
+        save(
+            &mut s,
+            RgbMatrix {
+                algorithm: RgbAlgorithm::Plain,
+                ..m
+            },
+        )
+        .unwrap();
+        let (topics, _) = apply(&mut s, Op::RemoveScript { id: "Teste".into() }).unwrap();
+        assert_eq!(topics, vec![Topic::Scripts]);
+        assert!(s.project.scripts.iter().all(|s| s.id != "Teste"));
+    }
+
+    #[test]
+    fn the_preview_of_a_matrix_is_its_color_map() {
+        let mut s = example();
+        let op = Op::PreviewMatrix {
+            id: "r1".into(),
+            step: 7,
+        };
+        let (topics, reply) = apply(&mut s, op).unwrap();
+        // "Cor fixa nas barras": a grade de 8 × 2 inteira no roxo, num passo só
+        assert!(topics.is_empty());
+        assert_eq!(reply["steps"], 1);
+        assert_eq!(
+            reply["map"],
+            json!([vec![0x8000ff_u32; 8], vec![0x8000ff_u32; 8]])
+        );
+        assert!(
+            apply(
+                &mut s,
+                Op::PreviewMatrix {
+                    id: "s1".into(),
+                    step: 0
+                }
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn a_saved_rgb_matrix_needs_valid_colors_a_group_and_no_random_order() {
+        let mut s = example();
+        let Some(FunctionKind::RgbMatrix(m)) = s
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "r1")
+            .map(|f| f.kind.clone())
+        else {
+            panic!("r1 não é RGB Matrix")
+        };
+        let save = |s: &mut Snapshot, m: RgbMatrix| {
+            let mut function = s
+                .project
+                .functions
+                .iter()
+                .find(|f| f.id == "r1")
+                .unwrap()
+                .clone();
+            function.kind = FunctionKind::RgbMatrix(m);
+            apply(s, Op::SaveFunction { function })
+        };
+        assert!(save(&mut s, m.clone()).is_ok());
+        for bad in [
+            RgbMatrix {
+                colors: vec![],
+                ..m.clone()
+            },
+            RgbMatrix {
+                colors: vec!["vermelho".into()],
+                ..m.clone()
+            },
+            RgbMatrix {
+                colors: vec!["#000000".into(); 6],
+                ..m.clone()
+            },
+            RgbMatrix {
+                group: Some("nao-existe".into()),
+                ..m.clone()
+            },
+            RgbMatrix {
+                run_order: RunOrder::Random,
+                ..m.clone()
+            },
+        ] {
+            assert!(save(&mut s, bad).is_err());
+        }
     }
 
     /// A cena de uma criação rodando.

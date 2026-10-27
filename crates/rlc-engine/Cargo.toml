@@ -7,4 +7,5 @@ edition.workspace = true
 arc-swap = "1.9.2"
 fastrand = "2.5.0"
 rlc-core = { path = "../rlc-core" }
+rlc-script = { path = "../rlc-script" }
 tracing = "0.1.44"

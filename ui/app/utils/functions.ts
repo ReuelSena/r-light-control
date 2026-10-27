@@ -8,6 +8,7 @@ import type { Fixture } from '~/types/generated/Fixture'
 import type { Function } from '~/types/generated/Function'
 import type { Project } from '~/types/generated/Project'
 import type { RgbMatrix } from '~/types/generated/RgbMatrix'
+import type { RgbScript } from '~/types/generated/RgbScript'
 import type { Scene } from '~/types/generated/Scene'
 import type { SceneValue } from '~/types/generated/SceneValue'
 
@@ -172,22 +173,41 @@ export function sceneValues(project: Project, scene: Pick<Scene, 'values' | 'gro
   return [...values.values()]
 }
 
-export const matrixAlgorithms = ['plain', 'chase', 'stripes', 'gradient', 'random']
+/** O algoritmo de um RGB Matrix como o valor de um `<select>`: "plain", "text", "image" ou "script:<id>". */
+export const algorithmKey = (a: RgbMatrix['algorithm']) => (a.type === 'script' ? `script:${a.script}` : a.type)
 
-const rgb = (hex = '#000000') => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+export function algorithmOf(key: string): RgbMatrix['algorithm'] {
+  if (key.startsWith('script:')) return { type: 'script', script: key.slice(7), properties: [] }
+  if (key === 'text') return { type: 'text', text: 'R LIGHT', style: 'horizontal', x: 0, y: 0 }
+  if (key === 'image') return { type: 'image', image: null, style: 'horizontal', x: 0, y: 0 }
+  return { type: 'plain' }
+}
 
-/** Cor [r, g, b] da célula (x, y) do RGB Matrix no passo `step`, numa grade de largura `w`. */
-export function matrixColor(m: RgbMatrix, x: number, y: number, w: number, step: number): number[] {
-  const [a, b] = [rgb(m.colors[0]), rgb(m.colors[1] ?? '#000000')]
-  const s = m.direction === 'backward' ? -step : step
-  const pos = (((x + s) % w) + w) % w
-  switch (m.algorithm) {
-    case 'chase': return pos === 0 ? a : [0, 0, 0]
-    case 'stripes': return pos % 2 ? b : a
-    case 'gradient': return a.map((c, i) => Math.round(c + (b[i]! - c) * (w > 1 ? pos / (w - 1) : 0)))
-    case 'random': return Math.sin((x * 12.9898 + y * 78.233 + step) * 43758.5453) % 1 > 0.4 ? a : [0, 0, 0]
-    default: return a
+/** O script de um RGB Matrix, se o algoritmo dele é um. */
+export function matrixScript(m: RgbMatrix, scripts: RgbScript[]) {
+  const a = m.algorithm
+  return a.type === 'script' ? scripts.find((s) => s.id === a.script) : undefined
+}
+
+/** Quantas cores o algoritmo usa: a cor fixa, uma; o texto, duas; a imagem, nenhuma (os pixels vêm
+ * dela); e um script, as que ele aceita. */
+export function matrixColors(m: RgbMatrix, scripts: RgbScript[]) {
+  switch (m.algorithm.type) {
+    case 'plain': return 1
+    case 'text': return 2
+    case 'image': return 0
+    case 'script': return matrixScript(m, scripts)?.accepts ?? 1
   }
+}
+
+/** O passo que o RGB Matrix mostra na `k`-ésima troca, entre `steps` passos: o Loop volta ao começo, o
+ * Vai e volta não repete as pontas e o Uma vez fica no último (as contas do motor, `next_step`). */
+export function matrixStep(m: RgbMatrix, steps: number, k: number) {
+  const pingPong = m.runOrder === 'pingPong'
+  const period = pingPong ? Math.max(2 * steps - 2, 1) : steps
+  const j = m.runOrder === 'singleShot' ? Math.min(k, steps - 1) : k % period
+  const i = pingPong && j >= steps ? period - j : j
+  return m.direction === 'forward' ? i : steps - 1 - i
 }
 
 /** A criação dispara `target`, direto ou por outra (passos de chaser e coleções). Como no QLC+, uma

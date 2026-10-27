@@ -6,6 +6,7 @@ import type { FixtureDef } from "./FixtureDef";
 import type { FixtureGroup } from "./FixtureGroup";
 import type { Folder } from "./Folder";
 import type { Function } from "./Function";
+import type { RgbScript } from "./RgbScript";
 import type { Stage } from "./Stage";
 import type { Universe } from "./Universe";
 
@@ -13,4 +14,8 @@ export type Project = { name: string, universes: Array<Universe>,
 /**
  * Cópia das definições usadas, para o projeto nunca depender da biblioteca (A4).
  */
-fixtureDefs: Array<FixtureDef>, fixtures: Array<Fixture>, fixtureGroups: Array<FixtureGroup>, channelGroups: Array<ChannelGroup>, functions: Array<Function>, folders: Array<Folder>, console: Console, stage: Stage, };
+fixtureDefs: Array<FixtureDef>, fixtures: Array<Fixture>, fixtureGroups: Array<FixtureGroup>, channelGroups: Array<ChannelGroup>, functions: Array<Function>, folders: Array<Folder>, console: Console, stage: Stage, 
+/**
+ * Scripts do QLC+ importados para os RGB Matrix, dentro do projeto (como as fixtures, A4).
+ */
+scripts: Array<RgbScript>, };

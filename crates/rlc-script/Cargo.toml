@@ -1,0 +1,8 @@
+[package]
+name = "rlc-script"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rlc-core = { path = "../rlc-core" }
+rquickjs = "0.14.0"

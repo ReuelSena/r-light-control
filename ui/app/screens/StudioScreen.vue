@@ -62,7 +62,7 @@ function blank(type: FunctionType): Function {
         xFrequency: 2, yFrequency: 3, xPhase: 90, yPhase: 0, path: [], speed: 'linear', speedPoints: null, relative: false, propagation: 'parallel', fixtures: [], ...playback,
       }
     case 'rgbMatrix':
-      return { ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, algorithm: 'plain', colors: ['#ff0000', '#0000ff'], ...playback }
+      return { ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, algorithm: { type: 'plain' }, control: 'rgb', colors: ['#ff0000'], ...playback }
   }
 }
 

@@ -252,6 +252,7 @@ fn entry(imposed: Imposed, program: &Program, beat: Duration) -> Duration {
     match program {
         Program::Scene(scene) => own(scene.times.delay_in, scene.times.fade_in),
         Program::Efx(efx) => own(Span::Ms(0), efx.fade_in),
+        Program::RgbMatrix(m) => own(Span::Ms(0), m.fade_in),
         Program::Collection(programs) if !programs.is_empty() => programs
             .iter()
             .map(|p| entry(imposed, p, beat))

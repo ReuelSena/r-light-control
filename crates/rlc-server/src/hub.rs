@@ -22,8 +22,9 @@ use tokio::sync::{broadcast, watch};
 use crate::Settings;
 use crate::apply::{
     Topic, apply, console_op, empty_project, fixture_blackout, highlight, is_live, new_id,
-    preview_levels, running_programs, universe_patch,
+    preview_levels, running_programs, script_matrix, universe_patch,
 };
+use crate::script::Previews;
 use crate::{library, project};
 
 /// Passos guardados no histórico do desfazer.
@@ -75,6 +76,7 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
         },
         running: vec![],
         chaser_steps: vec![],
+        failures: vec![],
         paused: vec![],
         loaded_steps: vec![],
         desk: Desk {
@@ -130,6 +132,8 @@ pub struct Hub {
     /// Elementos do console que cada aparelho está apertando (aparelho, elemento): se ele cair, o
     /// servidor os solta (o flash não fica preso).
     holds: Vec<(Id, Id)>,
+    /// As sessões de script das prévias dos RGB Matrix.
+    previews: Previews,
     started: Instant,
     last_stats: Instant,
     system: System,
@@ -163,6 +167,7 @@ impl Hub {
             last_edit: None,
             recovery_pending: false,
             holds: vec![],
+            previews: Previews::default(),
             started: Instant::now(),
             last_stats: Instant::now(),
             system: System::new(),
@@ -229,6 +234,15 @@ impl Hub {
             Op::SetTempo { bpm } => Some(Command::Tempo(*bpm)),
             _ => None,
         };
+        // A prévia de um script espera a thread dele: fica fora do `apply`, que só vê o estado
+        if let Op::PreviewMatrix { id, step } = &op
+            && let Some(matrix) = script_matrix(&self.snapshot.project, id)
+        {
+            let preview = self
+                .previews
+                .preview(&self.snapshot.project, id, &matrix, *step)?;
+            return Ok(json!(preview));
+        }
         let (topics, reply) = match op {
             Op::OpenProject { name } => (self.open(&name)?, Value::Null),
             Op::SaveProject { name } => (self.save(name)?, Value::Null),
@@ -259,6 +273,26 @@ impl Hub {
                 s.paused.retain(|id| !frames.done.contains(id));
                 topics.push(Topic::Paused);
             }
+        }
+        // Uma criação que falhou fica na lista até rodar de novo (ou sair do projeto)
+        let mut failures: Vec<RunFailure> = s
+            .failures
+            .iter()
+            .filter(|f| !s.running.contains(&f.function))
+            .cloned()
+            .collect();
+        for (id, message) in &frames.failed {
+            if !failures.iter().any(|f| f.function == *id) {
+                failures.push(RunFailure {
+                    function: id.clone(),
+                    message: message.clone(),
+                });
+            }
+        }
+        failures.retain(|f| s.project.functions.iter().any(|x| x.id == f.function));
+        if failures != s.failures {
+            s.failures = failures;
+            topics.push(Topic::Failures);
         }
         let steps: Vec<CurrentStep> = frames
             .chasers
@@ -793,6 +827,119 @@ mod tests {
             ..Default::default()
         };
         (Hub::new(&settings, 0), dir)
+    }
+
+    #[test]
+    fn the_preview_of_a_script_matrix_comes_from_its_own_session() {
+        use crate::script::TEST_SCRIPT;
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        let source = TEST_SCRIPT.to_string();
+        hub.command(Op::ImportScript {
+            file_name: "teste.js".into(),
+            source,
+        })
+        .unwrap();
+        // O RGB Matrix "r1" do exemplo passa a usar o script
+        let mut function = hub
+            .snapshot
+            .project
+            .functions
+            .iter()
+            .find(|f| f.id == "r1")
+            .unwrap()
+            .clone();
+        if let FunctionKind::RgbMatrix(m) = &mut function.kind {
+            m.algorithm = RgbAlgorithm::Script {
+                script: "Teste".into(),
+                properties: vec![],
+            };
+        }
+        hub.command(Op::SaveFunction {
+            function: function.clone(),
+        })
+        .unwrap();
+        // 3 passos; o passo 1 pinta de verde (1 + 1) × 20 × 1 = 40, na grade 8 × 2 do grupo
+        let preview = hub
+            .command(Op::PreviewMatrix {
+                id: "r1".into(),
+                step: 1,
+            })
+            .unwrap();
+        assert_eq!(preview["steps"], 3);
+        assert_eq!(preview["map"], json!([vec![40 << 8; 8], vec![40 << 8; 8]]));
+        // O passo passa do último: volta ao primeiro
+        let preview = hub
+            .command(Op::PreviewMatrix {
+                id: "r1".into(),
+                step: 3,
+            })
+            .unwrap();
+        assert_eq!(preview["map"][0][0], 20 << 8);
+        // Um script que falha vira o erro da prévia, sem derrubar o servidor
+        let broken = "(function () { throw new Error('quebrado'); })()".to_string();
+        let i = hub
+            .snapshot
+            .project
+            .scripts
+            .iter()
+            .position(|s| s.id == "Teste")
+            .unwrap();
+        let old = hub.snapshot.project.scripts[i].clone();
+        hub.snapshot.project.scripts[i] = RgbScript {
+            source: broken,
+            ..old
+        };
+        let error = hub
+            .command(Op::PreviewMatrix {
+                id: "r1".into(),
+                step: 0,
+            })
+            .unwrap_err();
+        assert!(error.contains("quebrado"), "{error}");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_example_script_matrices_draw_their_grids() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        for (id, width, height) in [("r3", 8, 2), ("r4", 12, 1), ("r5", 8, 2)] {
+            let first = hub
+                .command(Op::PreviewMatrix {
+                    id: id.into(),
+                    step: 0,
+                })
+                .unwrap();
+            let steps = first["steps"].as_u64().unwrap() as u32;
+            let mut lit = false;
+            for step in 0..steps {
+                let preview = hub
+                    .command(Op::PreviewMatrix {
+                        id: id.into(),
+                        step,
+                    })
+                    .unwrap();
+                let map = preview["map"].as_array().unwrap();
+                assert_eq!(map.len(), height, "{id}");
+                for row in map {
+                    assert_eq!(row.as_array().unwrap().len(), width, "{id}");
+                    lit |= row
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|c| c.as_u64() != Some(0));
+                }
+            }
+            assert!(lit, "{id} não acendeu nada em {steps} passos");
+        }
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

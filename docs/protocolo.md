@@ -38,7 +38,7 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 - **`clientId`:** é o id do aparelho em `remote.clients`. É assim que ele se reconhece na lista do ⚙.
 
 **Tópicos do `evt`** (o caminho no `Snapshot`, aplicado no lugar pelo cliente):
-- **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`.
+- **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`, `project.scripts`.
 - **Arquivo e biblioteca:** `projectPath`, `dirty`, `recovered`, `projects` (os projetos da pasta, relidos a cada segundo) e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
 - **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `paused`, `loadedSteps`, `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (o "Localizar": as `fixtures` acesas e a intensidade `others` das outras, de 0 a 255).
@@ -88,6 +88,9 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `moveFixtureGroup` / `moveChannelGroup` | `id, to` | Leva o grupo para a posição `to` da lista (a partir de 0; passando do fim, vai para o último lugar). A ordem da lista vale em todas as telas (Mesa simples, console, EFX…). Id que não existe é recusado |
 | `saveFixtureDef` | `def` | Cria ou substitui uma definição na biblioteca (e no projeto, se ele a usa). O id só tem minúsculas, números e hífens (vira o nome do arquivo) |
 | `removeFixtureDef` | `id` | Tira a definição da biblioteca; o projeto continua com a cópia dele |
+| `importScript` | `fileName, source` | Importa um script de RGB Matrix do QLC+ (JavaScript, API 1 a 3) para o projeto (`project.scripts`), no lugar do que tem o mesmo nome. O texto é avaliado numa sessão à parte, com limite de 250 ms e 32 MB; o que não é script (sintaxe, `apiVersion`, `rgbMap` ou `rgbMapStepCount` ausentes, laço infinito) é recusado com o motivo. Resposta: o `RgbScript` |
+| `removeScript` | `id` | Tira o script do projeto; recusado enquanto um RGB Matrix o usa |
+| `previewMatrix` | `id, step` | O mapa de cores de um passo do RGB Matrix salvo, o que o motor desenha (a prévia do editor). Resposta: `MatrixPreview` (`steps` e `map[linha][coluna]` em 0xRRGGBB). O passo passa do último volta ao primeiro. Não altera o projeto nem entra no desfazer. A de um script vem de uma sessão do hub por criação, que anda em ordem (os scripts guardam estado) |
 | `importQxf` | `fileName, content` | Converte o `.qxf` (crate `rlc-qxf`) e põe na biblioteca, como um `saveFixtureDef`: a mesma fixture (fabricante e modelo) substitui a anterior. Resposta: `ImportReport`, com os avisos da conversão. Um arquivo que não é fixture é recusado |
 | `addUniverse` / `updateUniverse` / `removeUniverse` | — / `universe` / `id` | Universos e a interface de saída de cada um. Uma interface manda um universo só: escolhida num, sai do outro. Um universo com fixtures não é removido |
 | `setRemoteAccess` | `enabled, pin?` | Acesso pela rede local e PIN |
@@ -143,6 +146,7 @@ Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 - `running`: criações disparadas pelo usuário, na ordem de início (na mistura LTP, vence a última). O que um chaser ou uma coleção dispara não entra. Um Single Shot que apagou no fim sai sozinho;
 - `chaserSteps`: o passo atual (`{ chaser, step }`, a partir de 0) de cada chaser ou sequência da lista `running`, vindo do motor;
 - `paused`: as criações da lista `running` pausadas;
+- `failures`: as criações que pararam por erro (`{ function, message }`: o script de um RGB Matrix que falhou ou estourou o limite). Vale até a criação rodar de novo;
 - `loadedSteps`: o passo carregado (`{ chaser, step }`) de cada cue list, que o próximo Go usa;
 - `desk`: níveis da Mesa simples (não são salvos no projeto);
 - `master`: Grand Master, blackout e BPM;

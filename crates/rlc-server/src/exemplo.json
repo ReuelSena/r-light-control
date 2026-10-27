@@ -2439,6 +2439,60 @@
     "color": "#00bfff",
     "universe": "u3",
     "address": 278
+   },
+   {
+    "id": "barra3",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 3",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 49
+   },
+   {
+    "id": "barra4",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 4",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 73
+   },
+   {
+    "id": "barra5",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 5",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 97
+   },
+   {
+    "id": "barra6",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 6",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 121
+   },
+   {
+    "id": "barra7",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 7",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 145
+   },
+   {
+    "id": "barra8",
+    "defId": "generico-barra-8px",
+    "mode": "24 canais (8 pixels)",
+    "name": "Barra 8",
+    "color": "#8000ff",
+    "universe": "u2",
+    "address": 169
    }
   ],
   "fixtureGroups": [
@@ -2731,6 +2785,398 @@
       "y": 0,
       "fixture": "rbeam4",
       "head": 0
+     }
+    ]
+   },
+   {
+    "id": "g6",
+    "name": "Painel 8×8",
+    "width": 8,
+    "height": 8,
+    "cells": [
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 0,
+      "fixture": "barra1",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 1,
+      "fixture": "barra2",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 2,
+      "fixture": "barra3",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 3,
+      "fixture": "barra4",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 4,
+      "fixture": "barra5",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 5,
+      "fixture": "barra6",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 6,
+      "fixture": "barra7",
+      "head": 7
+     },
+     {
+      "x": 0,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 1
+     },
+     {
+      "x": 2,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 2
+     },
+     {
+      "x": 3,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 3
+     },
+     {
+      "x": 4,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 4
+     },
+     {
+      "x": 5,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 5
+     },
+     {
+      "x": 6,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 6
+     },
+     {
+      "x": 7,
+      "y": 7,
+      "fixture": "barra8",
+      "head": 7
      }
     ]
    }
@@ -3682,12 +4128,204 @@
    },
    {
     "id": "r1",
-    "name": "Degradê nas barras",
-    "folder": null,
+    "name": "Cor fixa nas barras",
+    "folder": "d4",
     "priority": "normal",
     "type": "rgbMatrix",
     "group": "g2",
-    "algorithm": "gradient",
+    "algorithm": {
+     "type": "plain"
+    },
+    "control": "rgb",
+    "colors": [
+     "#8000ff"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 500,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "r2",
+    "name": "Cor fixa nos ParLeds",
+    "folder": "d4",
+    "priority": "normal",
+    "type": "rgbMatrix",
+    "group": "g4",
+    "algorithm": {
+     "type": "plain"
+    },
+    "control": "rgb",
+    "colors": [
+     "#ffbf00"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 500,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "s10",
+    "name": "Base dos ParLeds",
+    "folder": null,
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 0,
+    "delayOutMs": 0,
+    "fadeOutMs": 0,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "r5",
+    "name": "Faíscas nas barras",
+    "folder": "d4",
+    "priority": "normal",
+    "type": "rgbMatrix",
+    "group": "g2",
+    "algorithm": {
+     "type": "script",
+     "script": "Faíscas",
+     "properties": [
+      {
+       "name": "density",
+       "value": "Média"
+      }
+     ]
+    },
+    "control": "rgb",
+    "colors": [
+     "#ffbf00"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 100,
+     "holdMs": 150,
+     "fadeOutMs": 100
+    }
+   },
+   {
+    "id": "r4",
+    "name": "Onda nos ParLeds",
+    "folder": "d4",
+    "priority": "normal",
+    "type": "rgbMatrix",
+    "group": "g4",
+    "algorithm": {
+     "type": "script",
+     "script": "Onda",
+     "properties": [
+      {
+       "name": "length",
+       "value": "6"
+      }
+     ]
+    },
+    "control": "rgb",
+    "colors": [
+     "#00ffff"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 120,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "r6",
+    "name": "Texto rolando no painel",
+    "folder": "d4",
+    "priority": "normal",
+    "type": "rgbMatrix",
+    "group": "g6",
+    "algorithm": {
+     "type": "text",
+     "text": "R LIGHT",
+     "style": "horizontal",
+     "x": 0,
+     "y": 0
+    },
+    "control": "rgb",
+    "colors": [
+     "#ffbf00",
+     "#00ffff"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 100,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "r7",
+    "name": "Imagem rolando no painel",
+    "folder": "d4",
+    "priority": "normal",
+    "type": "rgbMatrix",
+    "group": "g6",
+    "algorithm": {
+     "type": "image",
+     "image": {
+      "name": "coracao.png",
+      "width": 8,
+      "height": 8,
+      "pixels": "AAAAAP8AAP//AAD/AAAAAAAAAAD/AAD//wAA/wAAAAD/AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP8AAAAA/wAA//8AAP//AAD//wAA//8AAP//AAD/AAAAAAAAAAAAAAAA/wAA//8AAP//AAD//wAA/wAAAAAAAAAAAAAAAAAAAAAAAAAA/wAA//8AAP8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+     },
+     "style": "horizontal",
+     "x": 0,
+     "y": 0
+    },
+    "control": "rgb",
+    "colors": [
+     "#ff0000"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 150,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "r3",
+    "name": "Degradê rolando nas barras",
+    "folder": "d4",
+    "priority": "normal",
+    "type": "rgbMatrix",
+    "group": "g2",
+    "algorithm": {
+     "type": "script",
+     "script": "Degradê rolando",
+     "properties": []
+    },
+    "control": "rgb",
     "colors": [
      "#ff0000",
      "#0000ff"
@@ -3695,29 +4333,9 @@
     "runOrder": "loop",
     "direction": "forward",
     "timing": {
-     "fadeInMs": 0,
-     "holdMs": 200,
-     "fadeOutMs": 0
-    }
-   },
-   {
-    "id": "r2",
-    "name": "Perseguição nos PARs",
-    "folder": null,
-    "priority": "normal",
-    "type": "rgbMatrix",
-    "group": "g1",
-    "algorithm": "chase",
-    "colors": [
-     "#ffbf00",
-     "#000000"
-    ],
-    "runOrder": "loop",
-    "direction": "forward",
-    "timing": {
-     "fadeInMs": 0,
-     "holdMs": 250,
-     "fadeOutMs": 0
+     "fadeInMs": 1000,
+     "holdMs": 150,
+     "fadeOutMs": 1000
     }
    },
    {
@@ -4449,6 +5067,12 @@
     "name": "EFX avançado",
     "kind": "efx",
     "parent": null
+   },
+   {
+    "id": "d4",
+    "name": "RGB Matrix",
+    "kind": "rgbMatrix",
+    "parent": null
    }
   ],
   "console": {
@@ -4783,7 +5407,7 @@
      "id": "b8",
      "page": "p1",
      "frame": null,
-     "caption": "Degradê",
+     "caption": "Barras",
      "color": "#8000ff",
      "layouts": {
       "phone": {
@@ -4819,7 +5443,7 @@
      "id": "b9",
      "page": "p1",
      "frame": null,
-     "caption": "Perseguição",
+     "caption": "ParLeds",
      "color": "#ffbf00",
      "layouts": {
       "phone": {
@@ -5257,7 +5881,7 @@
      "id": "an2",
      "page": "p2",
      "frame": null,
-     "caption": "PARs",
+     "caption": "ParLeds",
      "color": "#ffbf00",
      "layouts": {
       "phone": {
@@ -6085,7 +6709,65 @@
      "rotationZ": 0
     }
    ]
-  }
+  },
+  "scripts": [
+   {
+    "id": "Degradê rolando",
+    "name": "Degradê rolando",
+    "author": "R Light Control",
+    "api": 3,
+    "accepts": 2,
+    "properties": [],
+    "source": "(function () {\n  var algo = new Object;\n  algo.apiVersion = 3;\n  algo.name = \"Degradê rolando\";\n  algo.author = \"R Light Control\";\n  algo.acceptColors = 2;\n  algo.properties = [];\n  var colors = [0xFF0000, 0x0000FF];\n\n  algo.rgbMapSetColors = function (list) {\n    colors = list;\n  };\n\n  // Mistura as duas cores: t = 0 é a primeira e t = 1, a segunda\n  function mix(t) {\n    var out = 0;\n    for (var shift = 16; shift >= 0; shift -= 8) {\n      var a = (colors[0] >> shift) & 255;\n      var b = (colors[1] >> shift) & 255;\n      out |= Math.round(a + (b - a) * t) << shift;\n    }\n    return out;\n  }\n\n  // O degradê vai da primeira cor à segunda e volta, e anda uma coluna por passo\n  algo.rgbMap = function (width, height, rgb, step) {\n    var map = new Array(height);\n    for (var y = 0; y < height; y++) {\n      map[y] = new Array(width);\n      for (var x = 0; x < width; x++) {\n        var p = ((x + step) % width) / width;\n        map[y][x] = mix(p < 0.5 ? p * 2 : (1 - p) * 2);\n      }\n    }\n    return map;\n  };\n\n  algo.rgbMapStepCount = function (width, height) {\n    return width;\n  };\n\n  return algo;\n})()\n"
+   },
+   {
+    "id": "Onda",
+    "name": "Onda",
+    "author": "R Light Control",
+    "api": 2,
+    "accepts": 1,
+    "properties": [
+     {
+      "name": "length",
+      "display": "Comprimento",
+      "kind": {
+       "type": "range",
+       "min": 2,
+       "max": 16
+      },
+      "write": "setLength",
+      "read": "getLength",
+      "default": "4"
+     }
+    ],
+    "source": "(function () {\n  var algo = new Object;\n  algo.apiVersion = 2;\n  algo.name = \"Onda\";\n  algo.author = \"R Light Control\";\n  algo.acceptColors = 1;\n\n  // Quantas colunas tem uma onda\n  var length = 4;\n  algo.properties = [\"name:length|type:range|display:Comprimento|values:2,16|write:setLength|read:getLength\"];\n  algo.setLength = function (value) {\n    length = parseInt(value, 10);\n  };\n  algo.getLength = function () {\n    return length;\n  };\n\n  // Uma onda de brilho na cor do passo, que anda uma onda inteira a cada 16 passos\n  algo.rgbMap = function (width, height, rgb, step) {\n    var map = new Array(height);\n    for (var y = 0; y < height; y++) {\n      map[y] = new Array(width);\n      for (var x = 0; x < width; x++) {\n        var level = (Math.sin(2 * Math.PI * (x / length - step / 16)) + 1) / 2;\n        var out = 0;\n        for (var shift = 16; shift >= 0; shift -= 8) {\n          out |= Math.round(((rgb >> shift) & 255) * level) << shift;\n        }\n        map[y][x] = out;\n      }\n    }\n    return map;\n  };\n\n  algo.rgbMapStepCount = function (width, height) {\n    return 16;\n  };\n\n  return algo;\n})()\n"
+   },
+   {
+    "id": "Faíscas",
+    "name": "Faíscas",
+    "author": "R Light Control",
+    "api": 2,
+    "accepts": 1,
+    "properties": [
+     {
+      "name": "density",
+      "display": "Densidade",
+      "kind": {
+       "type": "list",
+       "values": [
+        "Baixa",
+        "Média",
+        "Alta"
+       ]
+      },
+      "write": "setDensity",
+      "read": "getDensity",
+      "default": "Média"
+     }
+    ],
+    "source": "(function () {\n  var algo = new Object;\n  algo.apiVersion = 2;\n  algo.name = \"Faíscas\";\n  algo.author = \"R Light Control\";\n  algo.acceptColors = 1;\n\n  // Quantas células acendem a cada passo: Baixa, Média ou Alta\n  var density = \"Média\";\n  algo.properties = [\"name:density|type:list|display:Densidade|values:Baixa,Média,Alta|write:setDensity|read:getDensity\"];\n  algo.setDensity = function (value) {\n    density = value;\n  };\n  algo.getDensity = function () {\n    return density;\n  };\n\n  // Cada célula acende ou não, por uma conta de embaralhar que muda a cada passo (a mesma sequência\n  // sempre, sem sorteio)\n  algo.rgbMap = function (width, height, rgb, step) {\n    var limit = density === \"Baixa\" ? 12 : density === \"Alta\" ? 45 : 25;\n    var map = new Array(height);\n    for (var y = 0; y < height; y++) {\n      map[y] = new Array(width);\n      for (var x = 0; x < width; x++) {\n        // Dois passos de um gerador de números (minstd) misturam a posição e o passo\n        var hash = (x * 7919 + y * 104729 + step * 15485863 + 11) % 2147483647;\n        hash = (hash * 48271) % 2147483647;\n        hash = (hash * 48271) % 2147483647;\n        map[y][x] = hash % 100 < limit ? rgb : 0;\n      }\n    }\n    return map;\n  };\n\n  algo.rgbMapStepCount = function (width, height) {\n    return 24;\n  };\n\n  return algo;\n})()\n"
+   }
+  ]
  },
  "library": [
   {

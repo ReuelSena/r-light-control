@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 10;
+const SCHEMA_VERSION: u32 = 11;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -275,6 +275,29 @@ fn migrate(project: &mut Value, version: u32) {
                 for key in ["invertPan", "invertTilt", "swapAxes"] {
                     x.entry(key).or_insert(false.into());
                 }
+            }
+        }
+    }
+    // 10 → 11 (F9): o algoritmo do RGB Matrix virou um tipo (os de amostra de antes abrem como Plain),
+    // ele controla o RGB das cabeças e não tem a ordem Aleatória; o projeto guarda os scripts importados
+    if version < 11 {
+        if let Some(p) = project.as_object_mut() {
+            p.entry("scripts").or_insert(json!([]));
+        }
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+            .filter(|f| f.get("type").and_then(Value::as_str) == Some("rgbMatrix"))
+        {
+            // O nome de um algoritmo de amostra de antes (um texto) abre como Plain
+            if f.get("algorithm").is_some_and(Value::is_string) {
+                f.insert("algorithm".into(), json!({ "type": "plain" }));
+            }
+            f.entry("control").or_insert("rgb".into());
+            if f.get("runOrder").and_then(Value::as_str) == Some("random") {
+                f.insert("runOrder".into(), "loop".into());
             }
         }
     }
@@ -576,6 +599,38 @@ mod tests {
         let v9 = json!({ "format": FORMAT, "schemaVersion": 9, "project": old });
         std::fs::write(&file, v9.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_10_opens_the_rgb_matrix_as_plain_in_rgb_without_the_random_order() {
+        use rlc_core::{FunctionKind, RunOrder};
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = crate::hub::example_snapshot(None).project;
+        // A versão 10 tinha o nome de um algoritmo de amostra, e a ordem Aleatória
+        let mut old = serde_json::to_value(&project).unwrap();
+        let mut matrices = 0;
+        for f in old["functions"].as_array_mut().unwrap() {
+            if f["type"] == "rgbMatrix" {
+                f["algorithm"] = "chase".into();
+                f["runOrder"] = "random".into();
+                f.as_object_mut().unwrap().remove("control");
+                matrices += 1;
+            }
+        }
+        assert!(matrices > 0);
+        let file = dir.join("antigo.rlc");
+        let v10 = json!({ "format": FORMAT, "schemaVersion": 10, "project": old });
+        std::fs::write(&file, v10.to_string()).unwrap();
+        let opened = read(&file).unwrap().0;
+        for f in &opened.functions {
+            if let FunctionKind::RgbMatrix(m) = &f.kind {
+                assert_eq!(m.algorithm, rlc_core::RgbAlgorithm::Plain);
+                assert_eq!(m.control, rlc_core::RgbControl::Rgb);
+                assert_eq!(m.run_order, RunOrder::Loop);
+            }
+        }
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

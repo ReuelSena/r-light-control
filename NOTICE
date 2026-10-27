@@ -36,3 +36,15 @@ forem adicionadas:
   finos e valor padrão) seguindo o carregador de engine/src/qlcfixturedef.cpp,
   qlcfixturemode.cpp, qlcchannel.cpp, qlccapability.cpp e qlcphysical.cpp,
   para crates/rlc-qxf/src/lib.rs.
+
+- RGB Matrix: a conversão do mapa de cores nos canais das cabeças (RGB, CMY e
+  o cinza do dimmer, branco, âmbar e UV), a cor de cada passo entre a inicial e
+  a final, a ordem dos passos (Loop, Single Shot e Ping Pong) e o fade por
+  canal, seguindo engine/src/rgbmatrix.cpp (updateMapChannels, RGBMatrixStep,
+  checkNextStep) para crates/rlc-engine/src/matrix.rs; o texto (letras, rolagem
+  horizontal e vertical) e a imagem (volta pelo módulo, rolagem por passo),
+  seguindo engine/src/rgbtext.cpp e rgbimage.cpp, com uma fonte de pontos 5 × 7
+  própria, para crates/rlc-engine/src/text.rs; e o contrato dos scripts (API 1
+  a 3, propriedades e o formato dos métodos write e read), seguindo
+  engine/src/rgbscript.cpp e rgbscriptproperty.h, para crates/rlc-script/src/lib.rs.
+  Os scripts do QLC+ (resources/rgbscripts) não vêm no app: o usuário os importa.

@@ -8,6 +8,7 @@ import type { Master } from "./Master";
 import type { MidiDevice } from "./MidiDevice";
 import type { Project } from "./Project";
 import type { RemoteAccess } from "./RemoteAccess";
+import type { RunFailure } from "./RunFailure";
 import type { Stats } from "./Stats";
 import type { TestPattern } from "./TestPattern";
 import type { WidgetValue } from "./WidgetValue";
@@ -49,6 +50,11 @@ chaserSteps: Array<CurrentStep>,
  * Criações da lista `running` pausadas: os fades, os delays e os passos delas não andam (R1).
  */
 paused: Array<string>, 
+/**
+ * Criações que pararam por erro (um script de RGB Matrix que falhou): vale até a criação rodar de
+ * novo.
+ */
+failures: Array<RunFailure>, 
 /**
  * Passo carregado de cada chaser na cue list: o próximo Go vai para ele (R1).
  */

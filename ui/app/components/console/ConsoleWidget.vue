@@ -258,12 +258,15 @@ function setColor(i: number, color: string) {
           >
             <Play :size="14" />
           </RlButton>
-          <select class="field min-w-0" :value="matrix.algorithm" @change="send({ op: 'saveFunction', function: { ...matrix, algorithm: ($event.target as HTMLSelectElement).value } })">
-            <option v-for="a in matrixAlgorithms" :key="a" :value="a">{{ t(`matrixAlgorithm.${a}`) }}</option>
+          <select class="field min-w-0" :value="algorithmKey(matrix.algorithm)" @change="send({ op: 'saveFunction', function: { ...matrix, algorithm: algorithmOf(($event.target as HTMLSelectElement).value) } })">
+            <option value="plain">{{ t('matrixAlgorithm.plain') }}</option>
+            <option value="text">{{ t('matrixAlgorithm.text') }}</option>
+            <option value="image">{{ t('matrixAlgorithm.image') }}</option>
+            <option v-for="s in state.project.scripts" :key="s.id" :value="`script:${s.id}`">{{ s.name }}</option>
           </select>
           <div class="flex gap-1">
             <button
-              v-for="(c, i) in matrix.colors"
+              v-for="(c, i) in matrix.colors.slice(0, matrixColors(matrix, state.project.scripts))"
               :key="i"
               type="button"
               class="swatch"

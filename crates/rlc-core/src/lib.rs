@@ -34,6 +34,9 @@ pub struct Snapshot {
     pub chaser_steps: Vec<CurrentStep>,
     /// Criações da lista `running` pausadas: os fades, os delays e os passos delas não andam (R1).
     pub paused: Vec<Id>,
+    /// Criações que pararam por erro (um script de RGB Matrix que falhou): vale até a criação rodar de
+    /// novo.
+    pub failures: Vec<RunFailure>,
     /// Passo carregado de cada chaser na cue list: o próximo Go vai para ele (R1).
     pub loaded_steps: Vec<CurrentStep>,
     /// Mesa simples (não é salva no projeto).
@@ -48,6 +51,13 @@ pub struct Snapshot {
     pub preview: Option<Id>,
     /// O "Localizar": as fixtures acesas e quanto as outras ficam.
     pub highlight: Locate,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RunFailure {
+    pub function: Id,
+    pub message: String,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -84,6 +94,8 @@ pub struct Project {
     pub folders: Vec<Folder>,
     pub console: Console,
     pub stage: Stage,
+    /// Scripts do QLC+ importados para os RGB Matrix, dentro do projeto (como as fixtures, A4).
+    pub scripts: Vec<RgbScript>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -614,13 +626,137 @@ pub enum EfxTarget {
 pub struct RgbMatrix {
     /// Grupo de fixtures (grade 2D) onde o efeito é desenhado.
     pub group: Option<Id>,
-    /// Algoritmo nativo ou script do QLC+ (F9).
-    pub algorithm: String,
+    pub algorithm: RgbAlgorithm,
+    /// Que canais das cabeças recebem as cores.
+    pub control: RgbControl,
     /// Cores (#rrggbb): a inicial e a final.
     pub colors: Vec<String>,
+    /// Loop, Uma vez e Vai e volta (o RGB Matrix do QLC+ não tem Aleatória).
     pub run_order: RunOrder,
     pub direction: Direction,
+    /// `hold_ms` é a duração de um passo.
     pub timing: Timing,
+}
+
+/// O que desenha o mapa de cores de cada passo do RGB Matrix.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum RgbAlgorithm {
+    /// Preenche a grade com a cor inicial: um passo só.
+    Plain,
+    /// Um texto: duas cores (o texto muda de cor de um passo para o outro) e os estilos do QLC+. A fonte
+    /// é de pontos 5 × 7, sem acentos (as letras acentuadas saem sem o acento). `x` e `y` deslocam o
+    /// texto em células.
+    Text {
+        text: String,
+        style: ScrollStyle,
+        x: i16,
+        y: i16,
+    },
+    /// Uma imagem do projeto (sem cor: o pixel vem dela). `x` e `y` deslocam a imagem em células, e ela
+    /// dá a volta (nas rolagens, anda uma célula por passo).
+    Image {
+        image: Option<RgbImage>,
+        style: ScrollStyle,
+        x: i16,
+        y: i16,
+    },
+    /// Um script do projeto, com o valor de cada propriedade dele (as que faltam valem o padrão).
+    Script {
+        script: Id,
+        properties: Vec<PropertyValue>,
+    },
+}
+
+/// Como o texto ou a imagem passa pela grade: parado (no texto, uma letra por passo, no centro), ou
+/// rolando para a esquerda ou para cima, uma célula por passo.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ScrollStyle {
+    Static,
+    Horizontal,
+    Vertical,
+}
+
+/// Imagem de um RGB Matrix, guardada no projeto: os pixels em RGBA (4 bytes cada, linha a linha) em
+/// base64. A tela a reduz a no máximo 128 × 128 ao escolher o arquivo; o limite é 256 KB no total.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RgbImage {
+    pub name: String,
+    pub width: u16,
+    pub height: u16,
+    pub pixels: String,
+}
+
+/// Script do QLC+ (JavaScript ES5, API 1 a 3) importado para o projeto. O texto vai junto: o projeto
+/// nunca depende de um arquivo de fora. `id` é o `name` do script, e vale a última importação.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RgbScript {
+    pub id: Id,
+    pub name: String,
+    pub author: String,
+    /// Versão da API do QLC+ (1, 2 ou 3).
+    pub api: u8,
+    /// Quantas cores o script usa (de 0 a 5; no API 3, vêm de `rgbMapSetColors`).
+    pub accepts: u8,
+    pub properties: Vec<ScriptProperty>,
+    pub source: String,
+}
+
+/// Uma propriedade que o script declara em `algo.properties` (API 2 em diante), como o
+/// `RGBScriptProperty` do QLC+: o valor vai ao método `write` como texto, e `read` o devolve.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScriptProperty {
+    pub name: String,
+    pub display: String,
+    pub kind: PropertyKind,
+    pub write: String,
+    pub read: String,
+    /// O que `read` devolvia na importação.
+    pub default: String,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum PropertyKind {
+    List { values: Vec<String> },
+    Range { min: i32, max: i32 },
+    Float,
+    Text,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyValue {
+    pub name: String,
+    pub value: String,
+}
+
+/// Um passo do RGB Matrix desenhado: quantos passos o algoritmo tem e a cor (0xRRGGBB) de cada
+/// célula da grade, `map[linha][coluna]`.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct MatrixPreview {
+    pub steps: u32,
+    pub map: Vec<Vec<u32>>,
+}
+
+/// Que canais de cada cabeça o RGB Matrix controla. No RGB, o dimmer, o branco, o âmbar e o UV não
+/// são tocados (como no QLC+); nos outros, o canal recebe o cinza da cor.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum RgbControl {
+    /// Vermelho, verde e azul; sem eles, ciano, magenta e amarelo.
+    Rgb,
+    Dimmer,
+    White,
+    Amber,
+    Uv,
 }
 
 // ---------- Virtual Console (E11) ----------
@@ -1243,6 +1379,22 @@ pub enum Op {
     ImportQxf {
         file_name: String,
         content: String,
+    },
+    /// Importa um script de RGB Matrix do QLC+ (JavaScript) para o projeto, no lugar do que tem o
+    /// mesmo nome. Resposta: o [RgbScript]. Um texto que não é script, ou que falha, é recusado.
+    ImportScript {
+        file_name: String,
+        source: String,
+    },
+    /// Tira um script do projeto, se nenhum RGB Matrix o usa.
+    RemoveScript {
+        id: Id,
+    },
+    /// O mapa de cores de um passo do RGB Matrix salvo (a prévia do editor é a saída de verdade).
+    /// Resposta: [`MatrixPreview`]. O passo passa do último volta ao primeiro.
+    PreviewMatrix {
+        id: Id,
+        step: u32,
     },
     AddUniverse,
     UpdateUniverse {

@@ -5,6 +5,7 @@ mod apply;
 mod hub;
 mod library;
 mod project;
+mod script;
 mod ws;
 
 use std::collections::BTreeMap;

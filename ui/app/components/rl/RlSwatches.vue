@@ -1,7 +1,12 @@
 <script setup lang="ts">
-// Escolha de cor numa paleta curta (etiqueta de fixture, cor de widget).
-defineProps<{ colors: string[] }>()
+// Escolha de cor numa paleta curta (etiqueta de fixture, cor de widget). Com `custom`, o último botão
+// (arco-íris) pede uma cor fora da paleta: emite `custom` (quem usa abre o seletor de cor) e, com uma cor de
+// fora da paleta escolhida, mostra essa cor.
+const props = defineProps<{ colors: string[]; custom?: boolean }>()
+const emit = defineEmits<{ custom: [] }>()
 const color = defineModel<string>({ required: true })
+const { t } = useI18n()
+const isCustom = computed(() => props.custom && !props.colors.includes(color.value))
 </script>
 
 <template>
@@ -16,6 +21,17 @@ const color = defineModel<string>({ required: true })
       :class="{ active: swatch === color }"
       :style="{ background: swatch }"
       @click="color = swatch"
+    />
+    <button
+      v-if="custom"
+      type="button"
+      role="radio"
+      class="custom"
+      :aria-checked="isCustom"
+      :aria-label="t('rl.customColor')"
+      :class="{ active: isCustom }"
+      :style="isCustom ? { background: color } : undefined"
+      @click="emit('custom')"
     />
   </div>
 </template>
@@ -33,6 +49,10 @@ button {
   border: 1px solid #000;
   border-radius: 6px;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 2px 3px rgb(0 0 0 / 0.6);
+}
+
+.custom {
+  background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
 }
 
 .active {

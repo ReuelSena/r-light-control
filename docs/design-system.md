@@ -71,7 +71,7 @@ Para montar telas:
 | `RlStepper` | Valor numa escala fixa (zoom) | − e + andam pelos degraus (`steps`); toque duplo no display volta ao padrão. |
 | `RlTimeField` | Tempos (delay, fade, hold, duração) | Mostra segundos (ou batidas, com `beats`) e guarda milissegundos. Com `infinite`, o botão ∞ liga e desliga o tempo infinito (o hold que espera o Go). |
 | `RlList` | Listas selecionáveis (bibliotecas, funções) | Linhas de 48 px; `v-model` é o id selecionado. O slot `item` personaliza a linha. Com `reorderable`, arrastar uma linha a leva para outra posição (mouse: clicar e arrastar; toque: segurar e arrastar) e o evento `reorder` traz o id e a posição final. |
-| `RlSwatches` | Escolher uma cor de uma paleta curta (etiqueta de fixture) | `v-model` com a cor; `colors` com as opções. |
+| `RlSwatches` | Escolher uma cor de uma paleta curta (etiqueta de fixture) | `v-model` com a cor; `colors` com as opções. Com `custom`, o último botão (arco-íris) emite `custom` para abrir o `RlColorPicker` (mostra a cor atual quando ela não está na paleta). |
 | `RlSwitch` | Opções liga/desliga em configurações | Alavanca com texto ao lado. |
 | `RlInfo` | Explicar uma seção, página ou diálogo | Ícone "i" ao lado do título; tocar abre um balão com o texto. É o único lugar para explicações (E6). |
 | `RlAppShell` | Moldura de toda tela | Slots: `toolbar`, `nav`, `toolbar-end`, padrão (principal), `master`, `side`, `bottom`. |

@@ -25,6 +25,12 @@ function save(changes: Partial<RgbMatrix>) {
   send({ op: 'saveFunction', function: { ...props.fn, ...changes } })
 }
 
+// A cor `i` (a inicial, a final…); as cores a mais que o algoritmo não usa ficam como estão
+const editingColor = ref<number>()
+function setColor(i: number, color: string) {
+  save({ colors: Array.from({ length: Math.max(colors.value, props.fn.colors.length) }, (_, k) => (k === i ? color : (props.fn.colors[k] ?? '#000000'))) })
+}
+
 // ---------- Texto e imagem ----------
 const algorithm = computed(() => props.fn.algorithm)
 function setAlgorithm(changes: Record<string, unknown>) {
@@ -197,8 +203,10 @@ function setProperty(name: string, value: string) {
         <span class="field-label">{{ colors === 1 ? t('matrix.color') : i === 1 ? t('matrix.startColor') : t('matrix.endColor') }}</span>
         <RlSwatches
           :colors="palette"
+          :custom="fn.control === 'rgb'"
           :model-value="fn.colors[i - 1] ?? '#000000'"
-          @update:model-value="(c) => save({ colors: Array.from({ length: Math.max(colors, 1) }, (_, k) => (k === i - 1 ? c : fn.colors[k] ?? '#000000')) })"
+          @update:model-value="(c) => setColor(i - 1, c)"
+          @custom="editingColor = i - 1"
         />
       </div>
     </div>
@@ -233,6 +241,10 @@ function setProperty(name: string, value: string) {
         </label>
       </div>
     </div>
+
+    <RlDialog :open="editingColor !== undefined" :title="t('vc.color', { n: (editingColor ?? 0) + 1 })" @update:open="editingColor = undefined">
+      <RlColorPicker v-if="editingColor !== undefined" :model-value="fn.colors[editingColor] ?? '#000000'" @update:model-value="(c: string) => setColor(editingColor!, c)" />
+    </RlDialog>
 
     <RlDialog :open="imports.length > 0" :title="t('matrix.importReport')" @update:open="imports = []">
       <div class="flex flex-col gap-2">

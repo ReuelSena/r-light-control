@@ -6,7 +6,7 @@
 use std::mem::{Discriminant, discriminant};
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -112,6 +112,13 @@ struct Slot {
     frames_seen: u64,
 }
 
+/// Macro rodando: o elemento, o próximo passo e quando ele vence.
+struct RunningMacro {
+    widget: Id,
+    next: usize,
+    at: Instant,
+}
+
 pub struct Hub {
     pub snapshot: Snapshot,
     rev: u64,
@@ -132,6 +139,10 @@ pub struct Hub {
     /// Elementos do console que cada aparelho está apertando (aparelho, elemento): se ele cair, o
     /// servidor os solta (o flash não fica preso).
     holds: Vec<(Id, Id)>,
+    /// Macros do console esperando o próximo passo (E6).
+    macros: Vec<RunningMacro>,
+    /// Há macros esperando: o relógio de 40 ms só trava o estado para andá-las quando há.
+    pub macros_waiting: Arc<AtomicBool>,
     /// As sessões de script das prévias dos RGB Matrix.
     previews: Previews,
     started: Instant,
@@ -167,6 +178,8 @@ impl Hub {
             last_edit: None,
             recovery_pending: false,
             holds: vec![],
+            macros: vec![],
+            macros_waiting: Arc::default(),
             previews: Previews::default(),
             started: Instant::now(),
             last_stats: Instant::now(),
@@ -221,6 +234,44 @@ impl Hub {
 
     /// Aplica uma operação de um cliente. Recusada, nada muda e ninguém é avisado.
     pub fn command(&mut self, op: Op) -> Result<Value, String> {
+        let kind = |id: &Id| {
+            let widgets = &self.snapshot.project.console.widgets;
+            widgets.iter().find(|w| w.id == *id).map(|w| &w.kind)
+        };
+        // A macro anda aqui: o toque a começa ou, rodando, a interrompe; soltar não faz nada
+        if let Op::PressWidget {
+            widget,
+            control: InputControl::Main,
+            down,
+        } = &op
+            && let Some(VcWidgetKind::Macro(_)) = kind(widget)
+        {
+            if *down {
+                self.toggle_macro(widget.clone());
+            }
+            return Ok(Value::Null);
+        }
+        // O pânico, o "Novo", o "Abrir" e o Stop All interrompem as macros (o Stop All de um passo
+        // não interrompe a macro dele, que está fora da lista enquanto executa)
+        let cancel = match &op {
+            Op::Panic { .. } | Op::NewProject | Op::OpenProject { .. } | Op::StopAllFunctions => {
+                true
+            }
+            Op::PressWidget {
+                widget,
+                control: InputControl::Main,
+                down: true,
+            } => {
+                matches!(kind(widget), Some(VcWidgetKind::Button(b)) if b.action == ButtonAction::StopAll)
+            }
+            _ => false,
+        };
+        if cancel {
+            let gone: Vec<Id> = self.macros.drain(..).map(|m| m.widget).collect();
+            self.snapshot
+                .widget_values
+                .retain(|v| !gone.contains(&v.widget));
+        }
         let op = console_op(&self.snapshot, op);
         // O pânico, o "Novo" e o "Abrir" param as cenas sem fade out
         let cut = matches!(
@@ -243,13 +294,34 @@ impl Hub {
                 .preview(&self.snapshot.project, id, &matrix, *step)?;
             return Ok(json!(preview));
         }
-        let (topics, reply) = match op {
+        let (mut topics, reply) = match op {
             Op::OpenProject { name } => (self.open(&name)?, Value::Null),
             Op::SaveProject { name } => (self.save(name)?, Value::Null),
             Op::Undo => (self.step_back(true)?, Value::Null),
             Op::Redo => (self.step_back(false)?, Value::Null),
             op => self.edit(op)?,
         };
+        // A macro removida (ou que virou outro elemento) para
+        if topics.contains(&Topic::Console) {
+            let widgets = &self.snapshot.project.console.widgets;
+            let gone: Vec<Id> = self
+                .macros
+                .iter()
+                .filter(|m| {
+                    !widgets
+                        .iter()
+                        .any(|w| w.id == m.widget && matches!(w.kind, VcWidgetKind::Macro(_)))
+                })
+                .map(|m| m.widget.clone())
+                .collect();
+            if !gone.is_empty() {
+                self.macros.retain(|m| !gone.contains(&m.widget));
+                self.snapshot
+                    .widget_values
+                    .retain(|v| !gone.contains(&v.widget));
+                topics.push(Topic::WidgetValues);
+            }
+        }
         if cut {
             self.engine.send(Command::Cut);
         }
@@ -259,6 +331,109 @@ impl Hub {
             self.engine.send(command);
         }
         Ok(reply)
+    }
+
+    /// O toque numa macro: rodando, ela é interrompida; senão, começa, acesa enquanto roda.
+    fn toggle_macro(&mut self, widget: Id) {
+        let waiting = self.macros.len();
+        self.macros.retain(|m| m.widget != widget);
+        let start = self.macros.len() == waiting;
+        self.light_macro(&widget, start);
+        if start {
+            let at = Instant::now();
+            self.run_macro(RunningMacro {
+                widget,
+                next: 0,
+                at,
+            });
+        }
+    }
+
+    fn light_macro(&mut self, widget: &Id, on: bool) {
+        let values = &mut self.snapshot.widget_values;
+        values.retain(|v| v.widget != *widget);
+        if on {
+            values.push(WidgetValue {
+                widget: widget.clone(),
+                value: vec![1],
+            });
+        }
+        self.publish(&[Topic::WidgetValues]);
+    }
+
+    /// Executa os passos da macro até uma espera, quando ela volta à lista, ou até o fim. Cada passo
+    /// é uma operação comum (avisos e motor); um passo recusado não para a macro.
+    fn run_macro(&mut self, mut m: RunningMacro) {
+        let steps = self
+            .snapshot
+            .project
+            .console
+            .widgets
+            .iter()
+            .find_map(|w| match &w.kind {
+                VcWidgetKind::Macro(mc) if w.id == m.widget => Some(mc.steps.clone()),
+                _ => None,
+            })
+            .unwrap_or_default();
+        while let Some(step) = steps.get(m.next) {
+            m.next += 1;
+            let run = |id: &Id, running| Op::SetFunctionRunning {
+                id: id.clone(),
+                running,
+            };
+            let op = match step {
+                MacroStep::Wait { ms } => {
+                    m.at += Duration::from_millis((*ms).into());
+                    self.macros.push(m);
+                    self.macros_waiting.store(true, Ordering::Relaxed);
+                    return;
+                }
+                MacroStep::Start { function }
+                | MacroStep::Stop { function }
+                | MacroStep::Go { chaser: function }
+                    if !self
+                        .snapshot
+                        .project
+                        .functions
+                        .iter()
+                        .any(|f| f.id == *function) =>
+                {
+                    tracing::warn!(
+                        "macro {}, passo {}: criação não encontrada",
+                        m.widget,
+                        m.next
+                    );
+                    continue;
+                }
+                MacroStep::Start { function } => run(function, true),
+                MacroStep::Stop { function } => run(function, false),
+                MacroStep::Go { chaser } if self.snapshot.running.contains(chaser) => {
+                    Op::StepChaser {
+                        id: chaser.clone(),
+                        action: StepAction::Next,
+                    }
+                }
+                MacroStep::Go { chaser } => run(chaser, true),
+                MacroStep::StopAll => Op::StopAllFunctions,
+                MacroStep::Blackout { on } => Op::SetBlackout { on: *on },
+                MacroStep::Bpm { bpm } => Op::SetTempo { bpm: *bpm },
+            };
+            if let Err(e) = self.command(op) {
+                tracing::warn!("macro {}, passo {}: {e}", m.widget, m.next);
+            }
+        }
+        self.light_macro(&m.widget, false);
+    }
+
+    /// Relógio das macros (a cada 40 ms): executa os passos das que venceram a espera.
+    pub fn advance_macros(&mut self) {
+        let now = Instant::now();
+        while let Some(i) = self.macros.iter().position(|m| m.at <= now) {
+            let m = self.macros.remove(i);
+            self.run_macro(m);
+        }
+        self.macros_waiting
+            .store(!self.macros.is_empty(), Ordering::Relaxed);
     }
 
     /// Acompanha o motor: o passo atual de cada chaser e as criações que terminaram sozinhas (o
@@ -1015,6 +1190,80 @@ mod tests {
         hub.leave("aparelho");
         assert_eq!(hub.snapshot.running, ["s1"]);
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Show de exemplo com a macro "m1": liga s1, espera 1 min, liga s5 e para s1.
+    fn hub_with_macro() -> (Hub, PathBuf) {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        let widgets = &hub.snapshot.project.console.widgets;
+        let mut m = widgets.iter().find(|w| w.id == "b1").unwrap().clone();
+        m.id = "m1".into();
+        m.inputs.clear();
+        m.kind = VcWidgetKind::Macro(VcMacro {
+            steps: vec![
+                MacroStep::Start {
+                    function: "s1".into(),
+                },
+                MacroStep::Wait { ms: 60_000 },
+                MacroStep::Start {
+                    function: "s5".into(),
+                },
+                MacroStep::Stop {
+                    function: "s1".into(),
+                },
+            ],
+            icon: None,
+        });
+        hub.command(Op::SaveWidgets { widgets: vec![m] }).unwrap();
+        (hub, dir)
+    }
+
+    fn press_macro(hub: &mut Hub) {
+        let op = Op::PressWidget {
+            widget: "m1".into(),
+            control: InputControl::Main,
+            down: true,
+        };
+        hub.command(op).unwrap();
+    }
+
+    fn lit(hub: &Hub) -> bool {
+        hub.snapshot.widget_values.iter().any(|v| v.widget == "m1")
+    }
+
+    #[test]
+    fn a_macro_runs_its_steps_and_waits() {
+        let (mut hub, dir) = hub_with_macro();
+        press_macro(&mut hub);
+        assert_eq!(hub.snapshot.running, ["s1"]);
+        assert!(lit(&hub));
+        // Antes da espera vencer, nada anda; vencida, o resto executa e a macro apaga
+        hub.advance_macros();
+        assert_eq!(hub.snapshot.running, ["s1"]);
+        hub.macros[0].at = Instant::now();
+        hub.advance_macros();
+        assert_eq!(hub.snapshot.running, ["s5"]);
+        assert!(!lit(&hub) && hub.macros.is_empty());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_second_touch_or_the_panic_interrupts_the_macro() {
+        let (mut hub, dir) = hub_with_macro();
+        press_macro(&mut hub);
+        press_macro(&mut hub);
+        assert!(!lit(&hub) && hub.macros.is_empty());
+        assert_eq!(hub.snapshot.running, ["s1"]);
+        press_macro(&mut hub);
+        assert!(lit(&hub));
+        hub.command(Op::Panic { all: false }).unwrap();
+        assert!(!lit(&hub) && hub.macros.is_empty());
+        assert!(hub.snapshot.running.is_empty());
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

@@ -20,9 +20,11 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 5. Ajustar → validar de novo.
 6. Marcar a fase aqui e registrar as decisões novas no `DECISOES.md`. Commit se o usuário pedir.
 
-## Pendências (2026-10-21)
+## Pendências (2026-11-06)
 
-**Onde paramos (2026-10-27, para retomar em outra conversa):** a [F10d](docs/fases/fase-10d.md) (EFX avançado) foi entregue e commitada em 2026-10-27, e falta o usuário validá-la junto com a F10c, numa rodada só ([checklist](docs/fases/fase-10d.md#validação-com-você), pedido dele). A [F9](docs/fases/fase-09.md) (RGB Matrix) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação e o arquivo salvo) ganhou os exemplos dela, com cópia dos arquivos antes. A [F9b](docs/fases/fase-09b.md) (Phaser) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação, pelo app aberto, e o arquivo salvo) ganhou a pasta "Phaser", com cópia dos arquivos antes. Detalhes que não estão no código:
+**Onde paramos (2026-11-06):** o usuário tem um evento hoje e vai validar o software inteiro com o rig montado. A pedido dele, a [F11](docs/fases/fase-11.md) entrou só com o console (XY Pad, Animation e macros), e a segurança dela ficou para depois. Depois do console, as Paletas (F12b). A validação de hoje cobre a F9, a F9b, a F10c, a F10d e o console da F11.
+
+**Antes (2026-10-27):** a [F10d](docs/fases/fase-10d.md) (EFX avançado) foi entregue e commitada em 2026-10-27, e falta o usuário validá-la junto com a F10c, numa rodada só ([checklist](docs/fases/fase-10d.md#validação-com-você), pedido dele). A [F9](docs/fases/fase-09.md) (RGB Matrix) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação e o arquivo salvo) ganhou os exemplos dela, com cópia dos arquivos antes. A [F9b](docs/fases/fase-09b.md) (Phaser) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação, pelo app aberto, e o arquivo salvo) ganhou a pasta "Phaser", com cópia dos arquivos antes. Detalhes que não estão no código:
 - Em 2026-10-22, o app abre o "Show de exemplo" pela recuperação: o arquivo salvo ainda é da versão 8, e o trabalho da F10c e os exemplos da F10d estão na recuperação (os da F10d também foram postos no arquivo salvo). Antes de qualquer teste que abra outro projeto, guardar uma cópia da recuperação e restaurá-la no fim (abrir um projeto descarta a recuperação).
 - Os "botões acesos, sem LED" pedidos na F10c valeram para o Studio (Rodar, Pausar, Parar todas e a lista) e para a barra de cima. Os botões de dentro das telas (Prévia, Localizar, Editar do console etc.) continuam em LED: o usuário ainda não decidiu se quer trocá-los.
 - A área do console tem a célula de tamanho fixo por formato (mudança do usuário, 2026-10-21, em [DECISOES.md](DECISOES.md), E11).
@@ -37,7 +39,7 @@ O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
 
-**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia; em 2026-10-22 o usuário seguiu para a [F10d](docs/fases/fase-10d.md), entregue no mesmo dia. A [F9](docs/fases/fase-09.md) foi aprovada e entregue em 2026-10-27, antes da validação da F10c e da F10d (G1: o usuário pediu para seguir).
+**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário; a F11b, pedido de 2026-11-06, entra depois da F12b):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F11b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia; em 2026-10-22 o usuário seguiu para a [F10d](docs/fases/fase-10d.md), entregue no mesmo dia. A [F9](docs/fases/fase-09.md) foi aprovada e entregue em 2026-10-27, antes da validação da F10c e da F10d (G1: o usuário pediu para seguir).
 
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
@@ -382,9 +384,11 @@ Validação:
 - [ ] Os itens da F10c (pedido do usuário: as duas validações numa rodada só).
 - [ ] Com os Beams de verdade: na [validação final](docs/validacao-final.md).
 
-### F11 — Virtual Console II, multi-cliente e segurança · ⬜
+### F11 — Virtual Console II, multi-cliente e segurança · 🟡 (o console entregue em 2026-11-06; a segurança fica para depois das Paletas)
 
-- **Widgets:** XYPad, SoloFrame, SpeedDial, CueList, Clock, Animation.
+Mini-plano: [docs/fases/fase-11.md](docs/fases/fase-11.md). Em 2026-11-06, antes de um evento, o usuário pediu todo o console operacional para validar o software com o rig montado, e a segurança para depois. Entraram o XY Pad na luz (fixtures e grupos), o fader do Animation como playback e as macros (E6). Projeto na versão 13. Depois do console, as Paletas (F12b), também a pedido dele.
+
+- **Widgets:** XYPad, SoloFrame, SpeedDial, CueList, Clock, Animation (todos operacionais em 2026-11-06).
 - **Acesso:** papéis admin/operador/visualizador, PIN → token, checagem de Origin.
 - **Da pesquisa da grandMA (2026-10-21):** **E6**, as macros: um botão que executa uma lista de ações em ordem, com espera entre elas.
 - **Ref:**
@@ -392,10 +396,33 @@ Validação:
   - `webaccess/src/webaccessauth.cpp`
 
 Validação:
+- [ ] O console no rig montado: XY Pad, Animation, macros e os outros elementos ([checklist](docs/fases/fase-11.md#validação-com-você)).
 - [ ] 3 aparelhos por 5 min com estado consistente.
 - [ ] PIN errado recusado.
 - [ ] Operador não edita.
 - [ ] Reconexão recebe o estado completo.
+
+### F11b — Coleção com linha do tempo · ⬜ (nova, 2026-11-06, pedido do usuário; sem mini-plano ainda)
+
+Pedido do usuário (G4): dar às coleções o poder de disparar as criações **com espera**, **sobrepostas no tempo** e **em camadas**, para uma operação ao vivo mais enxuta que o Show/timeline com áudio (que fica fora da v1). Os pedaços (coleções) poderão virar clipes do Show no futuro.
+
+- **Ideia do usuário:** o editor da coleção vira uma linha do tempo, como a dos editores de vídeo: arrastar e redimensionar os itens, acrescentar camadas, com hierarquia do que sobrepõe o quê. Modo de repetição: em laço, uma vez ou vai e volta.
+- **Etapa 1 (motor e lista):** cada item da coleção ganha início, duração, camada e prioridade, com um `TimelineRunner` no motor (ligar o item na hora e pará-lo no fim, com o fade out). O editor é uma lista com campos numéricos.
+- **Etapa 2 (linha do tempo visual):** arrastar e redimensionar, camadas, zoom, encaixe nas batidas e a posição ao vivo (playhead). Só depois de a Etapa 1 ser usada ao vivo.
+- **Análise (2026-11-06):** cabe na árvore `Program` (a coleção já pode conter coleções) e reaproveita delays, curvas, prioridade (F10c), pausa e BPM. O maior custo é o editor visual.
+- **A decidir no mini-plano:**
+  - a unidade de tempo (segundos, batidas ou as duas, como no elemento "Tempos");
+  - o "Vai e volta" (sugestão: a ordem dos clipes inverte e cada clipe toca para a frente);
+  - a prioridade por item (hoje a criação disparada manda, e o que ela acende herda a dela);
+  - se a macro (E6) continua separada ou passa a ser um tipo de item (o que sobra dela: Stop All, blackout e BPM).
+- **Riscos:** sobreposição com chaser, macro e Show; sem arrastar o cursor para ver a luz (o motor guarda estado); arrastar clipes é ruim no celular (editar no desktop, operar no celular).
+- **Onde mexe:** o contrato (`Collection.functions` vira `items`, com migração), o motor (`TimelineRunner`), a tradução em `apply.rs` e o editor `StudioCollection.vue`.
+- **Lugar na ordem:** depois das Paletas (F12b), a combinar. Exemplo no show de exemplo na entrega (G8).
+
+Validação (a detalhar no mini-plano):
+- [ ] Uma coleção com três itens em tempos diferentes, sobrepostos, com camadas de prioridades diferentes.
+- [ ] Laço, uma vez e vai e volta.
+- [ ] A coleção disparada por um botão do console, pelo "Tempos" e pelo BPM.
 
 ### F12 — MIDI · ⬜
 
@@ -549,6 +576,7 @@ Validação:
 - **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Os elementos são os mesmos em todos os formatos (só a posição muda), e o formato vem da largura da tela, com troca no ⚙ (E11). Protótipo na F2 (rodada 3); implementação na F10.
 - **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3). O fade in e o fade out das cenas foram ligados na F6 (2026-10-18, pedido do usuário); a duração entrou na F7, com os chasers. Na validação da F7 (2026-10-19), o elemento passou a seguir o BPM master ("Seguir o BPM"), com os tempos em batidas e o TAP do master (E11).
 
+- **VC-5 (2026-11-06): coleção com linha do tempo.** Itens da coleção com início, duração e camadas, e modo laço, uma vez ou vai e volta; depois, editor visual como o dos editores de vídeo. Vira a fase F11b, depois das Paletas, com mini-plano a aprovar (G1).
 - **VC-4 (2026-10-20): atalhos do teclado na edição.** Com elementos escolhidos: Delete remove, Ctrl + D duplica, Ctrl + C e Ctrl + V copiam e colam, e as setas deslocam (2 células; com Shift, 4; com Ctrl, 1). Ver E12. Pedidos da mesma data, fora do console (E12): grupos de fixtures e de canais reordenáveis por arrasto e duplicáveis; pastas dentro de pastas no Studio.
 
 ---

@@ -5898,11 +5898,9 @@
      },
      "inputs": [],
      "type": "xyPad",
-     "fixtures": [
-      "mh1",
-      "mh2",
-      "mh3",
-      "mh4"
+     "fixtures": [],
+     "groups": [
+      "g3"
      ]
     },
     {

@@ -928,6 +928,8 @@ pub enum VcWidgetKind {
     Animation(VcAnimation),
     /// Texto na cor do elemento.
     Label(VcLabel),
+    /// Lista de ações executadas em ordem, com esperas entre elas (E6).
+    Macro(VcMacro),
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -1013,7 +1015,9 @@ pub struct VcCueList {
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct VcXyPad {
+    /// Fixtures e grupos de fixtures (os que estão no grupo na hora) que o pad leva no pan e no tilt.
     pub fixtures: Vec<Id>,
+    pub groups: Vec<Id>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -1062,6 +1066,41 @@ pub struct VcLabel {
     /// Cores (#rrggbb) do fundo e da borda; `None` = sem.
     pub background: Option<String>,
     pub border: Option<String>,
+}
+
+/// Parece um botão: o toque começa a macro e, rodando, a interrompe.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcMacro {
+    pub steps: Vec<MacroStep>,
+    /// Ícone da biblioteca (lucide), como o do botão; `None` = só o texto.
+    pub icon: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum MacroStep {
+    Start {
+        function: Id,
+    },
+    Stop {
+        function: Id,
+    },
+    /// Começa o chaser (ou sequência) parado; rodando, vai ao passo seguinte.
+    Go {
+        chaser: Id,
+    },
+    StopAll,
+    Blackout {
+        on: bool,
+    },
+    /// Muda o BPM master, como o fader (sem recomeçar a batida).
+    Bpm {
+        bpm: u16,
+    },
+    Wait {
+        ms: u32,
+    },
 }
 
 // ---------- 3D View ----------

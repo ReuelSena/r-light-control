@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Clock, ListOrdered, Move, RectangleHorizontal, SlidersVertical, Sparkles, SquareDashed, Timer, Type } from 'lucide-vue-next'
+import { Clock, ListOrdered, Move, RectangleHorizontal, SlidersVertical, Sparkles, SquareDashed, Timer, Type, Workflow } from 'lucide-vue-next'
 import type { InputControl } from '~/types/generated/InputControl'
 import type { Rect } from '~/types/generated/Rect'
 import type { VcLayouts } from '~/types/generated/VcLayouts'
@@ -35,6 +35,7 @@ export const widgetKinds: Record<WidgetType, { icon: Component; size: [number, n
   clock: { icon: Clock, size: [32, 16], inputs: [], keys: false },
   animation: { icon: Sparkles, size: [48, 48], inputs: ['main'], keys: false },
   label: { icon: Type, size: [32, 8], inputs: [], keys: false },
+  macro: { icon: Workflow, size: [16, 16], inputs: ['main'], keys: true },
 }
 export const widgetTypes = Object.keys(widgetKinds) as WidgetType[]
 

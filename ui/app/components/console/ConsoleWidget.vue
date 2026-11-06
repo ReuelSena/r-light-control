@@ -16,14 +16,18 @@ const now = props.widget.type === 'clock' ? useClock(200) : ref(0)
 
 // Flash e Temp valem enquanto o dedo está no botão; o resto (e as ações de um toque) age no toque
 const momentary = computed(() => props.widget.type === 'button' && props.widget.mode !== 'toggle' && !['stopAll', 'previous', 'pause'].includes(props.widget.action))
-// O botão só mostra ícone quando o usuário liga a opção (VC-1)
+// O botão (e a macro) só mostra ícone quando o usuário liga a opção (VC-1)
 const { icon } = useIconLibrary()
-const buttonIcon = computed(() => (props.widget.type === 'button' ? icon(props.widget.icon) : undefined))
+const buttonIcon = computed(() => (props.widget.type === 'button' || props.widget.type === 'macro' ? icon(props.widget.icon) : undefined))
 
-// Nível 0–1 do slider e do animation. Sem valor, o animation e o submaster ficam cheios, e a
-// velocidade, em ×1 (o meio, 128)
+// Nível 0–1 do slider e do animation. Sem valor, o submaster e o animation ligado pelo Play ficam
+// cheios, e a velocidade, em ×1 (o meio, 128)
 const sliderMode = computed(() => (props.widget.type === 'slider' ? props.widget.mode : undefined))
-const empty = computed(() => (sliderMode.value === 'rate' ? 128 : props.widget.type === 'animation' || sliderMode.value === 'submaster' ? 255 : 0))
+const empty = computed(() => {
+  const w = props.widget
+  if (sliderMode.value === 'rate') return 128
+  return sliderMode.value === 'submaster' || (w.type === 'animation' && vc.running(w.matrix)) ? 255 : 0
+})
 const level = computed({
   get: () => (vc.value(props.widget.id)?.[0] ?? empty.value) / 255,
   set: (v: number) => vc.setValue(props.widget.id, [Math.round(v * 255)]),
@@ -118,6 +122,11 @@ const matrix = computed(() => {
   const f = props.widget.type === 'animation' ? fn(props.widget.matrix) : undefined
   return f?.type === 'rgbMatrix' ? f : undefined
 })
+function toggleMatrix(id: string) {
+  if (!vc.running(id)) send({ op: 'setFunctionRunning', id, running: true })
+  else if (vc.value(props.widget.id)) vc.setValue(props.widget.id, [])
+  else send({ op: 'setFunctionRunning', id, running: false })
+}
 const editingColor = ref<number>()
 function setColor(i: number, color: string) {
   const m = matrix.value!
@@ -135,6 +144,18 @@ function setColor(i: number, color: string) {
     :model-value="vc.active(widget)"
     @update:model-value="(down: boolean) => momentary && vc.press(widget, 'main', down)"
     @press="!momentary && vc.press(widget, 'main', true)"
+  >
+    <component :is="buttonIcon" v-if="buttonIcon" :size="18" class="shrink-0" />
+    <span class="line-clamp-2 whitespace-normal text-center leading-tight wrap-anywhere">{{ widget.caption }}</span>
+  </RlButton>
+
+  <!-- Macro: acesa enquanto roda; o toque começa ou interrompe (E6) -->
+  <RlButton
+    v-else-if="widget.type === 'macro'"
+    class="h-full w-full flex-col gap-1! px-1! text-[11px]!"
+    :color="widget.color"
+    :model-value="!!vc.value(widget.id)"
+    @press="vc.press(widget, 'main', true)"
   >
     <component :is="buttonIcon" v-if="buttonIcon" :size="18" class="shrink-0" />
     <span class="line-clamp-2 whitespace-normal text-center leading-tight wrap-anywhere">{{ widget.caption }}</span>
@@ -247,15 +268,10 @@ function setColor(i: number, color: string) {
     <template v-else-if="widget.type === 'animation'">
       <p v-if="!matrix" class="text-xs text-fg-muted">{{ t('vc.noMatrix') }}</p>
       <div v-else class="flex min-h-0 flex-1 gap-2">
-        <RlFader v-model="level" class="min-h-0" :default="1" />
+        <!-- O fader é o playback do RGB Matrix; o Play liga cheio e desliga (soltando o fader) -->
+        <RlFader v-model="level" class="min-h-0" :default="0" />
         <div class="flex min-w-0 flex-1 flex-col gap-2">
-          <RlButton
-            size="sm"
-            highlight="led"
-            color="var(--color-on)"
-            :model-value="state.running.includes(matrix.id)"
-            @press="send({ op: 'setFunctionRunning', id: matrix.id, running: !state.running.includes(matrix.id) })"
-          >
+          <RlButton size="sm" highlight="led" color="var(--color-on)" :model-value="vc.running(matrix.id)" @press="toggleMatrix(matrix.id)">
             <Play :size="14" />
           </RlButton>
           <select class="field min-w-0" :value="algorithmKey(matrix.algorithm)" @change="send({ op: 'saveFunction', function: { ...matrix, algorithm: algorithmOf(($event.target as HTMLSelectElement).value) } })">

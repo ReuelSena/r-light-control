@@ -638,7 +638,7 @@
     "function": "Criação",
     "chaser": "Chaser ou sequência",
     "loaded": "Carregado para o próximo Go",
-    "movers": "Fixtures com pan e tilt",
+    "movers": "Grupos e fixtures com pan e tilt",
     "blackoutTargets": "Grupos e fixtures apagados",
     "mode": "Modo",
     "highlight": "Destaque",
@@ -671,8 +671,24 @@
       "frame": "Moldura",
       "clock": "Relógio",
       "animation": "Animation",
-      "label": "Texto"
+      "label": "Texto",
+      "macro": "Macro"
     },
+    "macroSteps": "Passos",
+    "macroStep": {
+      "start": "Rodar criação",
+      "stop": "Parar criação",
+      "go": "Go (chaser)",
+      "stopAll": "Parar tudo",
+      "blackout": "Blackout",
+      "bpm": "BPM",
+      "wait": "Esperar"
+    },
+    "blackoutOn": "Ligar",
+    "blackoutOff": "Desligar",
+    "addStep": "Adicionar passo",
+    "moveUp": "Subir",
+    "moveDown": "Descer",
     "actions": {
       "function": "Rodar criação",
       "exclusive": "Só esta (para as outras)",
@@ -739,6 +755,7 @@
       "speedDial": "Ajusta ao vivo os tempos das criações da lista, no lugar dos tempos gravados nelas. \"Gravados\" volta aos tempos de cada criação.\nSeguindo o BPM, os tempos ficam em batidas do BPM master, e o Tap é o mesmo do master: um tap muda o BPM, e os tempos e os chasers da lista acompanham.\nEm segundos, o Tap marca a duração (hold do chaser, ciclo do EFX, passo do RGB Matrix).",
       "cueList": "Go: começa o chaser, vai para o passo seguinte (ou para o carregado) e continua o pausado. Voltar: o passo anterior. Pausar: congela os fades e o hold; o Go ou o Pausar continuam de onde parou.\nToque num passo: vai para ele. Toque longo: carrega o passo para o próximo Go, sem disparar.",
       "solo": "Só uma criação da moldura roda por vez: ligar um botão para os outros.",
+      "macro": "Um toque executa os passos em ordem; o \"Esperar\" segura o próximo pelo tempo dado. A macro fica acesa enquanto roda, e um toque nela a interrompe.\nGo: começa o chaser parado; rodando, vai ao passo seguinte.\nO pânico, o Parar tudo e abrir outro projeto interrompem as macros.",
       "inputs": "O controle MIDI ou a tecla que aciona este elemento. \"Aprender\" espera você mexer no controlador. As teclas valem com o console fora da edição.",
       "icons": "A biblioteca tem cerca de 1.700 ícones. Os nomes estão em inglês: busque por sun, star, music, heart, fire…\nA busca mostra até 150 resultados.",
       "master": "Atalhos do teclado numérico:\n− blackout · + parar tudo · Enter tap do BPM.\nCtrl + − e Ctrl + + mudam o zoom do console.\nEssas teclas ficam reservadas; as da fileira de cima continuam livres para os elementos."

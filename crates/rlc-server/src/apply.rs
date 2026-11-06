@@ -353,8 +353,8 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::FixtureGroups]
         }
         // O grupo fica congelado onde era usado, e a luz não muda: os valores dele nas cenas passam
-        // para as fixtures, e o EFX, o grupo de canais e o blackout de fixtures ficam com as fixtures
-        // que estavam nele. Só o RGB Matrix e o Phaser ficam sem grupo.
+        // para as fixtures, e o EFX, o grupo de canais, o blackout de fixtures e o XY Pad ficam com as
+        // fixtures que estavam nele. Só o RGB Matrix e o Phaser ficam sem grupo.
         Op::RemoveFixtureGroup { id } => {
             let members: Vec<Id> = group_fixtures(p, &id)
                 .iter()
@@ -420,13 +420,16 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             for w in &mut p.console.widgets {
-                if let VcWidgetKind::Button(b) = &mut w.kind
-                    && b.groups.contains(&id)
-                {
-                    b.groups.retain(|g| *g != id);
+                let (groups, fixtures) = match &mut w.kind {
+                    VcWidgetKind::Button(b) => (&mut b.groups, &mut b.fixtures),
+                    VcWidgetKind::XyPad(xy) => (&mut xy.groups, &mut xy.fixtures),
+                    _ => continue,
+                };
+                if groups.contains(&id) {
+                    groups.retain(|g| *g != id);
                     for m in &members {
-                        if !b.fixtures.contains(m) {
-                            b.fixtures.push(m.clone());
+                        if !fixtures.contains(m) {
+                            fixtures.push(m.clone());
                         }
                     }
                 }
@@ -507,6 +510,10 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     VcWidgetKind::CueList(cues) => clear(&mut cues.chaser),
                     VcWidgetKind::Animation(a) => clear(&mut a.matrix),
                     VcWidgetKind::SpeedDial(dial) => dial.functions.retain(|f| *f != id),
+                    VcWidgetKind::Macro(m) => m.steps.retain(|step| {
+                        !matches!(step, MacroStep::Start { function } | MacroStep::Stop { function }
+                            | MacroStep::Go { chaser: function } if *function == id)
+                    }),
                     _ => {}
                 }
             }
@@ -612,15 +619,23 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         // `all`, também zera a Mesa simples e desliga o padrão de teste, a prévia e o "Localizar".
         Op::StopAllFunctions | Op::Panic { .. } => {
             s.running.clear();
-            // O pânico de dois toques também zera os sliders de nível, como zera a Mesa simples
+            // O pânico de dois toques também zera os sliders de nível e os XY Pads, como zera a Mesa
+            // simples
             let lowered: Vec<&Id> = p
                 .console
                 .widgets
                 .iter()
                 .filter(|w| {
-                    matches!(&w.kind, VcWidgetKind::Slider(slider)
-                        if slider.mode == SliderMode::Playback
-                            || (panic_all && slider.mode == SliderMode::Level))
+                    playback(w).is_some()
+                        || (panic_all
+                            && matches!(
+                                &w.kind,
+                                VcWidgetKind::XyPad(_)
+                                    | VcWidgetKind::Slider(VcSlider {
+                                        mode: SliderMode::Level,
+                                        ..
+                                    })
+                            ))
                 })
                 .map(|w| &w.id)
                 .collect();
@@ -709,11 +724,12 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         Op::SaveWidgets { widgets } => {
             unique(widgets.iter().map(|w| &w.id))?;
             // O elemento "Tempos" que trocou de unidade (segundos ou batidas) e o slider que trocou de
-            // modo ou de criação voltam ao valor inicial: o valor antigo não serve no novo. O slider
-            // de playback que estava aceso desliga a criação dele
+            // modo ou de criação (e o Animation que trocou de RGB Matrix) voltam ao valor inicial: o
+            // valor antigo não serve no novo. O playback que estava aceso desliga a criação dele
             let unit = |w: &VcWidget| match &w.kind {
                 VcWidgetKind::SpeedDial(dial) => format!("{}", dial.beats),
                 VcWidgetKind::Slider(slider) => format!("{:?} {:?}", slider.mode, slider.function),
+                VcWidgetKind::Animation(a) => format!("{:?}", a.matrix),
                 _ => String::new(),
             };
             let changed: Vec<VcWidget> = p
@@ -734,14 +750,8 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             };
             let stopped: Vec<Id> = changed
                 .iter()
-                .filter_map(|old| match &old.kind {
-                    VcWidgetKind::Slider(slider)
-                        if slider.mode == SliderMode::Playback && lit(&old.id) =>
-                    {
-                        slider.function.clone()
-                    }
-                    _ => None,
-                })
+                .filter(|old| lit(&old.id))
+                .filter_map(|old| playback(old).cloned())
                 .collect();
             for w in widgets {
                 upsert(&mut p.console.widgets, w, |w| &w.id)?;
@@ -769,15 +779,14 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             vec![T::Console, T::WidgetValues]
         }
         Op::SetWidgetValue { widget, value } => {
-            // O slider de playback liga a criação ao sair do zero e desliga ao voltar a ele
-            let playback = p.console.widgets.iter().find_map(|w| match &w.kind {
-                VcWidgetKind::Slider(slider)
-                    if w.id == widget && slider.mode == SliderMode::Playback =>
-                {
-                    slider.function.clone()
-                }
-                _ => None,
-            });
+            // O playback (slider ou Animation) liga a criação ao sair do zero e desliga ao voltar a ele
+            let playback = p
+                .console
+                .widgets
+                .iter()
+                .find(|w| w.id == widget)
+                .and_then(playback)
+                .cloned();
             let up = value.first().is_some_and(|&v| v > 0);
             s.widget_values.retain(|v| v.widget != widget);
             if !value.is_empty() {
@@ -1198,6 +1207,7 @@ pub fn running_programs(s: &Snapshot) -> Vec<Run> {
         })
         .collect();
     runs.extend(level_sliders(s));
+    runs.extend(xy_pads(s));
     runs
 }
 
@@ -1522,17 +1532,17 @@ fn press(
                 hold(s, false);
             } else if down && !running {
                 if b.action == ButtonAction::Exclusive {
-                    // "Só esta": as outras param (com o fade out), e os sliders de playback baixam
+                    // "Só esta": as outras param (com o fade out), e os playbacks baixam
                     s.running.clear();
-                    let playback: Vec<Id> = s
+                    let lowered: Vec<Id> = s
                         .project
                         .console
                         .widgets
                         .iter()
-                        .filter(|w| matches!(&w.kind, VcWidgetKind::Slider(sl) if sl.mode == SliderMode::Playback))
+                        .filter(|w| playback(w).is_some())
                         .map(|w| w.id.clone())
                         .collect();
-                    s.widget_values.retain(|v| !playback.contains(&v.widget));
+                    s.widget_values.retain(|v| !lowered.contains(&v.widget));
                 } else {
                     solo(s, frame.as_ref(), &f);
                 }
@@ -1666,20 +1676,25 @@ fn flashed(s: &Snapshot, id: &Id) -> bool {
     })
 }
 
-/// Nível do slider de playback que está tocando a criação (acima do zero).
+/// A criação que um elemento toca pelo fader: a do slider de playback e o RGB Matrix do Animation.
+fn playback(w: &VcWidget) -> Option<&Id> {
+    match &w.kind {
+        VcWidgetKind::Slider(slider) if slider.mode == SliderMode::Playback => {
+            slider.function.as_ref()
+        }
+        VcWidgetKind::Animation(a) => a.matrix.as_ref(),
+        _ => None,
+    }
+}
+
+/// Nível do playback (slider ou Animation) que está tocando a criação (acima do zero).
 fn playback_level(s: &Snapshot, id: &Id) -> Option<u32> {
     s.project
         .console
         .widgets
         .iter()
-        .find_map(|w| match &w.kind {
-            VcWidgetKind::Slider(slider)
-                if slider.mode == SliderMode::Playback && slider.function.as_ref() == Some(id) =>
-            {
-                widget_level(s, &w.id).filter(|&v| v > 0)
-            }
-            _ => None,
-        })
+        .filter(|w| playback(w) == Some(id))
+        .find_map(|w| widget_level(s, &w.id).filter(|&v| v > 0))
 }
 
 /// Velocidade de uma criação: os sliders de velocidade que a têm na lista, de ×0,25 a ×4 (sem valor,
@@ -1727,19 +1742,16 @@ fn submaster_level(s: &Snapshot, w: &VcWidget) -> f64 {
     f64::from(widget_level(s, &w.id).unwrap_or(255).min(255)) / 255.0
 }
 
-/// Intensidade de uma criação (0 a 255): o slider de playback que a toca e os submasters que alcançam
-/// os elementos que a controlam (botões, sliders de playback e cue lists), multiplicados.
+/// Intensidade de uma criação (0 a 255): o playback que a toca e os submasters que alcançam os
+/// elementos que a controlam (botões, playbacks e cue lists), multiplicados.
 fn intensity(s: &Snapshot, id: &Id) -> u8 {
     let p = &s.project;
     let mut factor = playback_level(s, id).map_or(1.0, |v| f64::from(v.min(255)) / 255.0);
     let mut seen: Vec<&Id> = vec![];
     for w in p.console.widgets.iter().filter(|w| match &w.kind {
         VcWidgetKind::Button(b) => b.function.as_ref() == Some(id),
-        VcWidgetKind::Slider(sl) => {
-            sl.mode == SliderMode::Playback && sl.function.as_ref() == Some(id)
-        }
         VcWidgetKind::CueList(c) => c.chaser.as_ref() == Some(id),
-        _ => false,
+        _ => playback(w) == Some(id),
     }) {
         for sub in submasters(p, w) {
             if !seen.contains(&&sub.id) {
@@ -1749,6 +1761,45 @@ fn intensity(s: &Snapshot, id: &Id) -> u8 {
         }
     }
     (factor * 255.0).round() as u8
+}
+
+/// Os XY Pads mexidos, como cenas sem fade no pan (X) e no tilt (Y) das fixtures deles e das que
+/// estão nos grupos deles, pelo curso inteiro e em 16 bits com o fino: contam da hora em que foram
+/// mexidos, como um slider de nível (LTP).
+fn xy_pads(s: &Snapshot) -> impl Iterator<Item = Run> {
+    let p = &s.project;
+    p.console.widgets.iter().filter_map(move |w| {
+        let VcWidgetKind::XyPad(xy) = &w.kind else {
+            return None;
+        };
+        let value = &s.widget_values.iter().find(|v| v.widget == w.id)?.value;
+        let [x, y] = [0, 1].map(|i| value.get(i).copied().unwrap_or(128).min(255) as u16);
+        let mut fixtures: Vec<&Id> = xy.fixtures.iter().collect();
+        for f in xy.groups.iter().flat_map(|g| group_fixtures(p, g)) {
+            if !fixtures.contains(&&f.id) {
+                fixtures.push(&f.id);
+            }
+        }
+        let mut levels: Vec<SceneLevel> = vec![];
+        for id in fixtures {
+            for (level, v) in pan_tilt(p, id).into_iter().zip([x, y]) {
+                if let Some(mut level) = level {
+                    level.value = if level.fine.is_some() { v * 257 } else { v };
+                    levels.push(level);
+                }
+            }
+        }
+        Some(Run {
+            id: w.id.clone(),
+            program: Program::Scene(SceneProgram {
+                levels,
+                times: Times::fades(Span::Ms(0), Span::Ms(0)),
+            }),
+            intensity: 255,
+            priority: Priority::Normal,
+            paused: false,
+        })
+    })
 }
 
 /// Os sliders de nível acesos, como cenas sem fade nos canais dos grupos de canais deles: na
@@ -3204,6 +3255,51 @@ mod tests {
         assert!(running_programs(&s).iter().any(|r| r.id == "sl2"));
         apply(&mut s, Op::Panic { all: true }).unwrap();
         assert!(running_programs(&s).is_empty());
+    }
+
+    #[test]
+    fn xy_pad_moves_the_pan_and_tilt_of_its_group_in_16_bits() {
+        let mut s = example();
+        // "xy1": o grupo "Moving heads" (4 Beams, pan e tilt com o fino)
+        assert!(!running_programs(&s).iter().any(|r| r.id == "xy1"));
+        set_value(&mut s, "xy1", vec![255, 0]);
+        let runs = running_programs(&s);
+        let levels = &scene_of(&runs.iter().find(|r| r.id == "xy1").unwrap().program).levels;
+        assert_eq!(levels.len(), 8);
+        assert!(levels.iter().all(|l| l.fine.is_some()));
+        let values: Vec<u16> = levels.iter().map(|l| l.value).collect();
+        assert_eq!(values, [0xFFFF, 0].repeat(4));
+        // O pânico de dois toques solta o pad
+        apply(&mut s, Op::Panic { all: true }).unwrap();
+        assert!(!running_programs(&s).iter().any(|r| r.id == "xy1"));
+        // Remover o grupo deixa no pad as fixtures que estavam nele
+        apply(&mut s, Op::RemoveFixtureGroup { id: "g3".into() }).unwrap();
+        let VcWidgetKind::XyPad(xy) = widget(&s, "xy1").kind else {
+            panic!("xy1 não é XY Pad")
+        };
+        assert_eq!((xy.groups.len(), xy.fixtures.len()), (0, 4));
+    }
+
+    #[test]
+    fn animation_fader_plays_its_matrix() {
+        let mut s = example();
+        // "an1" toca o r1: sai do zero e liga, com a intensidade do fader
+        set_value(&mut s, "an1", vec![128]);
+        assert_eq!(s.running, ["r1"]);
+        let run = |s: &Snapshot| running_programs(s).into_iter().find(|r| r.id == "r1");
+        assert_eq!(run(&s).unwrap().intensity, 128);
+        set_value(&mut s, "an1", vec![0]);
+        assert!(s.running.is_empty());
+        // Ligado pelo Play, sem valor, fica cheio
+        apply(
+            &mut s,
+            Op::SetFunctionRunning {
+                id: "r1".into(),
+                running: true,
+            },
+        )
+        .unwrap();
+        assert_eq!(run(&s).unwrap().intensity, 255);
     }
 
     #[test]

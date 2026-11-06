@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 12;
+const SCHEMA_VERSION: u32 = 13;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -302,6 +302,20 @@ fn migrate(project: &mut Value, version: u32) {
         }
     }
     // 11 → 12 (F9b): o Phaser é um tipo novo de criação, e os projetos antigos não o têm: nada muda
+    // 12 → 13 (F11): o XY Pad aceita grupos de fixtures; os antigos ficam sem grupo
+    if version < 13 {
+        let widgets = project
+            .pointer_mut("/console/widgets")
+            .and_then(Value::as_array_mut);
+        for w in widgets
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+            .filter(|w| w.get("type").and_then(Value::as_str) == Some("xyPad"))
+        {
+            w.entry("groups").or_insert(json!([]));
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -648,6 +662,29 @@ mod tests {
         let file = dir.join("antigo.rlc");
         let v11 = json!({ "format": FORMAT, "schemaVersion": 11, "project": project });
         std::fs::write(&file, v11.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_12_opens_the_xy_pads_without_groups() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut project = crate::hub::example_snapshot(None).project;
+        for w in &mut project.console.widgets {
+            if let rlc_core::VcWidgetKind::XyPad(xy) = &mut w.kind {
+                xy.groups.clear();
+            }
+        }
+        let mut old = serde_json::to_value(&project).unwrap();
+        for w in old["console"]["widgets"].as_array_mut().unwrap() {
+            if w["type"] == "xyPad" {
+                w.as_object_mut().unwrap().remove("groups");
+            }
+        }
+        let file = dir.join("antigo.rlc");
+        let v12 = json!({ "format": FORMAT, "schemaVersion": 12, "project": old });
+        std::fs::write(&file, v12.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

@@ -69,12 +69,13 @@ function blank(type: WidgetType): VcWidget {
     button: { type, action: 'function', function: null, fixtures: [], groups: [], mode: 'toggle', highlight: 'face', icon: null },
     slider: { type, mode: 'level', channelGroups: [], function: null, functions: [], knob: false },
     cueList: { type, chaser: firstOf('chaser') },
-    xyPad: { type, fixtures: [] },
+    xyPad: { type, fixtures: [], groups: [] },
     speedDial: { type, functions: [], fadeIn: true, fadeOut: true, hold: false, beats: true },
     frame: { type, solo: false },
     clock: { type, mode: 'clock', countdownS: 300 },
     animation: { type, matrix: firstOf('rgbMatrix') },
     label: { type, background: null, border: null },
+    macro: { type, steps: [], icon: null },
   }
   const [w, h] = widgetKinds[type].size
   const layouts = { phone: null, tablet: null, desktop: null, [format.value]: spot(null, w, h) }

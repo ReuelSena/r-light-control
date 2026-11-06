@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Keyboard, Wand, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp, Keyboard, Plus, Wand, X } from 'lucide-vue-next'
 import type { FunctionType } from '~/types/generated/FunctionType'
 import type { InputControl } from '~/types/generated/InputControl'
+import type { MacroStep } from '~/types/generated/MacroStep'
 import type { MidiControl } from '~/types/generated/MidiControl'
 import type { VcWidget } from '~/types/generated/VcWidget'
 import type { WidgetInput } from '~/types/generated/WidgetInput'
@@ -27,6 +28,7 @@ const { icon } = useIconLibrary()
 const pickingIcon = ref(false)
 function defaultIcon() {
   const w = props.widget
+  if (w.type === 'macro') return 'Workflow'
   if (w.type !== 'button') return null
   if (w.action === 'stopAll') return 'OctagonX'
   if (w.action === 'previous') return 'ChevronLeft'
@@ -34,6 +36,23 @@ function defaultIcon() {
   if (w.action !== 'function' && w.action !== 'exclusive') return 'LightbulbOff'
   const type = project.value.functions.find((f) => f.id === w.function)?.type ?? 'scene'
   return { scene: 'Camera', chaser: 'Repeat', sequence: 'Film', collection: 'Layers', efx: 'Orbit', rgbMatrix: 'LayoutGrid', phaser: 'AudioWaveform' }[type]
+}
+
+// ---------- Macro (E6) ----------
+const stepTypes = ['start', 'stop', 'go', 'stopAll', 'blackout', 'bpm', 'wait'] as const
+const chasers = computed(() => functionsOf('chaser', 'sequence'))
+// Um passo novo (ou que trocou de tipo) começa com a primeira criação, o blackout ligado, 120 BPM ou 1 s
+function newStep(type: MacroStep['type']): MacroStep {
+  const first = (type === 'go' ? chasers.value : project.value.functions)[0]?.id ?? ''
+  return { start: { type, function: first }, stop: { type, function: first }, go: { type, chaser: first }, stopAll: { type }, blackout: { type, on: true }, bpm: { type, bpm: 120 }, wait: { type, ms: 1000 } }[type] as MacroStep
+}
+const macroSteps = computed(() => (props.widget.type === 'macro' ? props.widget.steps : []))
+const setSteps = (steps: MacroStep[]) => save({ steps })
+const setStep = (i: number, step: MacroStep) => setSteps(macroSteps.value.map((s, n) => (n === i ? step : s)))
+function moveStep(i: number, by: number) {
+  const steps = [...macroSteps.value]
+  steps.splice(i + by, 0, ...steps.splice(i, 1))
+  setSteps(steps)
 }
 
 // ---------- Entradas externas ----------
@@ -145,20 +164,53 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
         {{ t('vc.highlight') }}
         <RlSegmented :model-value="widget.highlight" :options="[{ value: 'face', label: t('vc.highlights.face') }, { value: 'led', label: t('vc.highlights.led') }]" @update:model-value="(highlight) => save({ highlight })" />
       </div>
-      <div class="field-label">
-        {{ t('vc.icon') }}
-        <div class="flex min-h-11 items-center gap-3">
-          <RlSwitch :model-value="!!widget.icon" @update:model-value="(on: boolean) => save({ icon: on ? defaultIcon() : null })">
-            {{ t('vc.showIcon') }}
-          </RlSwitch>
-          <RlButton v-if="widget.icon" size="sm" class="ml-auto" @press="pickingIcon = true">
-            <component :is="icon(widget.icon)" v-if="icon(widget.icon)" :size="16" />
-            {{ t('vc.changeIcon') }}
-          </RlButton>
-        </div>
-      </div>
-      <ConsoleIcons v-model:open="pickingIcon" :model-value="widget.icon" @update:model-value="(name) => save({ icon: name })" />
     </template>
+
+    <!-- Macro (E6): os passos, executados em ordem -->
+    <div v-else-if="widget.type === 'macro'" class="field-label">
+      <span class="flex items-center gap-1">{{ t('vc.macroSteps') }} <RlInfo :text="t('vc.info.macro')" /></span>
+      <div v-for="(s, i) in widget.steps" :key="i" class="sunken flex flex-col gap-1.5 rounded-md p-2">
+        <div class="flex items-center gap-1">
+          <span class="w-5 shrink-0 font-lcd text-sm">{{ i + 1 }}</span>
+          <select class="field min-w-0 flex-1" :value="s.type" @change="setStep(i, newStep(pick($event) as MacroStep['type']))">
+            <option v-for="type in stepTypes" :key="type" :value="type">{{ t(`vc.macroStep.${type}`) }}</option>
+          </select>
+          <RlButton size="sm" :disabled="i === 0" :aria-label="t('vc.moveUp')" @press="moveStep(i, -1)"><ChevronUp :size="14" /></RlButton>
+          <RlButton size="sm" :disabled="i === widget.steps.length - 1" :aria-label="t('vc.moveDown')" @press="moveStep(i, 1)"><ChevronDown :size="14" /></RlButton>
+          <RlButton size="sm" :aria-label="t('common.remove')" @press="setSteps(widget.steps.filter((_, n) => n !== i))"><X :size="14" /></RlButton>
+        </div>
+        <select v-if="s.type === 'start' || s.type === 'stop'" class="field" :value="s.function" @change="setStep(i, { ...s, function: pick($event) ?? '' })">
+          <optgroup v-for="type in functionTypes" :key="type" :label="t(`functionTypePlural.${type}`)">
+            <option v-for="f in functionsOf(type)" :key="f.id" :value="f.id">{{ f.name }}</option>
+          </optgroup>
+        </select>
+        <select v-else-if="s.type === 'go'" class="field" :value="s.chaser" @change="setStep(i, { ...s, chaser: pick($event) ?? '' })">
+          <option v-for="f in chasers" :key="f.id" :value="f.id">{{ f.name }}</option>
+        </select>
+        <RlSegmented
+          v-else-if="s.type === 'blackout'"
+          :model-value="s.on ? 'on' : 'off'"
+          :options="[{ value: 'on', label: t('vc.blackoutOn') }, { value: 'off', label: t('vc.blackoutOff') }]"
+          @update:model-value="(v) => setStep(i, { ...s, on: v === 'on' })"
+        />
+        <span v-else-if="s.type === 'bpm'" class="flex items-center gap-2">
+          <input
+            type="number"
+            min="30"
+            max="300"
+            class="field flex-1"
+            :value="s.bpm"
+            @change="setStep(i, { ...s, bpm: Math.min(300, Math.max(30, Math.round(Number(($event.target as HTMLInputElement).value) || 120))) })"
+          >
+          <span class="text-xs text-fg-dim">BPM</span>
+        </span>
+        <RlTimeField v-else-if="s.type === 'wait'" :model-value="s.ms" @update:model-value="(ms: number) => setStep(i, { ...s, ms })" />
+      </div>
+      <RlButton size="sm" @press="setSteps([...widget.steps, newStep('start')])">
+        <Plus :size="14" />
+        {{ t('vc.addStep') }}
+      </RlButton>
+    </div>
 
     <!-- Slider -->
     <template v-else-if="widget.type === 'slider'">
@@ -222,6 +274,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
     <div v-else-if="widget.type === 'xyPad'" class="field-label">
       {{ t('vc.movers') }}
       <div class="flex flex-wrap gap-1.5">
+        <RlButton
+          v-for="g in project.fixtureGroups"
+          :key="g.id"
+          size="sm"
+          highlight="led"
+          :model-value="widget.groups.includes(g.id)"
+          @press="save({ groups: toggled(widget.groups, g.id) })"
+        >
+          {{ g.name }}
+        </RlButton>
         <RlButton
           v-for="f in movers"
           :key="f.id"
@@ -291,6 +353,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
     <template v-else-if="widget.type === 'label'">
       <ConsoleColor :label="t('vc.background')" none :model-value="widget.background" @update:model-value="(background) => save({ background })" />
       <ConsoleColor :label="t('vc.border')" none :model-value="widget.border" @update:model-value="(border) => save({ border })" />
+    </template>
+
+    <!-- Ícone do botão e da macro -->
+    <template v-if="widget.type === 'button' || widget.type === 'macro'">
+      <div class="field-label">
+        {{ t('vc.icon') }}
+        <div class="flex min-h-11 items-center gap-3">
+          <RlSwitch :model-value="!!widget.icon" @update:model-value="(on: boolean) => save({ icon: on ? defaultIcon() : null })">
+            {{ t('vc.showIcon') }}
+          </RlSwitch>
+          <RlButton v-if="widget.icon" size="sm" class="ml-auto" @press="pickingIcon = true">
+            <component :is="icon(widget.icon)" v-if="icon(widget.icon)" :size="16" />
+            {{ t('vc.changeIcon') }}
+          </RlButton>
+        </div>
+      </div>
+      <ConsoleIcons v-model:open="pickingIcon" :model-value="widget.icon" @update:model-value="(name) => save({ icon: name })" />
     </template>
 
     <!-- Entradas externas (VC-1) -->

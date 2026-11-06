@@ -15,6 +15,7 @@
 mod chaser;
 mod efx;
 mod matrix;
+mod phaser;
 mod text;
 
 use std::sync::Arc;
@@ -29,6 +30,8 @@ use chaser::Runner;
 use efx::EfxRunner;
 use matrix::MatrixRunner;
 pub use matrix::{CellOutput, MatrixCell, MatrixProgram, MatrixSource};
+use phaser::PhaserRunner;
+pub use phaser::{PhaserProgram, PhaserTrack};
 
 /// Período do tick: 50 Hz, como no QLC+.
 pub const TICK: Duration = Duration::from_millis(20);
@@ -93,6 +96,7 @@ pub enum Program {
     Collection(Vec<Program>),
     Efx(EfxProgram),
     RgbMatrix(MatrixProgram),
+    Phaser(PhaserProgram),
 }
 
 /// Uma cena nos endereços DMX (o motor não conhece fixtures), com os tempos que valem.
@@ -429,13 +433,14 @@ enum Node {
     Collection(Vec<Node>),
     Efx(Box<EfxRunner>),
     Matrix(Box<MatrixRunner>),
+    Phaser(Box<PhaserRunner>),
 }
 
 impl Node {
     /// Terminou sozinha: o Single Shot que apagou no fim, ou a coleção com tudo terminado.
     fn done(&self) -> bool {
         match self {
-            Node::Scene(_) => false,
+            Node::Scene(_) | Node::Phaser(_) => false,
             Node::Chaser(runner) => runner.done,
             Node::Collection(nodes) => !nodes.is_empty() && nodes.iter().all(Node::done),
             Node::Efx(runner) => runner.done,
@@ -446,7 +451,7 @@ impl Node {
     /// Os RGB Matrix de dentro que pararam por erro.
     fn failures(&self, failed: &mut Vec<(Id, String)>) {
         match self {
-            Node::Scene(_) | Node::Efx(_) => {}
+            Node::Scene(_) | Node::Efx(_) | Node::Phaser(_) => {}
             Node::Matrix(runner) => failed.extend(
                 runner
                     .failure
@@ -462,7 +467,7 @@ impl Node {
         }
     }
 
-    /// Pausada: o passo dos chasers e dos RGB Matrix não anda (o EFX só anda no `tick`).
+    /// Pausada: o passo dos chasers e dos RGB Matrix não anda (o EFX e o Phaser só andam no `tick`).
     fn shift(&mut self, gap: Duration, beats: u64) {
         match self {
             Node::Chaser(runner) => runner.shift(gap, beats),
@@ -472,7 +477,7 @@ impl Node {
                     node.shift(gap, beats);
                 }
             }
-            Node::Scene(_) | Node::Efx(_) => {}
+            Node::Scene(_) | Node::Efx(_) | Node::Phaser(_) => {}
         }
     }
 }
@@ -529,7 +534,7 @@ impl Ctx<'_> {
     }
 
     /// Cada cena ganha um fader; o EFX, um para cada fixture, quando chega a vez dela; o RGB Matrix,
-    /// um só para todas as cabeças.
+    /// um só para todas as cabeças; o Phaser, um para as camadas absolutas e outro para as relativas.
     fn start(&mut self, program: Program, imposed: Imposed) -> Node {
         match program {
             Program::Scene(scene) => {
@@ -544,6 +549,7 @@ impl Ctx<'_> {
             ),
             Program::Efx(efx) => Node::Efx(Box::new(EfxRunner::new(efx, imposed, self))),
             Program::RgbMatrix(m) => Node::Matrix(Box::new(MatrixRunner::new(m, imposed, self))),
+            Program::Phaser(p) => Node::Phaser(Box::new(PhaserRunner::new(p, imposed, self))),
         }
     }
 
@@ -569,6 +575,7 @@ impl Ctx<'_> {
             }
             Node::Efx(runner) => runner.stop(self),
             Node::Matrix(runner) => runner.stop(self),
+            Node::Phaser(runner) => runner.stop(self),
         }
     }
 
@@ -598,6 +605,7 @@ impl Ctx<'_> {
             (Node::Chaser(runner), Program::Chaser(chaser)) => runner.update(chaser, imposed, self),
             (Node::Efx(runner), Program::Efx(efx)) => runner.update(efx, imposed, self),
             (Node::Matrix(runner), Program::RgbMatrix(m)) => runner.update(m, imposed, self),
+            (Node::Phaser(runner), Program::Phaser(p)) => runner.update(p, imposed, self),
             (Node::Collection(nodes), Program::Collection(programs)) => {
                 for gone in nodes.split_off(programs.len().min(nodes.len())) {
                     self.stop(&gone);
@@ -619,13 +627,15 @@ impl Ctx<'_> {
         }
     }
 
-    /// Anda os chasers, os EFX e os RGB Matrix, também os de dentro de um passo ou de uma coleção.
+    /// Anda os chasers, os EFX, os RGB Matrix e os Phasers, também os de dentro de um passo ou de uma
+    /// coleção.
     fn tick(&mut self, node: &mut Node) {
         match node {
             Node::Scene(_) => {}
             Node::Chaser(runner) => runner.tick(self),
             Node::Efx(runner) => runner.tick(self),
             Node::Matrix(runner) => runner.tick(self),
+            Node::Phaser(runner) => runner.tick(self),
             Node::Collection(nodes) => {
                 for node in nodes {
                     self.tick(node);

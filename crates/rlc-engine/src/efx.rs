@@ -181,7 +181,7 @@ impl EfxRunner {
 }
 
 /// Ponto do desenho (0 a 255) em DMX: em 16 bits com o fino. O que passa do curso fica na ponta.
-fn dmx(v: f64, fine: bool) -> u16 {
+pub(crate) fn dmx(v: f64, fine: bool) -> u16 {
     let v = v.clamp(0.0, 255.0);
     if fine { (v * 256.0) as u16 } else { v as u16 }
 }

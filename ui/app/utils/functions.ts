@@ -1,11 +1,14 @@
 import type { Component } from 'vue'
-import { Camera, Film, Layers, LayoutGrid, Orbit, Repeat } from 'lucide-vue-next'
+import { AudioWaveform, Camera, Film, Layers, LayoutGrid, Orbit, Repeat } from 'lucide-vue-next'
+import type { Attribute } from '~/types/generated/Attribute'
 import type { Curve } from '~/types/generated/Curve'
 import type { Efx } from '~/types/generated/Efx'
 import type { EfxFixture } from '~/types/generated/EfxFixture'
 import type { EfxShape } from '~/types/generated/EfxShape'
 import type { Fixture } from '~/types/generated/Fixture'
 import type { Function } from '~/types/generated/Function'
+import type { Phaser } from '~/types/generated/Phaser'
+import type { PhaserLayer } from '~/types/generated/PhaserLayer'
 import type { Project } from '~/types/generated/Project'
 import type { RgbMatrix } from '~/types/generated/RgbMatrix'
 import type { RgbScript } from '~/types/generated/RgbScript'
@@ -22,6 +25,7 @@ export const functionIcons: Record<FunctionType, Component> = {
   collection: Layers,
   efx: Orbit,
   rgbMatrix: LayoutGrid,
+  phaser: AudioWaveform,
 }
 
 export const functionTypes = Object.keys(functionIcons) as FunctionType[]
@@ -209,6 +213,51 @@ export function matrixStep(m: RgbMatrix, steps: number, k: number) {
   const i = pingPong && j >= steps ? period - j : j
   return m.direction === 'forward' ? i : steps - 1 - i
 }
+
+/** Os atributos que uma camada do Phaser leva por uma onda: só os contínuos, na ordem da lista. */
+export const phaserAttributes: Attribute[] = [
+  'dimmer', 'red', 'green', 'blue', 'white', 'amber', 'uv', 'lime', 'indigo', 'cyan', 'magenta', 'yellow',
+  'pan', 'tilt', 'zoom', 'focus', 'iris', 'goboRotation',
+]
+export const waveShapes = ['sine', 'triangle', 'sawUp', 'sawDown', 'pulse'] as const
+
+/** Quantas fixtures (cabeças) do grupo andam a onda de um atributo: a da cabeça ou, sem o atributo nela,
+ * a da fixture inteira, uma vez só, na ordem da grade (`phaser_targets` em apply.rs). */
+export function phaserCount(project: Project, group: string | null, attribute: Attribute) {
+  const cells = [...(project.fixtureGroups.find((g) => g.id === group)?.cells ?? [])].sort((a, b) => a.y - b.y || a.x - b.x)
+  const seen = new Set<string>()
+  for (const cell of cells) {
+    const fixture = project.fixtures.find((f) => f.id === cell.fixture)
+    if (!fixture) continue
+    const def = findDef(project, fixture.defId)
+    const mode = def?.modes.find((m) => m.name === fixture.mode)
+    if (!def || !mode) continue
+    const has = (positions: number[]) => positions.some((i) => def.channels[mode.channels[i]!]?.attribute === attribute)
+    const head = mode.heads[cell.head]
+    const own = head ? has(head) : false
+    if (own || has(mode.channels.map((_, i) => i))) seen.add(own ? `${cell.fixture}:${cell.head}` : cell.fixture)
+  }
+  return seen.size
+}
+
+/** O valor da camada (0 a 255, do piso ao teto) da fixture `i` depois de `turns` ciclos, como o `wave` do
+ * motor (crates/rlc-engine/src/phaser.rs): a fixture anda a onda atrasada em i × defasagem, e a camada, na
+ * fase dela. */
+export function phaserValue(layer: PhaserLayer, spread: number, i: number, turns: number) {
+  const delay = (layer.phase + i * spread) / 360
+  const u = (((turns - delay) % 1) + 1) % 1
+  const level = {
+    sine: 0.5 - 0.5 * Math.cos(u * TAU),
+    triangle: 1 - Math.abs(2 * u - 1),
+    sawUp: u,
+    sawDown: 1 - u,
+    pulse: u < layer.width / 100 ? 1 : 0,
+  }[layer.shape]
+  return layer.low + (layer.high - layer.low) * level
+}
+
+/** Duração de um ciclo do Phaser em ms; em batidas, pelo BPM do master. */
+export const phaserCycleMs = (ph: Phaser, bpm: number) => Math.max(ph.beats ? (ph.timing.holdMs * 60) / bpm : ph.timing.holdMs, 50)
 
 /** A criação dispara `target`, direto ou por outra (passos de chaser e coleções). Como no QLC+, uma
  * criação não pode conter a si mesma: as listas de passos e de coleção escondem essas. */

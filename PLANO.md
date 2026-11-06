@@ -22,7 +22,7 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 
 ## Pendências (2026-10-21)
 
-**Onde paramos (2026-10-27, para retomar em outra conversa):** a [F10d](docs/fases/fase-10d.md) (EFX avançado) foi entregue e commitada em 2026-10-27, e falta o usuário validá-la junto com a F10c, numa rodada só ([checklist](docs/fases/fase-10d.md#validação-com-você), pedido dele). A [F9](docs/fases/fase-09.md) (RGB Matrix) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação e o arquivo salvo) ganhou os exemplos dela, com cópia dos arquivos antes. Detalhes que não estão no código:
+**Onde paramos (2026-10-27, para retomar em outra conversa):** a [F10d](docs/fases/fase-10d.md) (EFX avançado) foi entregue e commitada em 2026-10-27, e falta o usuário validá-la junto com a F10c, numa rodada só ([checklist](docs/fases/fase-10d.md#validação-com-você), pedido dele). A [F9](docs/fases/fase-09.md) (RGB Matrix) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação e o arquivo salvo) ganhou os exemplos dela, com cópia dos arquivos antes. A [F9b](docs/fases/fase-09b.md) (Phaser) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação, pelo app aberto, e o arquivo salvo) ganhou a pasta "Phaser", com cópia dos arquivos antes. Detalhes que não estão no código:
 - Em 2026-10-22, o app abre o "Show de exemplo" pela recuperação: o arquivo salvo ainda é da versão 8, e o trabalho da F10c e os exemplos da F10d estão na recuperação (os da F10d também foram postos no arquivo salvo). Antes de qualquer teste que abra outro projeto, guardar uma cópia da recuperação e restaurá-la no fim (abrir um projeto descarta a recuperação).
 - Os "botões acesos, sem LED" pedidos na F10c valeram para o Studio (Rodar, Pausar, Parar todas e a lista) e para a barra de cima. Os botões de dentro das telas (Prévia, Localizar, Editar do console etc.) continuam em LED: o usuário ainda não decidiu se quer trocá-los.
 - A área do console tem a célula de tamanho fixo por formato (mudança do usuário, 2026-10-21, em [DECISOES.md](DECISOES.md), E11).
@@ -37,7 +37,7 @@ O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
 
-**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia; em 2026-10-22 o usuário $1 A [F9](docs/fases/fase-09.md) foi aprovada e entregue em 2026-10-27, antes da validação da F10c e da F10d (G1: o usuário pediu para seguir).
+**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia; em 2026-10-22 o usuário seguiu para a [F10d](docs/fases/fase-10d.md), entregue no mesmo dia. A [F9](docs/fases/fase-09.md) foi aprovada e entregue em 2026-10-27, antes da validação da F10c e da F10d (G1: o usuário pediu para seguir).
 
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
@@ -287,15 +287,18 @@ Validação (detalhada em [docs/fases/fase-09.md](docs/fases/fase-09.md#validaç
 - [ ] Um script em laço infinito é abortado sem derrubar o motor, e o editor mostra o erro.
 - [ ] O TAP do BPM e o elemento "Tempos" mudam a velocidade do passo.
 
-### F9b — Efeitos por passos · ⬜ (nova, 2026-10-21)
+### F9b — Efeitos por passos · 🟡 (nova, 2026-10-21; entregue em 2026-10-27, aguardando a validação)
+
+Mini-plano: [docs/fases/fase-09b.md](docs/fases/fase-09b.md), aprovado em 2026-10-27 com as sete recomendações (ondas calculadas no lugar de passos gravados, o círculo como duas camadas, prévia na tela, um grupo por Phaser, só atributos contínuos, ciclo em batidas no editor e o nome "Phaser"), e entregue no mesmo dia. O usuário pediu para seguir antes de validar a F9, a F10c e a F10d (G1): a validação vai na mesma rodada. Projeto na versão 12. Os exemplos (G8) estão na pasta "Phaser" do "Show de exemplo".
 
 - **P4 (da pesquisa da grandMA):** um efeito em loop que mexe em **qualquer atributo** (dimmer, cor, pan, tilt, gobo, zoom). Escolhe-se a forma (seno, dente de serra, pulso, círculo), a velocidade (em BPM, seguindo o master) e a fase de cada fixture (o deslocamento dentro do ciclo). Cada passo pode ter valores absolutos ou relativos.
 - **Como entra:** um tipo novo de criação do Studio, com ícone próprio, na árvore `Program` do motor e reaproveitando a defasagem do EFX. Não muda o desenho da F9. Aponta para grupos de fixtures (F10b).
 - **Ref:** `engine/src/efx.rs` e a base do EFX do projeto (`efx.rs`); o catálogo em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P4).
 
-Validação:
-- [ ] Uma onda de dimmer nos ParLeds, cada um deslocado no ciclo.
-- [ ] O TAP do BPM muda a velocidade.
+Validação (detalhada em [docs/fases/fase-09b.md](docs/fases/fase-09b.md#validação-com-você), junto com a da F9, a da F10c e a da F10d):
+- [ ] Uma onda de dimmer nos ParLeds, cada um deslocado no ciclo; a defasagem em 0° as põe juntas e negativa inverte o sentido.
+- [ ] O TAP do BPM, o fader de BPM e o elemento "Tempos" mudam a velocidade (ciclo em batidas).
+- [ ] O pulso, o arco-íris, entrar e sair com fades, a pausa, a prioridade e o Phaser dentro de um chaser.
 - [ ] Pan e tilt: na [validação final](docs/validacao-final.md), com os Beams.
 
 ## Etapa D — Operação ao vivo

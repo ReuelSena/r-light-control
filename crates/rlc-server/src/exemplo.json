@@ -4198,6 +4198,68 @@
     "attributeTimes": []
    },
    {
+    "id": "s11",
+    "name": "Cor dos ParLeds (sem dimmer)",
+    "folder": null,
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 80
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "white",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "amber",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "uv",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "colorMacro",
+        "index": 0,
+        "value": 0
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 0,
+    "delayOutMs": 0,
+    "fadeOutMs": 0,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
     "id": "r5",
     "name": "Faíscas nas barras",
     "folder": "d4",
@@ -5048,6 +5110,137 @@
      "holdMs": 4000,
      "fadeOutMs": 0
     }
+   },
+   {
+    "id": "ph1",
+    "name": "Onda de dimmer nos ParLeds",
+    "folder": "d5",
+    "priority": "normal",
+    "type": "phaser",
+    "group": "g4",
+    "layers": [
+     {
+      "attribute": "dimmer",
+      "shape": "sine",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 0,
+      "relative": false
+     }
+    ],
+    "spread": 30,
+    "beats": true,
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 4000,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "ph2",
+    "name": "Pulso nos ParLeds",
+    "folder": "d5",
+    "priority": "normal",
+    "type": "phaser",
+    "group": "g4",
+    "layers": [
+     {
+      "attribute": "dimmer",
+      "shape": "pulse",
+      "width": 20,
+      "low": 0,
+      "high": 255,
+      "phase": 0,
+      "relative": false
+     }
+    ],
+    "spread": 30,
+    "beats": true,
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 2000,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "ph3",
+    "name": "Arco-íris nos ParLeds",
+    "folder": "d5",
+    "priority": "normal",
+    "type": "phaser",
+    "group": "g4",
+    "layers": [
+     {
+      "attribute": "red",
+      "shape": "sine",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 0,
+      "relative": false
+     },
+     {
+      "attribute": "green",
+      "shape": "sine",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 120,
+      "relative": false
+     },
+     {
+      "attribute": "blue",
+      "shape": "sine",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 240,
+      "relative": false
+     }
+    ],
+    "spread": 15,
+    "beats": true,
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 8000,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "ph4",
+    "name": "Balanço nos MHs (pan e tilt)",
+    "folder": "d5",
+    "priority": "normal",
+    "type": "phaser",
+    "group": "g3",
+    "layers": [
+     {
+      "attribute": "pan",
+      "shape": "sine",
+      "width": 25,
+      "low": 107,
+      "high": 147,
+      "phase": 0,
+      "relative": true
+     },
+     {
+      "attribute": "tilt",
+      "shape": "sine",
+      "width": 25,
+      "low": 107,
+      "high": 147,
+      "phase": 90,
+      "relative": true
+     }
+    ],
+    "spread": 0,
+    "beats": false,
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 4000,
+     "fadeOutMs": 1000
+    }
    }
   ],
   "folders": [
@@ -5072,6 +5265,12 @@
     "id": "d4",
     "name": "RGB Matrix",
     "kind": "rgbMatrix",
+    "parent": null
+   },
+   {
+    "id": "d5",
+    "name": "Phaser",
+    "kind": "phaser",
     "parent": null
    }
   ],

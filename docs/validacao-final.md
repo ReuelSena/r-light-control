@@ -61,3 +61,8 @@ Itens do [fase-10d.md](fases/fase-10d.md), com os EFX da pasta "EFX avançado" d
 - [ ] **Espelhados:** com o pan invertido, os Beams da direita giram ao contrário dos da esquerda, no mesmo centro (conferir também o sentido real dos Beams pendurados).
 - [ ] **À mão (estrela):** os Beams percorrem a estrela.
 - [ ] **Varredura em S** e **Curva desenhada:** a velocidade se vê no movimento real (freia nas pontas; para no meio).
+
+## F9b — Phaser
+
+Item do [fase-09b.md](fases/fase-09b.md), com o Phaser da pasta "Phaser" do Show de exemplo:
+- [ ] **Balanço nos MHs (pan e tilt):** o pan e o tilt em onda defasados 90° (o círculo), em relativo, em volta da posição de uma cena ("MHs no centro"). O grupo "Moving heads" tem os 4 genéricos do universo "Palco" e os 4 Beams do rig: com a Numbstar ligada, os Beams se mexem de verdade (±8% do curso). Conferir que o balanço sai em volta da posição da cena e que ele volta a ela no fade out.

@@ -63,6 +63,11 @@ function blank(type: FunctionType): Function {
       }
     case 'rgbMatrix':
       return { ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, algorithm: { type: 'plain' }, control: 'rgb', colors: ['#ff0000'], ...playback }
+    case 'phaser':
+      return {
+        ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, spread: 0, beats: false, timing: { ...timing, holdMs: 2000 },
+        layers: [{ attribute: 'dimmer', shape: 'sine', width: 25, low: 0, high: 255, phase: 0, relative: false }],
+      }
   }
 }
 
@@ -177,7 +182,8 @@ function remove() {
       <StudioChaser v-else-if="selected.type === 'chaser' || selected.type === 'sequence'" :key="`c${selected.id}`" :fn="selected" />
       <StudioCollection v-else-if="selected.type === 'collection'" :fn="selected" />
       <StudioEfx v-else-if="selected.type === 'efx'" :fn="selected" />
-      <StudioRgbMatrix v-else :fn="selected" />
+      <StudioRgbMatrix v-else-if="selected.type === 'rgbMatrix'" :fn="selected" />
+      <StudioPhaser v-else :fn="selected" />
     </section>
     <section v-else class="panel justify-center text-center text-fg-muted @max-3xl:hidden">{{ t('studio.selectHint') }}</section>
 

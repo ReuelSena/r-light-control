@@ -326,6 +326,7 @@ pub enum FunctionType {
     Collection,
     Efx,
     RgbMatrix,
+    Phaser,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -339,6 +340,7 @@ pub enum FunctionKind {
     Collection(Collection),
     Efx(Efx),
     RgbMatrix(RgbMatrix),
+    Phaser(Phaser),
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -636,6 +638,58 @@ pub struct RgbMatrix {
     pub direction: Direction,
     /// `hold_ms` é a duração de um passo.
     pub timing: Timing,
+}
+
+/// Efeito em loop sobre os atributos de um grupo de fixtures (P4, o "phaser" da grandMA): cada camada
+/// leva um atributo por uma onda, e as fixtures do grupo andam a onda defasadas umas das outras.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Phaser {
+    /// Grupo de fixtures; as fixtures com o atributo de cada camada andam a onda, na ordem da grade.
+    pub group: Option<Id>,
+    /// De 1 a 8 camadas, no máximo uma por atributo e tipo (absoluta ou relativa).
+    pub layers: Vec<PhaserLayer>,
+    /// Graus de atraso de uma fixture para a próxima, de -360 a 360 (0 = juntas; negativo = a onda
+    /// anda para o outro lado).
+    pub spread: i16,
+    /// O ciclo em batidas do BPM master: `hold_ms` vale em milésimos de batida.
+    pub beats: bool,
+    /// `hold_ms` é a duração de um ciclo.
+    pub timing: Timing,
+}
+
+/// Uma onda sobre um atributo.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PhaserLayer {
+    /// Só os contínuos: dimmer, as cores, pan, tilt, zoom, foco, íris e rotação do gobo.
+    pub attribute: Attribute,
+    pub shape: WaveShape,
+    /// Só no pulso: a parte do ciclo em que ele fica no alto, de 1 a 99%.
+    pub width: u8,
+    /// Piso e teto da onda, de 0 a 255 (a escala DMX). No relativo valem como deslocamentos, com o
+    /// zero em 127, como no EFX.
+    pub low: u8,
+    pub high: u8,
+    /// Graus de atraso da camada no ciclo, de 0 a 359.
+    pub phase: u16,
+    /// Soma a onda ao que está embaixo, em vez de assumir o canal.
+    pub relative: bool,
+}
+
+/// A forma da onda no ciclo: o seno, o triângulo e o dente de serra para cima partem do piso; o
+/// dente de serra para baixo e o pulso, do teto.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum WaveShape {
+    Sine,
+    Triangle,
+    /// Sobe do piso ao teto e volta de uma vez.
+    SawUp,
+    /// Desce do teto ao piso e volta de uma vez.
+    SawDown,
+    /// No teto por `width`% do ciclo e no piso no resto.
+    Pulse,
 }
 
 /// O que desenha o mapa de cores de cada passo do RGB Matrix.

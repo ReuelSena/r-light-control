@@ -33,7 +33,7 @@ function defaultIcon() {
   if (w.action === 'pause') return 'Pause'
   if (w.action !== 'function' && w.action !== 'exclusive') return 'LightbulbOff'
   const type = project.value.functions.find((f) => f.id === w.function)?.type ?? 'scene'
-  return { scene: 'Camera', chaser: 'Repeat', sequence: 'Film', collection: 'Layers', efx: 'Orbit', rgbMatrix: 'LayoutGrid' }[type]
+  return { scene: 'Camera', chaser: 'Repeat', sequence: 'Film', collection: 'Layers', efx: 'Orbit', rgbMatrix: 'LayoutGrid', phaser: 'AudioWaveform' }[type]
 }
 
 // ---------- Entradas externas ----------

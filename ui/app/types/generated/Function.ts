@@ -2,6 +2,7 @@
 import type { Chaser } from "./Chaser";
 import type { Collection } from "./Collection";
 import type { Efx } from "./Efx";
+import type { Phaser } from "./Phaser";
 import type { Priority } from "./Priority";
 import type { RgbMatrix } from "./RgbMatrix";
 import type { Scene } from "./Scene";
@@ -10,4 +11,4 @@ export type Function = { id: string, name: string,
 /**
  * Pasta do Studio (do mesmo tipo); `None` fica solta no tipo.
  */
-folder: string | null, priority: Priority, } & ({ "type": "scene" } & Scene | { "type": "chaser" } & Chaser | { "type": "sequence" } & Chaser | { "type": "collection" } & Collection | { "type": "efx" } & Efx | { "type": "rgbMatrix" } & RgbMatrix);
+folder: string | null, priority: Priority, } & ({ "type": "scene" } & Scene | { "type": "chaser" } & Chaser | { "type": "sequence" } & Chaser | { "type": "collection" } & Collection | { "type": "efx" } & Efx | { "type": "rgbMatrix" } & RgbMatrix | { "type": "phaser" } & Phaser);

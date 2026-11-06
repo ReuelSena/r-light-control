@@ -3,4 +3,4 @@
 /**
  * Os tipos de criação, iguais ao campo `type` de [`Function`].
  */
-export type FunctionType = "scene" | "chaser" | "sequence" | "collection" | "efx" | "rgbMatrix";
+export type FunctionType = "scene" | "chaser" | "sequence" | "collection" | "efx" | "rgbMatrix" | "phaser";

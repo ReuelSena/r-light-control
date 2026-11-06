@@ -371,7 +371,8 @@
     "sequence": "Sequência",
     "collection": "Coleção",
     "efx": "EFX",
-    "rgbMatrix": "RGB Matrix"
+    "rgbMatrix": "RGB Matrix",
+    "phaser": "Phaser"
   },
   "functionHint": {
     "scene": "Valores fixos dos canais: intensidade, cor, posição, beam.",
@@ -379,7 +380,8 @@
     "sequence": "Passos com estados diferentes de uma mesma cena.",
     "collection": "Várias criações disparadas juntas.",
     "efx": "Movimento desenhado no pan/tilt: círculo, oito, linha…",
-    "rgbMatrix": "Efeito de cores numa grade de fixtures."
+    "rgbMatrix": "Efeito de cores numa grade de fixtures.",
+    "phaser": "Ondas em qualquer atributo (dimmer, cor, pan…), defasadas entre as fixtures de um grupo."
   },
   "scene": {
     "fixtures": "Fixtures na cena",
@@ -532,6 +534,33 @@
     "endColor": "Cor final",
     "step": "Duração do passo"
   },
+  "phaser": {
+    "spread": "Defasagem (°)",
+    "spreadInfo": "Quanto cada fixture do grupo anda atrás da anterior no ciclo, na ordem da grade (linha por linha). Em 0°, todas andam juntas; com 12 fixtures e 30°, a onda dá uma volta pelo grupo. Negativa, a onda anda para o outro lado. Conta só as fixtures que têm o atributo da camada.",
+    "layers": "Camadas",
+    "layersInfo": "Cada camada leva um atributo das fixtures do grupo por uma onda, do piso ao teto. Até 8 camadas, no máximo uma por atributo (uma absoluta e uma relativa podem dividir o mesmo).\nO círculo do pan e do tilt são duas camadas de seno defasadas em 90°; o arco-íris, vermelho, verde e azul defasados em 120°.\nDimmer e cores misturam como as cenas (o maior valor vence); a prioridade da criação vale como nas outras.",
+    "addLayer": "Adicionar camada",
+    "attribute": "Atributo",
+    "relative": "Relativa",
+    "relativeInfo": "Soma a onda ao que está embaixo (uma cena rodando ou a prévia), em vez de assumir o canal: serve para balançar em volta de uma posição ou de um nível já gravado. O piso e o teto passam a ser deslocamentos, de -50% a +50% do curso.",
+    "low": "Piso (%)",
+    "high": "Teto (%)",
+    "lowRelative": "Piso (±%)",
+    "highRelative": "Teto (±%)",
+    "width": "Largura do pulso (%)",
+    "phase": "Fase (°)",
+    "cycle": "Duração do ciclo",
+    "beats": "Ciclo em batidas do BPM",
+    "noGroup": "Escolha um grupo de fixtures para o Phaser acender.",
+    "noFixtures": "Nenhuma fixture do grupo tem este atributo."
+  },
+  "waveShape": {
+    "sine": "Seno",
+    "triangle": "Triângulo",
+    "sawUp": "Serra ↑",
+    "sawDown": "Serra ↓",
+    "pulse": "Pulso"
+  },
   "matrixAlgorithm": {
     "plain": "Cor fixa",
     "text": "Texto",
@@ -576,7 +605,8 @@
     "sequence": "Sequências",
     "collection": "Coleções",
     "efx": "EFX",
-    "rgbMatrix": "RGB Matrix"
+    "rgbMatrix": "RGB Matrix",
+    "phaser": "Phasers"
   },
   "vc": {
     "edit": "Editar",

@@ -5,7 +5,8 @@
 use rlc_core::*;
 use rlc_engine::{
     CellOutput, ChaserProgram, EfxProgram, Imposed, MatrixCell, MatrixProgram, MatrixSource,
-    Program, Run, SceneLevel, SceneProgram, Span, Step, Times, UniversePatch,
+    PhaserProgram, PhaserTrack, Program, Run, SceneLevel, SceneProgram, Span, Step, Times,
+    UniversePatch,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -353,7 +354,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         }
         // O grupo fica congelado onde era usado, e a luz não muda: os valores dele nas cenas passam
         // para as fixtures, e o EFX, o grupo de canais e o blackout de fixtures ficam com as fixtures
-        // que estavam nele. Só o RGB Matrix fica sem grupo.
+        // que estavam nele. Só o RGB Matrix e o Phaser ficam sem grupo.
         Op::RemoveFixtureGroup { id } => {
             let members: Vec<Id> = group_fixtures(p, &id)
                 .iter()
@@ -409,6 +410,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                         }
                     }
                     FunctionKind::RgbMatrix(m) if m.group.as_ref() == Some(&id) => m.group = None,
+                    FunctionKind::Phaser(ph) if ph.group.as_ref() == Some(&id) => ph.group = None,
                     _ => {}
                 }
             }
@@ -465,6 +467,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             match &function.kind {
                 FunctionKind::Efx(efx) => check_efx(p, efx)?,
                 FunctionKind::RgbMatrix(m) => check_matrix(p, m)?,
+                FunctionKind::Phaser(ph) => check_phaser(p, ph)?,
                 FunctionKind::Scene(scene) => {
                     for (i, g) in scene.groups.iter().enumerate() {
                         if !p.fixture_groups.iter().any(|x| x.id == g.group) {
@@ -1372,6 +1375,30 @@ fn program(
                 fade(dial[1], m.timing.fade_out_ms),
             ],
         ))),
+        // A duração do elemento "Tempos" é a do ciclo (em batidas, seguindo o master)
+        FunctionKind::Phaser(ph) => {
+            let unit = |v: u32| {
+                if ph.beats {
+                    Span::Beats(v)
+                } else {
+                    Span::Ms(v)
+                }
+            };
+            Some(Program::Phaser(PhaserProgram {
+                tracks: ph
+                    .layers
+                    .iter()
+                    .map(|layer| PhaserTrack {
+                        layer: layer.clone(),
+                        targets: phaser_targets(p, ph.group.as_ref(), layer.attribute),
+                    })
+                    .collect(),
+                spread: ph.spread,
+                cycle: ms(dial[2].unwrap_or(unit(ph.timing.hold_ms))),
+                fade_in: fade(dial[0], ph.timing.fade_in_ms),
+                fade_out: fade(dial[1], ph.timing.fade_out_ms),
+            }))
+        }
     };
     path.pop();
     program
@@ -2002,6 +2029,119 @@ fn hex_rgb(color: &str) -> [u8; 3] {
     [0, 2, 4].map(|i| part(i).unwrap_or(0))
 }
 
+/// Os canais de uma fixture e, entre eles, as posições dos da cabeça `head` (sem cabeças no modo, a
+/// fixture é uma cabeça só, com todos os canais).
+fn head_channels<'a>(
+    p: &'a Project,
+    fixture: &Fixture,
+    head: u16,
+) -> (Vec<&'a Channel>, Vec<usize>) {
+    let def = p.fixture_defs.iter().find(|d| d.id == fixture.def_id);
+    let mode = def.and_then(|d| d.modes.iter().find(|m| m.name == fixture.mode));
+    let channels: Vec<&Channel> = mode_channels(p, fixture).collect();
+    let positions = match mode.and_then(|m| m.heads.get(usize::from(head))) {
+        Some(head) => head.iter().map(|&i| usize::from(i)).collect(),
+        None => (0..channels.len()).collect(),
+    };
+    (channels, positions)
+}
+
+/// O canal do atributo (com o fino, se houver) entre as `positions` dos canais da fixture, no endereço
+/// DMX; o valor não conta.
+fn attribute_level(
+    p: &Project,
+    fixture: &Id,
+    channels: &[&Channel],
+    positions: &[usize],
+    attribute: Attribute,
+) -> Option<SceneLevel> {
+    let find = |fine: bool| {
+        let at = |&i: &usize| channels[i].attribute == attribute && channels[i].fine == fine;
+        positions.iter().copied().find(at)
+    };
+    let coarse = channel_address(p, fixture, find(false)? as u16)?;
+    let fine = find(true).and_then(|i| channel_address(p, fixture, i as u16));
+    Some(SceneLevel {
+        universe: coarse.universe,
+        channel: coarse.channel,
+        fine: fine.map(|l| l.channel),
+        value: 0,
+    })
+}
+
+/// O canal de `attribute` em cada cabeça do grupo, na ordem da grade (linha por linha): o da cabeça
+/// ou, sem ele, o da fixture. Um canal entra uma vez só (a fixture de várias cabeças que só tem o
+/// atributo na fixture inteira).
+fn phaser_targets(p: &Project, group: Option<&Id>, attribute: Attribute) -> Vec<SceneLevel> {
+    let mut cells: Vec<&GroupCell> = p
+        .fixture_groups
+        .iter()
+        .filter(|g| Some(&g.id) == group)
+        .flat_map(|g| &g.cells)
+        .collect();
+    cells.sort_by_key(|c| (c.y, c.x));
+    let mut targets: Vec<SceneLevel> = vec![];
+    for cell in cells {
+        let Some(fixture) = p.fixtures.iter().find(|f| f.id == cell.fixture) else {
+            continue;
+        };
+        let (channels, head) = head_channels(p, fixture, cell.head);
+        let all: Vec<usize> = (0..channels.len()).collect();
+        let level =
+            |positions: &[usize]| attribute_level(p, &fixture.id, &channels, positions, attribute);
+        if let Some(l) = level(&head).or_else(|| level(&all))
+            && !targets
+                .iter()
+                .any(|t| t.universe == l.universe && t.channel == l.channel)
+        {
+            targets.push(l);
+        }
+    }
+    targets
+}
+
+/// O Phaser salvo: um grupo que existe, de 1 a 8 camadas em atributos contínuos (um por tipo), com o
+/// piso abaixo do teto, a largura do pulso, a fase e a defasagem nos limites.
+fn check_phaser(p: &Project, ph: &Phaser) -> Result<(), String> {
+    use Attribute::*;
+    if ph
+        .group
+        .as_ref()
+        .is_some_and(|g| !p.fixture_groups.iter().any(|x| x.id == *g))
+    {
+        return Err("Grupo de fixtures não encontrado.".into());
+    }
+    if !(1..=8).contains(&ph.layers.len()) {
+        return Err("O Phaser tem de 1 a 8 camadas.".into());
+    }
+    if !(-360..=360).contains(&ph.spread) {
+        return Err("A defasagem do Phaser vai de -360° a 360°.".into());
+    }
+    for (i, l) in ph.layers.iter().enumerate() {
+        if !is_intensity(l.attribute)
+            && !matches!(l.attribute, Pan | Tilt | Zoom | Focus | Iris | GoboRotation)
+        {
+            return Err("O Phaser só leva atributos contínuos (dimmer, cores, pan, tilt, zoom, foco, íris e rotação do gobo).".into());
+        }
+        if !(1..=99).contains(&l.width) {
+            return Err("A largura do pulso vai de 1 a 99%.".into());
+        }
+        if l.phase > 359 {
+            return Err("A fase da camada vai até 359°.".into());
+        }
+        if l.low > l.high {
+            return Err("O piso da onda não pode passar do teto.".into());
+        }
+        if ph.layers[..i]
+            .iter()
+            .any(|o| o.attribute == l.attribute && o.relative == l.relative)
+        {
+            return Err("Atributo repetido no Phaser.".into());
+        }
+    }
+    Ok(())
+}
+
 /// As cabeças de um grupo de fixtures com os canais que recebem a cor, nos endereços DMX, como o
 /// `updateMapChannels` do QLC+. No RGB, os três canais de cor da cabeça (sem eles, ciano, magenta e
 /// amarelo; sem nenhum dos dois, a cabeça não acende); nos outros, o canal do atributo (o da cabeça
@@ -2012,29 +2152,10 @@ fn matrix_cells(p: &Project, group: &FixtureGroup, control: RgbControl) -> Vec<M
         let Some(fixture) = p.fixtures.iter().find(|f| f.id == cell.fixture) else {
             continue;
         };
-        let def = p.fixture_defs.iter().find(|d| d.id == fixture.def_id);
-        let mode = def.and_then(|d| d.modes.iter().find(|m| m.name == fixture.mode));
-        let channels: Vec<&Channel> = mode_channels(p, fixture).collect();
-        // Sem cabeças no modo, a fixture é uma cabeça só, com todos os canais
+        let (channels, head) = head_channels(p, fixture, cell.head);
         let all: Vec<usize> = (0..channels.len()).collect();
-        let head: Vec<usize> = match mode.and_then(|m| m.heads.get(usize::from(cell.head))) {
-            Some(head) => head.iter().map(|&i| usize::from(i)).collect(),
-            None => all.clone(),
-        };
         let level = |attribute: Attribute, positions: &[usize]| {
-            let find = |fine: bool| {
-                let at =
-                    |&i: &usize| channels[i].attribute == attribute && channels[i].fine == fine;
-                positions.iter().copied().find(at)
-            };
-            let coarse = channel_address(p, &fixture.id, find(false)? as u16)?;
-            let fine = find(true).and_then(|i| channel_address(p, &fixture.id, i as u16));
-            Some(SceneLevel {
-                universe: coarse.universe,
-                channel: coarse.channel,
-                fine: fine.map(|l| l.channel),
-                value: 0,
-            })
+            attribute_level(p, &fixture.id, &channels, positions, attribute)
         };
         let three = |attributes: [Attribute; 3]| {
             let levels = attributes.map(|a| level(a, &head));
@@ -3248,6 +3369,146 @@ mod tests {
         }
         let (topics, _) = apply(&mut s, Op::SaveFunction { function: f }).unwrap();
         assert!(topics.contains(&Topic::LoadedSteps) && s.loaded_steps.is_empty());
+    }
+
+    fn phaser_program(s: &Snapshot, id: &str) -> PhaserProgram {
+        match running_programs(s)
+            .into_iter()
+            .find(|r| r.id == id)
+            .map(|r| r.program)
+        {
+            Some(Program::Phaser(p)) => p,
+            _ => panic!("{id} não é um Phaser rodando"),
+        }
+    }
+
+    fn phaser_mut<'a>(s: &'a mut Snapshot, id: &str) -> &'a mut Phaser {
+        match s.project.functions.iter_mut().find(|f| f.id == id) {
+            Some(Function {
+                kind: FunctionKind::Phaser(ph),
+                ..
+            }) => ph,
+            _ => panic!("{id} não é um Phaser"),
+        }
+    }
+
+    #[test]
+    fn the_phaser_reaches_the_attribute_channels_of_each_head_in_grid_order() {
+        let mut s = example();
+        for id in ["ph1", "ph3", "ph4"] {
+            run(&mut s, id);
+        }
+        // O endereço de cada fixture do grupo "ParLeds", na ordem da grade
+        let group = |g: &str| {
+            let mut cells = s
+                .project
+                .fixture_groups
+                .iter()
+                .find(|x| x.id == g)
+                .unwrap()
+                .cells
+                .clone();
+            cells.sort_by_key(|c| (c.y, c.x));
+            let address = |c: &GroupCell| {
+                let f = s.project.fixtures.iter().find(|f| f.id == c.fixture);
+                f.unwrap().address
+            };
+            cells.iter().map(address).collect::<Vec<u16>>()
+        };
+        let channels = |track: &PhaserTrack| track.targets.iter().map(|t| t.channel).collect();
+        let parleds = group("g4");
+        assert_eq!(parleds.len(), 12);
+        // Onda de dimmer: o dimmer (o primeiro canal) de cada ParLed, com o ciclo em 4 batidas
+        let wave = phaser_program(&s, "ph1");
+        assert_eq!((wave.spread, wave.cycle), (30, Span::Beats(4000)));
+        assert_eq!(channels(&wave.tracks[0]), parleds);
+        // Arco-íris: vermelho, verde e azul são o segundo, o terceiro e o quarto canal
+        let rainbow = phaser_program(&s, "ph3");
+        for (track, k) in rainbow.tracks.iter().zip(1..) {
+            let channels: Vec<u16> = channels(track);
+            assert_eq!(channels, parleds.iter().map(|a| a + k).collect::<Vec<_>>());
+        }
+        // Balanço: o pan em 16 bits (o fino logo depois), o tilt no terceiro canal, o ciclo em segundos
+        let sway = phaser_program(&s, "ph4");
+        assert_eq!(sway.cycle, Span::Ms(4000));
+        let heads = group("g3");
+        let first = &sway.tracks[0].targets[0];
+        assert_eq!((first.channel, first.fine), (heads[0], Some(heads[0] + 1)));
+        assert_eq!(channels(&sway.tracks[1])[0], heads[0] + 2);
+        assert!(sway.tracks.iter().all(|t| t.layer.relative));
+    }
+
+    #[test]
+    fn a_phaser_layer_skips_the_fixtures_without_its_attribute() {
+        // O grupo "Moving heads" não tem cores: a camada de vermelho não acha nenhuma fixture
+        let mut s = example();
+        let ph = phaser_mut(&mut s, "ph1");
+        ph.group = Some("g3".into());
+        ph.layers[0].attribute = Attribute::Red;
+        run(&mut s, "ph1");
+        assert!(phaser_program(&s, "ph1").tracks[0].targets.is_empty());
+        // Sem grupo, o Phaser não acende nada
+        phaser_mut(&mut s, "ph1").group = None;
+        assert!(phaser_program(&s, "ph1").tracks[0].targets.is_empty());
+    }
+
+    #[test]
+    fn the_saved_phaser_is_checked() {
+        let mut s = example();
+        type Edit = fn(&mut Phaser);
+        let save = |s: &mut Snapshot, edit: Edit| {
+            let mut f = s
+                .project
+                .functions
+                .iter()
+                .find(|f| f.id == "ph3")
+                .unwrap()
+                .clone();
+            if let FunctionKind::Phaser(ph) = &mut f.kind {
+                edit(ph);
+            }
+            apply(s, Op::SaveFunction { function: f }).map(|_| ())
+        };
+        assert!(save(&mut s, |_| {}).is_ok());
+        let cases: [(&str, Edit); 9] = [
+            ("grupo", |ph| ph.group = Some("nao-existe".into())),
+            ("sem camadas", |ph| ph.layers.clear()),
+            ("camadas demais", |ph| {
+                let layer = ph.layers[0].clone();
+                ph.layers = vec![layer; 9];
+            }),
+            ("atributo que não é contínuo", |ph| {
+                ph.layers[0].attribute = Attribute::Gobo
+            }),
+            ("atributo repetido", |ph| {
+                ph.layers[1].attribute = ph.layers[0].attribute
+            }),
+            ("largura do pulso", |ph| ph.layers[0].width = 0),
+            ("fase", |ph| ph.layers[0].phase = 360),
+            ("piso acima do teto", |ph| {
+                (ph.layers[0].low, ph.layers[0].high) = (200, 100)
+            }),
+            ("defasagem", |ph| ph.spread = 361),
+        ];
+        for (what, edit) in cases {
+            assert!(save(&mut s, edit).is_err(), "{what}");
+        }
+        // O mesmo atributo vale uma vez absoluto e outra relativo
+        let relative_too = |ph: &mut Phaser| {
+            let mut layer = ph.layers[0].clone();
+            layer.relative = true;
+            ph.layers.push(layer);
+        };
+        assert!(save(&mut s, relative_too).is_ok());
+    }
+
+    #[test]
+    fn removing_the_fixture_group_leaves_the_phaser_without_a_group() {
+        let mut s = example();
+        let op = Op::RemoveFixtureGroup { id: "g4".into() };
+        apply(&mut s, op).unwrap();
+        assert!(phaser_mut(&mut s, "ph1").group.is_none());
+        assert_eq!(phaser_mut(&mut s, "ph4").group.as_deref(), Some("g3"));
     }
 
     #[test]

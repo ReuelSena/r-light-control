@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 11;
+const SCHEMA_VERSION: u32 = 12;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -301,6 +301,7 @@ fn migrate(project: &mut Value, version: u32) {
             }
         }
     }
+    // 11 → 12 (F9b): o Phaser é um tipo novo de criação, e os projetos antigos não o têm: nada muda
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -631,6 +632,23 @@ mod tests {
                 assert_eq!(m.run_order, RunOrder::Loop);
             }
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_11_opens_as_it_was_since_the_phaser_is_a_new_type() {
+        use rlc_core::{FunctionKind, FunctionType};
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut project = crate::hub::example_snapshot(None).project;
+        project
+            .functions
+            .retain(|f| !matches!(f.kind, FunctionKind::Phaser(_)));
+        project.folders.retain(|f| f.kind != FunctionType::Phaser);
+        let file = dir.join("antigo.rlc");
+        let v11 = json!({ "format": FORMAT, "schemaVersion": 11, "project": project });
+        std::fs::write(&file, v11.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

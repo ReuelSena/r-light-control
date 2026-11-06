@@ -121,7 +121,7 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 
 **Palco (`Project.stage`):** largura, profundidade e altura em metros, a posição (x, y, z) e rotação de cada fixture e os elementos de palco (`elements`: tipo, posição e rotação), que só aparecem na prévia.
 
-**Criações do Studio (`Function`):** `id`, `name`, `folder` (pasta ou `null`), `priority` (`low`, `normal` ou `high`) e `type` (`scene`, `chaser`, `sequence`, `collection`, `efx`, `rgbMatrix`) no mesmo nível dos campos do tipo. A sequência usa os campos do chaser, mais a cena (`scene`) e os valores em cada passo.
+**Criações do Studio (`Function`):** `id`, `name`, `folder` (pasta ou `null`), `priority` (`low`, `normal` ou `high`) e `type` (`scene`, `chaser`, `sequence`, `collection`, `efx`, `rgbMatrix`, `phaser`) no mesmo nível dos campos do tipo. A sequência usa os campos do chaser, mais a cena (`scene`) e os valores em cada passo.
 
 **Tempos e prioridade (F10c):**
 - A cena tem `delayInMs`, `fadeInMs`, `delayOutMs`, `fadeOutMs`, a `curve` dos dois fades (`linear`, `easeIn` = lento no começo, `easeOut` = lento no fim, `easeInOut` = em S) e `attributeTimes`: tipos de atributo (`intensity` = dimmer; `color` = cores, rodas e macros de cor; `position` = pan e tilt; `effects` = shutter, gobo, prisma, zoom, foco e íris) com o delay e o fade de entrada e de saída próprios, no lugar dos da cena. O servidor manda a cena ao motor como uma coleção: uma parte com os tempos da cena e uma por tipo.
@@ -138,6 +138,13 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 - O item da lista ganha `shape` (o desenho próprio, um `EfxShape` inteiro, ou `null` para o geral), `invertPan`, `invertTilt` e `swapAxes`. O espelho é do movimento em volta do centro do desenho; a troca dos eixos vem antes do espelho. Num grupo, valem para as fixtures dele; a exceção usa os do item dela.
 - A velocidade vale pela posição no desenho (depois da propagação, do sentido e do início): todas as fixtures ficam lentas nos mesmos pontos do caminho, e a duração da volta não muda.
 - O `saveFunction` confere o geral e o de cada item: os limites de antes, até 64 pontos de -127 a 127 no `path` e a curva desenhada com 16 pontos, de 0 a 255, sem descer.
+
+**Phaser (F9b):**
+- O Phaser (`type: "phaser"`) tem `group` (o grupo de fixtures, ou `null`: sem grupo não acende), `layers`, `spread`, `beats` e `timing`. `spread` é a defasagem em graus de uma fixture para a próxima na ordem da grade, de -360 a 360 (negativa, a onda anda para o outro lado). Com `beats`, o `timing.holdMs` (a duração do ciclo) vale em milésimos de batida do BPM master; senão, em milissegundos. O `fadeInMs` e o `fadeOutMs` são sempre em milissegundos.
+- Cada camada (`PhaserLayer`) leva um atributo por uma onda: `attribute` (só os contínuos: `dimmer`, as cores, `pan`, `tilt`, `zoom`, `focus`, `iris` e `goboRotation`), `shape` (`sine`, `triangle`, `sawUp`, `sawDown` ou `pulse`), `width` (a parte do ciclo em que o pulso fica no alto, de 1 a 99), `low` e `high` (o piso e o teto, de 0 a 255, com `low` ≤ `high`), `phase` (graus de atraso da camada, de 0 a 359) e `relative` (soma a onda ao que está embaixo, com o zero em 127: `low` e `high` valem como deslocamentos). Seno, triângulo e dente de serra para cima partem do piso; o dente de serra para baixo e o pulso, do teto.
+- A fixture `i` anda a onda atrasada em `phase + i × spread`, e `i` conta só as fixtures (cabeças) do grupo que têm o atributo da camada, na ordem da grade, cada canal uma vez.
+- O `saveFunction` confere: grupo que existe, de 1 a 8 camadas, atributo contínuo, no máximo uma camada por atributo e tipo (absoluta ou relativa), largura, fase, defasagem e piso abaixo do teto. Remover o grupo deixa o Phaser sem grupo.
+- Não há operação nova: o Phaser roda como as outras criações (`setFunctionRunning`), e entra em chasers, coleções e no elemento "Tempos" (a duração é a do ciclo).
 
 ## Estado de execução
 

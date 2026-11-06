@@ -15,6 +15,9 @@ let layoutListener: { dispose(): void } | undefined
 onBeforeUnmount(() => layoutListener?.dispose())
 
 function open(id: ScreenId) {
+  // Já é o painel ativo (a rota só acompanhou o clique no dock): reativar faz o dockview tirar
+  // e pôr o conteúdo no DOM, o que solta o ponteiro capturado por um fader sem avisar
+  if (api?.activePanel?.id === id) return
   const panel = api?.getPanel(id)
   if (panel) panel.api.setActive()
   else api?.addPanel({ id, component: 'screen', title: t(`screens.${id}`), params: { screen: id } })

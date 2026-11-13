@@ -41,7 +41,7 @@ function remove() {
           {{ t('fixtures.add') }}
         </RlButton>
       </div>
-      <RlList v-model="selectedId" class="min-h-0 flex-1" :items="project.fixtures">
+      <RlList v-model="selectedId" reorderable class="min-h-0 flex-1" :items="project.fixtures" @reorder="(id, to) => send({ op: 'moveFixture', id, to })">
         <template #item="{ item }">
           <span class="h-6 w-1.5 shrink-0 rounded-sm" :style="{ background: item.color }" />
           <span class="min-w-0 flex-1">

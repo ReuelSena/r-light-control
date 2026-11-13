@@ -38,10 +38,11 @@ function tap(x: number, y: number) {
   save({ cells })
 }
 
-// Preenche linha a linha com as cabeças na ordem da paleta
+// Preenche linha a linha com as cabeças na ordem da paleta, a partir da cabeça escolhida (ou da primeira)
 function fillInOrder() {
   const { width, height } = props.group
-  save({ cells: heads.value.slice(0, width * height).map((h, i) => ({ x: i % width, y: Math.floor(i / width), fixture: h.fixture, head: h.head })) })
+  const start = Math.max(0, heads.value.findIndex(isBrush))
+  save({ cells: heads.value.slice(start, start + width * height).map((h, i) => ({ x: i % width, y: Math.floor(i / width), fixture: h.fixture, head: h.head })) })
 }
 
 function resize(width: number, height: number) {

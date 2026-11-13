@@ -21,10 +21,19 @@ const keyNames: Record<string, string> = { ArrowLeft: '←', ArrowRight: '→', 
 const keysOf = (w: VcWidget) =>
   !prefs.value.keyHints ? '' : w.inputs.flatMap((i) => (i.key ? [i.key.split('+').map((k) => keyNames[k] ?? k).join('+')] : [])).join(' ')
 
-const cols = computed(() => formatColumns[props.format])
-// A célula tem tamanho fixo em cada formato: o tamanho da janela (ou do painel de propriedades) não mexe na
-// grade, que rola se não couber. Só o zoom do console (ao lado do Editar) aumenta ou diminui a célula.
+// A célula tem tamanho fixo em cada formato: o tamanho da janela (ou do painel de propriedades) não mexe nos
+// elementos, ancorados no canto superior esquerdo. Só o zoom do console (ao lado do Editar) aumenta ou diminui
+// a célula. A área cresce para ocupar o espaço livre (mais células, nunca maiores) e rola se não couber.
 const cell = computed(() => Math.max(4, Math.floor(formatCell[props.format] * props.zoom)))
+const canvas = ref<HTMLElement>()
+const room = ref({ w: 0, h: 0 })
+const cols = computed(() => Math.max(formatColumns[props.format], Math.floor(room.value.w / cell.value)))
+onMounted(() => {
+  const area = canvas.value!.parentElement!
+  const watcher = new ResizeObserver(() => (room.value = { w: area.clientWidth, h: area.clientHeight }))
+  watcher.observe(area)
+  onBeforeUnmount(() => watcher.disconnect())
+})
 
 const byId = computed(() => new Map(props.widgets.map((w) => [w.id, w])))
 const rectOf = (w: VcWidget) => w.layouts[props.format]
@@ -162,9 +171,10 @@ function itemStyle(w: VcWidget) {
 
 <template>
   <div
+    ref="canvas"
     class="canvas"
     :class="{ editing }"
-    :style="{ height: `${rows * cell}px`, width: `${cols * cell}px`, '--cell': `${cell}px` }"
+    :style="{ height: `${Math.max(rows * cell, room.h)}px`, width: `${Math.max(cols * cell, room.w)}px`, '--cell': `${cell}px` }"
     @pointerdown.self="editing && (selection = [])"
   >
     <div

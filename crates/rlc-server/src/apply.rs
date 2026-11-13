@@ -267,19 +267,28 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     Some(start) => start + i * size,
                     None => next_free_address(p, &universe, size).unwrap_or(1),
                 };
-                p.fixtures.push(Fixture {
-                    id: new_id(),
-                    def_id: def.id.clone(),
-                    mode: mode.clone(),
-                    name: if count > 1 {
-                        format!("{name} {}", i + 1)
-                    } else {
-                        name.clone()
+                // Entra logo depois da última do mesmo modelo, ou no fim se não há
+                let at = p
+                    .fixtures
+                    .iter()
+                    .rposition(|f| f.def_id == def.id)
+                    .map_or(p.fixtures.len(), |i| i + 1);
+                p.fixtures.insert(
+                    at,
+                    Fixture {
+                        id: new_id(),
+                        def_id: def.id.clone(),
+                        mode: mode.clone(),
+                        name: if count > 1 {
+                            format!("{name} {}", i + 1)
+                        } else {
+                            name.clone()
+                        },
+                        color: color.clone(),
+                        universe: universe.clone(),
+                        address,
                     },
-                    color: color.clone(),
-                    universe: universe.clone(),
-                    address,
-                });
+                );
             }
             topics
         }
@@ -287,6 +296,10 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             check_universe(p, &fixture.universe)?;
             fits(fixture.address, 1)?;
             upsert(&mut p.fixtures, fixture, |f| &f.id)?;
+            vec![T::Fixtures]
+        }
+        Op::MoveFixture { id, to } => {
+            move_to(&mut p.fixtures, &id, to, |f| &f.id)?;
             vec![T::Fixtures]
         }
         Op::RemoveFixtures { ids } => {
@@ -583,6 +596,28 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         Op::SaveFolder { folder } => {
             check_folder(p, &folder)?;
             upsert(&mut p.folders, folder, |d| &d.id)?;
+            vec![T::Folders]
+        }
+        Op::MoveFolder { id, parent, before } => {
+            let from = p
+                .folders
+                .iter()
+                .position(|d| d.id == id)
+                .ok_or("Pasta não encontrada.")?;
+            let mut folder = p.folders.remove(from);
+            let old = std::mem::replace(&mut folder.parent, parent);
+            let at = before
+                .and_then(|b| p.folders.iter().position(|d| d.id == b))
+                .unwrap_or(p.folders.len());
+            let checked = check_folder(p, &folder);
+            // Em caso de erro, a pasta volta ao lugar e ao pai de antes
+            if checked.is_ok() {
+                p.folders.insert(at, folder);
+            } else {
+                folder.parent = old;
+                p.folders.insert(from, folder);
+            }
+            checked?;
             vec![T::Folders]
         }
         // O que estava dentro sobe para a pasta de cima
@@ -2903,6 +2938,31 @@ mod tests {
     }
 
     #[test]
+    fn move_fixture_reorders_the_project_list() {
+        let mut s = example();
+        let last = s.project.fixtures.last().unwrap().id.clone();
+        apply(
+            &mut s,
+            Op::MoveFixture {
+                id: last.clone(),
+                to: 0,
+            },
+        )
+        .unwrap();
+        assert_eq!(s.project.fixtures[0].id, last);
+        assert!(
+            apply(
+                &mut s,
+                Op::MoveFixture {
+                    id: "nao-existe".into(),
+                    to: 0
+                }
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
     fn folders_nest_and_removing_one_lifts_its_content() {
         let mut s = example();
         let folder = |id: &str, kind, parent: Option<&str>| Folder {
@@ -2919,6 +2979,29 @@ mod tests {
         assert!(save(&mut s, folder("d1", FunctionType::Scene, Some("b"))).is_err());
         assert!(save(&mut s, folder("c", FunctionType::Scene, Some("x"))).is_err());
         assert!(save(&mut s, folder("c", FunctionType::Chaser, Some("a"))).is_err());
+
+        // Reordenar: "b" sai de "a" e vai para antes de "a", no nível de "d1"; para dentro de si, recusa
+        let mv = |s: &mut Snapshot, id: &str, parent: Option<&str>, before: Option<&str>| {
+            apply(
+                s,
+                Op::MoveFolder {
+                    id: id.into(),
+                    parent: parent.map(Into::into),
+                    before: before.map(Into::into),
+                },
+            )
+        };
+        mv(&mut s, "b", Some("d1"), Some("a")).unwrap();
+        let pos =
+            |s: &Snapshot, id: &str| s.project.folders.iter().position(|d| d.id == id).unwrap();
+        assert!(pos(&s, "b") + 1 == pos(&s, "a"));
+        assert_eq!(
+            s.project.folders[pos(&s, "b")].parent.as_deref(),
+            Some("d1")
+        );
+        assert!(mv(&mut s, "d1", Some("a"), None).is_err());
+        assert_eq!(s.project.folders[pos(&s, "d1")].parent, None);
+        mv(&mut s, "b", Some("a"), None).unwrap();
 
         // Remover "a" leva "b" e as criações dela para "d1"
         let scene = s
@@ -2981,7 +3064,16 @@ mod tests {
             },
         )
         .unwrap();
-        let added = &s.project.fixtures[before..];
+        // Entram logo depois da última do mesmo modelo, não no fim da lista
+        let first = s
+            .project
+            .fixtures
+            .iter()
+            .position(|f| f.name == "Novo 1")
+            .unwrap();
+        assert_eq!(s.project.fixtures.len(), before + 2);
+        assert_eq!(s.project.fixtures[first - 1].def_id, "generico-par-rgb");
+        let added = &s.project.fixtures[first..first + 2];
         assert_eq!(added.len(), 2);
         assert_ne!(added[0].id, added[1].id);
         assert_eq!(added[0].id.len(), 36);

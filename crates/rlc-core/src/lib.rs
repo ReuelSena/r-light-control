@@ -1380,6 +1380,11 @@ pub enum Op {
         universe: Id,
         start: u16,
     },
+    /// Leva a fixture para a posição `to` da lista (a partir de 0). A ordem vale em todas as telas.
+    MoveFixture {
+        id: Id,
+        to: usize,
+    },
     SaveFixtureGroup {
         group: FixtureGroup,
     },
@@ -1411,6 +1416,13 @@ pub enum Op {
     },
     SaveFolder {
         folder: Folder,
+    },
+    /// Leva a pasta para dentro de `parent` (ou para o tipo, sem pai), logo antes da pasta `before`
+    /// (no fim, sem ela). A ordem da lista é a ordem de exibição entre as pastas do mesmo nível.
+    MoveFolder {
+        id: Id,
+        parent: Option<Id>,
+        before: Option<Id>,
     },
     /// Grava numa cena o que está saindo na luz agora (P5): só os canais que alguma coisa controla
     /// (criações, prévia e Mesa simples), sem o Localizar, o Grand Master e o blackout. Com `merge`, os

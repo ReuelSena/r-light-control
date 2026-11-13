@@ -65,7 +65,8 @@ const rows = computed(() => {
 })
 
 // Arrastar: no mouse começa ao mover 6 px; no toque, depois de segurar 400 ms (antes disso o gesto rola a lista)
-const drag = ref<{ row: Row; x: number; y: number; active: boolean; moved?: boolean; target?: string }>()
+type Zone = 'before' | 'into' | 'after'
+const drag = ref<{ row: Row; x: number; y: number; active: boolean; moved?: boolean; target?: string; zone?: Zone }>()
 let start = { x: 0, y: 0 }
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 let grab: { el: HTMLElement; pointer: number } | undefined
@@ -98,8 +99,24 @@ function move(e: PointerEvent) {
   }
   // Uma pasta não vai para dentro de si mesma nem das pastas dela
   const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-folder]') as HTMLElement | null
-  const valid = el?.dataset.type === d.row.type && !(d.row.kind === 'folder' && within(el.dataset.folder!, d.row.folder))
-  Object.assign(d, { x: e.clientX, y: e.clientY, target: valid ? el!.dataset.folder : undefined })
+  let zone: Zone = 'into'
+  // Uma pasta sobre outra: o quarto de cima a põe antes, o de baixo depois e o meio, dentro
+  if (el && d.row.kind === 'folder' && el.dataset.folder && el.dataset.folder !== d.row.folder) {
+    const box = el.getBoundingClientRect()
+    const at = (e.clientY - box.top) / box.height
+    if (at < 0.25) zone = 'before'
+    else if (at > 0.75) zone = 'after'
+  }
+  const into = zone === 'into'
+  const valid = el?.dataset.type === d.row.type && (d.row.kind !== 'folder' || !within(into ? el.dataset.folder! : el.dataset.parent!, d.row.folder))
+  Object.assign(d, { x: e.clientX, y: e.clientY, target: valid ? el!.dataset.folder : undefined, zone })
+}
+
+// Irmã seguinte de uma pasta (mesmo nível), para soltar "depois" dela
+const nextSibling = (id: string, parent: string) => {
+  const list = project.value.folders
+  const kind = list.find((x) => x.id === id)?.kind
+  return list.slice(list.findIndex((x) => x.id === id) + 1).find((x) => x.kind === kind && (x.parent ?? '') === parent)?.id ?? null
 }
 
 // Soltar sem ter arrastado nem deslizado é um toque: escolhe a criação (numa pasta, o botão dela abre e fecha)
@@ -112,7 +129,15 @@ function up() {
     if (!d.moved && d.row.fn) selectedId.value = d.row.fn.id
     return
   }
-  if (d.target === undefined || d.target === d.row.parent) return
+  if (d.target === undefined) return
+  const row = rows.value.find((r) => r.folder === d.target && r.kind === 'folder')
+  if (d.zone && d.zone !== 'into' && row) {
+    const parent = row.parent || null
+    const before = d.zone === 'before' ? row.folder : nextSibling(row.folder, row.parent)
+    if (before !== d.row.folder) send({ op: 'moveFolder', id: d.row.folder, parent, before })
+    return
+  }
+  if (d.target === d.row.parent) return
   const folder = d.target || null
   const moved = d.row.fn
     ? { op: 'saveFunction' as const, function: { ...d.row.fn, folder } }
@@ -150,11 +175,14 @@ watch(folderDialog, () => (confirmRemove.value = false))
         :key="row.key"
         :data-type="row.type"
         :data-folder="row.folder"
+        :data-parent="row.parent"
         :style="{ '--depth': row.depth }"
         :class="[row.kind, {
           active: row.fn && row.fn.id === selectedId,
           dragging: drag?.active && row.key === drag.row.key,
-          target: drag?.active && row.kind !== 'item' && drag.target === row.folder && drag.row.type === row.type,
+          target: drag?.active && row.kind !== 'item' && drag.target === row.folder && drag.row.type === row.type && (!drag.zone || drag.zone === 'into'),
+          before: drag?.active && row.kind === 'folder' && drag.target === row.folder && drag.zone === 'before',
+          after: drag?.active && row.kind === 'folder' && drag.target === row.folder && drag.zone === 'after',
         }]"
         @pointerdown="row.kind !== 'type' && down($event, row)"
         @pointermove="move"
@@ -273,6 +301,15 @@ li.dragging {
 li.target {
   background: color-mix(in srgb, var(--color-on) 18%, transparent);
   box-shadow: inset 0 0 0 2px var(--color-on);
+}
+
+/* Soltar antes ou depois da pasta: uma linha na borda */
+li.before {
+  box-shadow: inset 0 3px 0 var(--color-on);
+}
+
+li.after {
+  box-shadow: inset 0 -3px 0 var(--color-on);
 }
 
 .toggle {

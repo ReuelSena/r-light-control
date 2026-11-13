@@ -454,7 +454,18 @@
   "collection": {
     "functions": "Criações ({n})",
     "add": "Adicionar criação",
-    "empty": "Nenhuma criação na coleção."
+    "empty": "Nenhuma criação na coleção.",
+    "beats": "Seguir o BPM",
+    "beatsInfo": "Ligada: início, duração e comprimento em batidas do BPM master, e a régua conta batidas. Desligada: em segundos.",
+    "length": "Comprimento",
+    "lengthInfo": "Onde a passada termina e recomeça (laço) ou acaba (uma vez). Arraste a linha laranja. Automático: o fim do último clipe com duração.",
+    "auto": "Automático",
+    "start": "Início",
+    "duration": "Duração",
+    "track": "Trilha",
+    "inherit": "Da coleção",
+    "priorityInfo": "Vale para tudo o que o clipe acende. \"Da coleção\" usa a prioridade da própria coleção.",
+    "timelineInfo": "Arraste um clipe para mudar o início (na horizontal) ou a trilha (na vertical); arraste as bordas para a duração. Alt solta o encaixe nas unidades inteiras. Ctrl + roda do mouse muda o zoom. Clipe com ∞ fica aceso até a coleção parar. O cursor azul-claro mostra a posição ao vivo."
   },
   "efx": {
     "algorithm": "Desenho",

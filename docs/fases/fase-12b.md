@@ -25,7 +25,7 @@ Op::CaptureOutput { target: CaptureTarget (New { id, name } | Scene { id }), mer
 Op::UpdateScene { function: Id, kinds: Vec<AttributeKind> }
 ```
 
-A captura pede ao motor (comando com resposta) o quadro antes do Localizar, do Grand Master e do blackout, com a máscara dos canais controlados (faders das criações, prévia, relativo e Mesa simples).
+A captura pede /ao motor (comando com resposta) o quadro antes do Localizar, do Grand Master e do blackout, com a máscara dos canais controlados (faders das criações, prévia, relativo e Mesa simples).
 
 ## Exemplos (G8)
 

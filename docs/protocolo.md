@@ -41,7 +41,7 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 - **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`, `project.scripts`. A captura avisa `project.functions` e `dirty`; o `updateScene`, `project.functions` e `desk`.
 - **Arquivo e biblioteca:** `projectPath`, `dirty`, `recovered`, `projects` (os projetos da pasta, relidos a cada segundo) e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
-- **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `paused`, `loadedSteps`, `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (o "Localizar": as `fixtures` acesas e a intensidade `others` das outras, de 0 a 255).
+- **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `timelineClock` (o cursor de cada coleção rodando, quando muda), `paused`, `loadedSteps`, `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (o "Localizar": as `fixtures` acesas e a intensidade `others` das outras, de 0 a 255).
 
 `stats` e `interfaces` chegam a cada segundo, com os números do Monitoramento.
 
@@ -148,6 +148,13 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 - O `saveFunction` confere: grupo que existe, de 1 a 8 camadas, atributo contínuo, no máximo uma camada por atributo e tipo (absoluta ou relativa), largura, fase, defasagem e piso abaixo do teto. Remover o grupo deixa o Phaser sem grupo.
 - Não há operação nova: o Phaser roda como as outras criações (`setFunctionRunning`), e entra em chasers, coleções e no elemento "Tempos" (a duração é a do ciclo).
 
+**Coleção com linha do tempo (F11b, versão 17):**
+- A coleção (`type: "collection"`) tem `items`, `runOrder`, `beats` e `length`. Cada item (`TimelineItem`) é `{ function, start, duration, layer, priority }`: a criação acende no `start` (a partir do começo da passada) e para no fim com o fade out dela; `duration: null` = até a coleção parar (acende uma vez, no início, e não se repete com a passada); `layer` é a trilha do editor (0 a 255, só visual); `priority` (`low`, `normal`, `high` ou `null` = a da coleção) vale para tudo o que o item acende, também quando a da coleção muda.
+- Com `beats` ("Seguir o BPM"), `start`, `duration` e `length` são milésimos de batida do BPM master (e a passada começa na batida); senão, milissegundos. A velocidade (Rate) só muda os tempos em milissegundos.
+- A passada vai até `length` ou, com `null`, até o fim do último item com duração (sem nenhum, não há passada: os itens sem duração acendem e ficam). `runOrder`: `loop` repete a passada; `singleShot` ("Uma vez") roda uma e a coleção termina quando os itens sem duração também terminaram; `pingPong` volta com os inícios espelhados (cada criação toca para a frente). O `random` é recusado. Um item que passa do fim da passada é cortado nele; o que começa depois dele não acende.
+- O `saveFunction` confere: criações que existem (a mesma pode aparecer mais de uma vez), duração e comprimento maiores que zero, sem o `random` e sem conter a si mesma. Remover uma criação tira os itens dela.
+- A versão 16 abre com cada criação da coleção num item com `start: 0`, `duration: null`, `layer` = a posição e `priority: null`, em `loop` e com `beats`: tudo acende junto, como antes.
+
 **Versão 16 (2026-11-13):** as paletas (versões 14 e 15, F12b) foram removidas; os campos delas num arquivo dessas versões são ignorados ao abrir.
 
 ## Estado de execução
@@ -156,6 +163,7 @@ Além do projeto, o `Snapshot` traz o que está acontecendo agora:
 
 - `running`: criações disparadas pelo usuário, na ordem de início (na mistura LTP, vence a última). O que um chaser ou uma coleção dispara não entra. Um Single Shot que apagou no fim sai sozinho;
 - `chaserSteps`: o passo atual (`{ chaser, step }`, a partir de 0) de cada chaser ou sequência da lista `running`, vindo do motor;
+- `timelineClock`: o cursor (`{ collection, position }`) de cada coleção da lista `running`, vindo do motor, na unidade dela (ms ou milésimos de batida) e dentro da passada: no Vai e volta, volta do fim para o começo; no fim do "Uma vez", fica no fim; sem passada, para no último início. Muda a cada quadro enquanto a coleção anda (o servidor confere a cada 40 ms);
 - `paused`: as criações da lista `running` pausadas;
 - `failures`: as criações que pararam por erro (`{ function, message }`: o script de um RGB Matrix que falhou ou estourou o limite). Vale até a criação rodar de novo;
 - `loadedSteps`: o passo carregado (`{ chaser, step }`) de cada cue list, que o próximo Go usa;

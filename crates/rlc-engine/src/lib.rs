@@ -17,6 +17,7 @@ mod efx;
 mod matrix;
 mod phaser;
 mod text;
+mod timeline;
 
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender, TryRecvError};
@@ -32,6 +33,8 @@ use matrix::MatrixRunner;
 pub use matrix::{CellOutput, MatrixCell, MatrixProgram, MatrixSource};
 use phaser::PhaserRunner;
 pub use phaser::{PhaserProgram, PhaserTrack};
+use timeline::TimelineRunner;
+pub use timeline::{TimelineItem, TimelineProgram};
 
 /// Período do tick: 50 Hz, como no QLC+.
 pub const TICK: Duration = Duration::from_millis(20);
@@ -48,6 +51,8 @@ pub struct Frames {
     pub tick_time: Duration,
     /// Passo atual de cada chaser disparado pelo usuário.
     pub chasers: Vec<(Id, u16)>,
+    /// Posição do cursor de cada coleção disparada pelo usuário, na unidade dela.
+    pub timelines: Vec<(Id, u32)>,
     /// Criações que terminaram sozinhas (o Single Shot que apagou no fim).
     pub done: Vec<Id>,
     /// Criações que pararam por erro (o script de um RGB Matrix): a criação e o motivo.
@@ -92,8 +97,10 @@ pub struct Run {
 pub enum Program {
     Scene(SceneProgram),
     Chaser(ChaserProgram),
-    /// Criações disparadas juntas (a coleção).
+    /// Criações disparadas juntas (a cena dividida pelos tempos por tipo de atributo).
     Collection(Vec<Program>),
+    /// A coleção, com a linha do tempo.
+    Timeline(TimelineProgram),
     Efx(EfxProgram),
     RgbMatrix(MatrixProgram),
     Phaser(PhaserProgram),
@@ -311,6 +318,7 @@ impl Engine {
                         universes,
                         tick_time: now.elapsed(),
                         chasers: state.chasers(),
+                        timelines: state.timelines(),
                         done: state.done(),
                         failed: state.failed(),
                     });
@@ -361,6 +369,8 @@ struct Fader {
     relative: bool,
     /// Intensidade da criação dona: multiplica os canais de intensidade (255 = cheia).
     intensity: u8,
+    /// A prioridade veio de um item da linha do tempo: não segue a da criação dona.
+    pinned: bool,
 }
 
 /// Um canal de uma cena: fica em `start` até `since` (o delay) e então vai ao valor da cena em
@@ -442,6 +452,7 @@ enum Node {
     Scene(u64),
     Chaser(Box<Runner>),
     Collection(Vec<Node>),
+    Timeline(Box<TimelineRunner>),
     Efx(Box<EfxRunner>),
     Matrix(Box<MatrixRunner>),
     Phaser(Box<PhaserRunner>),
@@ -454,6 +465,7 @@ impl Node {
             Node::Scene(_) | Node::Phaser(_) => false,
             Node::Chaser(runner) => runner.done,
             Node::Collection(nodes) => !nodes.is_empty() && nodes.iter().all(Node::done),
+            Node::Timeline(runner) => runner.done(),
             Node::Efx(runner) => runner.done,
             Node::Matrix(runner) => runner.done,
         }
@@ -475,6 +487,7 @@ impl Node {
                 }
             }
             Node::Collection(nodes) => nodes.iter().for_each(|node| node.failures(failed)),
+            Node::Timeline(runner) => runner.nodes().for_each(|node| node.failures(failed)),
         }
     }
 
@@ -483,6 +496,7 @@ impl Node {
         match self {
             Node::Chaser(runner) => runner.shift(gap, beats),
             Node::Matrix(runner) => runner.shift(gap, beats),
+            Node::Timeline(runner) => runner.shift(gap, beats),
             Node::Collection(nodes) => {
                 for node in nodes {
                     node.shift(gap, beats);
@@ -504,6 +518,8 @@ struct Ctx<'a> {
     /// Intensidade e prioridade da criação dona, para os faders novos.
     intensity: u8,
     priority: Priority,
+    /// A prioridade é a de um item da linha do tempo (os faders novos não seguem a da criação).
+    pinned: bool,
     now: Instant,
     /// Intervalo entre as batidas e a posição de agora na batida, em milésimos.
     beat: Duration,
@@ -540,6 +556,7 @@ impl Ctx<'_> {
             channels,
             relative,
             intensity: self.intensity,
+            pinned: self.pinned,
         });
         *self.serial
     }
@@ -558,6 +575,7 @@ impl Ctx<'_> {
                     .map(|p| self.start(p, imposed))
                     .collect(),
             ),
+            Program::Timeline(t) => Node::Timeline(Box::new(TimelineRunner::new(t, imposed, self))),
             Program::Efx(efx) => Node::Efx(Box::new(EfxRunner::new(efx, imposed, self))),
             Program::RgbMatrix(m) => Node::Matrix(Box::new(MatrixRunner::new(m, imposed, self))),
             Program::Phaser(p) => Node::Phaser(Box::new(PhaserRunner::new(p, imposed, self))),
@@ -581,6 +599,11 @@ impl Ctx<'_> {
             }
             Node::Collection(nodes) => {
                 for node in nodes {
+                    self.stop(node);
+                }
+            }
+            Node::Timeline(runner) => {
+                for node in runner.nodes() {
                     self.stop(node);
                 }
             }
@@ -617,6 +640,7 @@ impl Ctx<'_> {
             (Node::Efx(runner), Program::Efx(efx)) => runner.update(efx, imposed, self),
             (Node::Matrix(runner), Program::RgbMatrix(m)) => runner.update(m, imposed, self),
             (Node::Phaser(runner), Program::Phaser(p)) => runner.update(p, imposed, self),
+            (Node::Timeline(runner), Program::Timeline(t)) => runner.update(t, imposed, self),
             (Node::Collection(nodes), Program::Collection(programs)) => {
                 for gone in nodes.split_off(programs.len().min(nodes.len())) {
                     self.stop(&gone);
@@ -647,6 +671,7 @@ impl Ctx<'_> {
             Node::Efx(runner) => runner.tick(self),
             Node::Matrix(runner) => runner.tick(self),
             Node::Phaser(runner) => runner.tick(self),
+            Node::Timeline(runner) => runner.tick(self),
             Node::Collection(nodes) => {
                 for node in nodes {
                     self.tick(node);
@@ -863,6 +888,7 @@ impl State {
             owner,
             intensity,
             priority,
+            pinned: false,
             now,
             beat: self.beat,
         }
@@ -876,7 +902,9 @@ impl State {
         for f in self.faders.iter_mut().filter(|f| f.stopped.is_none()) {
             if let Some(run) = runs.iter().find(|r| r.id == f.owner) {
                 f.intensity = run.intensity;
-                f.priority = run.priority;
+                if !f.pinned {
+                    f.priority = run.priority;
+                }
             }
         }
         let mut old = std::mem::take(&mut self.runs);
@@ -945,6 +973,16 @@ impl State {
                 Node::Chaser(runner) if !runner.done => {
                     runner.step.map(|s| (r.id.clone(), s as u16))
                 }
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn timelines(&self) -> Vec<(Id, u32)> {
+        self.runs
+            .iter()
+            .filter_map(|r| match &r.node {
+                Node::Timeline(runner) if !runner.done() => Some((r.id.clone(), runner.position)),
                 _ => None,
             })
             .collect()

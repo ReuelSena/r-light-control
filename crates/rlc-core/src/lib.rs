@@ -32,6 +32,8 @@ pub struct Snapshot {
     pub running: Vec<Id>,
     /// Passo atual de cada chaser (ou sequência) da lista `running`, vindo do motor.
     pub chaser_steps: Vec<CurrentStep>,
+    /// Posição do cursor de cada coleção da lista `running`, vinda do motor.
+    pub timeline_clock: Vec<TimelinePosition>,
     /// Criações da lista `running` pausadas: os fades, os delays e os passos delas não andam (R1).
     pub paused: Vec<Id>,
     /// Criações que pararam por erro (um script de RGB Matrix que falhou): vale até a criação rodar de
@@ -51,6 +53,15 @@ pub struct Snapshot {
     pub preview: Option<Id>,
     /// O "Localizar": as fixtures acesas e quanto as outras ficam.
     pub highlight: Locate,
+}
+
+/// Onde está o cursor de uma coleção: na unidade dela (ms ou milésimos de batida), dentro da passada;
+/// no Vai e volta, ele volta do fim para o começo. Sem itens com duração, para no último início.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelinePosition {
+    pub collection: Id,
+    pub position: u32,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -336,7 +347,7 @@ pub enum FunctionKind {
     Chaser(Chaser),
     /// Chaser preso a uma cena: cada passo guarda os próprios valores dos canais dela.
     Sequence(Chaser),
-    /// Funções disparadas juntas.
+    /// Funções disparadas numa linha do tempo (F11b).
     Collection(Collection),
     Efx(Efx),
     RgbMatrix(RgbMatrix),
@@ -527,7 +538,29 @@ pub enum SpeedMode {
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
-    pub functions: Vec<Id>,
+    pub items: Vec<TimelineItem>,
+    /// Laço, Uma vez (`singleShot`) ou Vai e volta (os inícios espelham na volta); sem o Aleatório.
+    pub run_order: RunOrder,
+    /// Início, duração e comprimento em batidas do BPM global (milésimos de batida, "Seguir o BPM");
+    /// senão, em milissegundos.
+    pub beats: bool,
+    /// Comprimento da passada; `None` = o fim do último item com duração.
+    pub length: Option<u32>,
+}
+
+/// Um clipe da linha do tempo: a criação acende no início e para no fim, com o fade out dela.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineItem {
+    pub function: Id,
+    /// A partir do começo da passada.
+    pub start: u32,
+    /// `None` = até a coleção parar: acende uma vez, no início, e não se repete com a passada.
+    pub duration: Option<u32>,
+    /// Trilha do editor (só visual).
+    pub layer: u8,
+    /// `None` = a da coleção.
+    pub priority: Option<Priority>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -1580,13 +1613,24 @@ mod tests {
             folder: None,
             priority: Priority::Normal,
             kind: FunctionKind::Collection(Collection {
-                functions: vec!["s1".into()],
+                items: vec![TimelineItem {
+                    function: "s1".into(),
+                    start: 0,
+                    duration: None,
+                    layer: 0,
+                    priority: None,
+                }],
+                run_order: RunOrder::Loop,
+                beats: true,
+                length: None,
             }),
         };
         let value = serde_json::to_value(&function).unwrap();
         assert_eq!(
             value,
-            json!({ "id": "c1", "name": "Tudo", "folder": null, "priority": "normal", "type": "collection", "functions": ["s1"] })
+            json!({ "id": "c1", "name": "Tudo", "folder": null, "priority": "normal", "type": "collection",
+                "items": [{ "function": "s1", "start": 0, "duration": null, "layer": 0, "priority": null }],
+                "runOrder": "loop", "beats": true, "length": null })
         );
         assert_eq!(serde_json::from_value::<Function>(value).unwrap(), function);
     }

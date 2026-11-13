@@ -56,7 +56,7 @@ function blank(type: FunctionType): Function {
       }
     case 'chaser': return { ...base, type, ...chaser }
     case 'sequence': return { ...base, type, ...chaser, scene: project.value.functions.find((f) => f.type === 'scene')?.id ?? null }
-    case 'collection': return { ...base, type, functions: [] }
+    case 'collection': return { ...base, type, items: [], runOrder: 'loop', beats: true, length: null }
     case 'efx':
       return {
         ...base, type, algorithm: 'circle', width: 127, height: 127, xOffset: 127, yOffset: 127, rotation: 0,
@@ -81,7 +81,9 @@ function choose(type: FunctionType) {
 
 async function create(type: FunctionType, withRunning = false) {
   const fn = blank(type)
-  if (fn.type === 'collection' && withRunning) fn.functions = [...state.value.running]
+  if (fn.type === 'collection' && withRunning) {
+    fn.items = state.value.running.map((id, layer) => ({ function: id, start: 0, duration: null, layer, priority: null }))
+  }
   await send({ op: 'saveFunction', function: fn })
   askCollection.value = false
   selectedId.value = fn.id

@@ -22,7 +22,7 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 
 ## Pendências (2026-11-13)
 
-**Entregue (2026-11-13):** a [F12b](docs/fases/fase-12b.md) (Gravação: gravar a saída, Update e filtro por tipo; as paletas foram tentadas e removidas no mesmo dia), aguardando a validação do usuário junto com a F9, a F9b, a F10c, a F10d e a F11. Próxima na ordem: F11b (coleção com linha do tempo).
+**Entregue (2026-11-13):** a [F11b](docs/fases/fase-11b.md) (coleção com linha do tempo, aguardando a validação, [checklist](docs/fases/fase-11b.md#validação-com-você)) e a [F12b](docs/fases/fase-12b.md) (Gravação: gravar a saída, Update e filtro por tipo; as paletas foram tentadas e removidas no mesmo dia), aguardando a validação do usuário junto com a F9, a F9b, a F10c, a F10d e a F11. Próxima na ordem: F12c (Seleção) ou o que o usuário pedir.
 
 **Onde paramos (2026-11-13):** a F12b (Gravação) foi entregue sem a validação da F9, da F9b, da F10c, da F10d e da F11, a pedido do usuário (exceção ao G1). Falta ele validar tudo numa rodada só, com o rig montado: o checklist de cada fase está no arquivo dela. Depois, a F11b e as fases seguintes da ordem.
 
@@ -406,7 +406,9 @@ Validação:
 - [ ] Operador não edita.
 - [ ] Reconexão recebe o estado completo.
 
-### F11b — Coleção com linha do tempo · ⬜ (nova, 2026-11-06, pedido do usuário; sem mini-plano ainda)
+### F11b — Coleção com linha do tempo · 🟡 (nova, 2026-11-06, pedido do usuário; entregue em 2026-11-13, aguardando a validação; mini-plano e decisões em [docs/fases/fase-11b.md](docs/fases/fase-11b.md))
+
+Entregue em 2026-11-13, as duas etapas juntas (motor, lista e editor visual), a pedido do usuário, sem aprovar o mini-plano antes e sem validar as fases anteriores (exceção ao G1). Projeto na versão 17. Exemplos (G8) na pasta "Linha do tempo" do "Show de exemplo". O texto abaixo é o pedido original.
 
 Pedido do usuário (G4): dar às coleções o poder de disparar as criações **com espera**, **sobrepostas no tempo** e **em camadas**, para uma operação ao vivo mais enxuta que o Show/timeline com áudio (que fica fora da v1). Os pedaços (coleções) poderão virar clipes do Show no futuro.
 

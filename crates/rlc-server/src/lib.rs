@@ -197,18 +197,20 @@ pub async fn start(settings: &Settings) -> anyhow::Result<u16> {
             stats.lock().refresh(&devices);
         }
     });
-    // O passo dos chasers e as criações que terminaram sozinhas, e as esperas das macros; a trava do
-    // estado só quando há o que fazer
+    // O passo dos chasers, o cursor das coleções e as criações que terminaram sozinhas, e as esperas
+    // das macros; a trava do estado só quando há o que fazer
     let follow = state.clone();
     let macros = follow.lock().macros_waiting.clone();
     tokio::spawn(async move {
         let mut every = tokio::time::interval(Duration::from_millis(40));
-        let mut seen = vec![];
+        let (mut chasers, mut timelines) = (vec![], vec![]);
         loop {
             every.tick().await;
             let frames = follow.frames.load();
-            if frames.chasers != seen || !frames.done.is_empty() {
-                seen = frames.chasers.clone();
+            if frames.chasers != chasers || frames.timelines != timelines || !frames.done.is_empty()
+            {
+                chasers = frames.chasers.clone();
+                timelines = frames.timelines.clone();
                 follow.lock().follow_engine(&frames);
             }
             if macros.load(std::sync::atomic::Ordering::Relaxed) {

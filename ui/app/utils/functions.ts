@@ -284,7 +284,7 @@ export const phaserCycleMs = (ph: Phaser, bpm: number) => Math.max(ph.beats ? (p
 /** A criação dispara `target`, direto ou por outra (passos de chaser e coleções). Como no QLC+, uma
  * criação não pode conter a si mesma: as listas de passos e de coleção escondem essas. */
 export function contains(functions: Function[], fn: Function, target: string) {
-  const members = (f: Function) => (f.type === 'chaser' ? f.steps.map((s) => s.function) : f.type === 'collection' ? f.functions : [])
+  const members = (f: Function) => (f.type === 'chaser' ? f.steps.map((s) => s.function) : f.type === 'collection' ? f.items.map((i) => i.function) : [])
   // Cópia: a lista da coleção é o estado do app
   const stack = [...members(fn)]
   const seen = new Set<string>()

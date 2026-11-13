@@ -4078,12 +4078,15 @@
     "folder": null,
     "priority": "normal",
     "type": "collection",
-    "functions": [
-     "c1",
-     "s4",
-     "e1",
-     "s5"
-    ]
+    "items": [
+     { "function": "c1", "start": 0, "duration": null, "layer": 0, "priority": null },
+     { "function": "s4", "start": 0, "duration": null, "layer": 1, "priority": null },
+     { "function": "e1", "start": 0, "duration": null, "layer": 2, "priority": null },
+     { "function": "s5", "start": 0, "duration": null, "layer": 3, "priority": null }
+    ],
+    "runOrder": "loop",
+    "beats": true,
+    "length": null
    },
    {
     "id": "e1",
@@ -5241,6 +5244,72 @@
      "holdMs": 4000,
      "fadeOutMs": 1000
     }
+   },
+   {
+    "id": "k2",
+    "name": "Laço em camadas",
+    "folder": "d6",
+    "priority": "normal",
+    "type": "collection",
+    "items": [
+     {
+      "function": "s10",
+      "start": 0,
+      "duration": null,
+      "layer": 0,
+      "priority": "low"
+     },
+     {
+      "function": "ph1",
+      "start": 0,
+      "duration": 8000,
+      "layer": 1,
+      "priority": null
+     },
+     {
+      "function": "ph3",
+      "start": 4000,
+      "duration": 8000,
+      "layer": 2,
+      "priority": "high"
+     }
+    ],
+    "runOrder": "loop",
+    "beats": true,
+    "length": 16000
+   },
+   {
+    "id": "k3",
+    "name": "Vai e volta em camadas",
+    "folder": "d6",
+    "priority": "normal",
+    "type": "collection",
+    "items": [
+     {
+      "function": "c1",
+      "start": 0,
+      "duration": 6000,
+      "layer": 0,
+      "priority": null
+     },
+     {
+      "function": "e1",
+      "start": 4000,
+      "duration": 8000,
+      "layer": 1,
+      "priority": null
+     },
+     {
+      "function": "ph2",
+      "start": 8000,
+      "duration": 4000,
+      "layer": 2,
+      "priority": "high"
+     }
+    ],
+    "runOrder": "pingPong",
+    "beats": true,
+    "length": null
    }
   ],
   "folders": [
@@ -5271,6 +5340,12 @@
     "id": "d5",
     "name": "Phaser",
     "kind": "phaser",
+    "parent": null
+   },
+   {
+    "id": "d6",
+    "name": "Linha do tempo",
+    "kind": "collection",
     "parent": null
    }
   ],

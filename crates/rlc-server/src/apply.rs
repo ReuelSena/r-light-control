@@ -6,7 +6,7 @@ use rlc_core::*;
 use rlc_engine::{
     Capture, CellOutput, ChaserProgram, EfxProgram, Imposed, MatrixCell, MatrixProgram,
     MatrixSource, PhaserProgram, PhaserTrack, Program, Run, SceneLevel, SceneProgram, Span, Step,
-    Times, UniversePatch,
+    TimelineProgram, Times, UniversePatch,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -35,6 +35,7 @@ pub enum Topic {
     Remote,
     Running,
     ChaserSteps,
+    TimelineClock,
     Paused,
     Failures,
     LoadedSteps,
@@ -71,6 +72,7 @@ impl Topic {
             Topic::Remote => "remote",
             Topic::Running => "running",
             Topic::ChaserSteps => "chaserSteps",
+            Topic::TimelineClock => "timelineClock",
             Topic::Paused => "paused",
             Topic::Failures => "failures",
             Topic::LoadedSteps => "loadedSteps",
@@ -143,6 +145,7 @@ impl Topic {
             Topic::Remote => json!(s.remote),
             Topic::Running => json!(s.running),
             Topic::ChaserSteps => json!(s.chaser_steps),
+            Topic::TimelineClock => json!(s.timeline_clock),
             Topic::Paused => json!(s.paused),
             Topic::Failures => json!(s.failures),
             Topic::LoadedSteps => json!(s.loaded_steps),
@@ -471,6 +474,21 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 FunctionKind::Efx(efx) => check_efx(p, efx)?,
                 FunctionKind::RgbMatrix(m) => check_matrix(p, m)?,
                 FunctionKind::Phaser(ph) => check_phaser(p, ph)?,
+                FunctionKind::Collection(c) => {
+                    if c.run_order == RunOrder::Random {
+                        return Err("A coleção não tem a ordem aleatória.".into());
+                    }
+                    if c.length == Some(0) || c.items.iter().any(|i| i.duration == Some(0)) {
+                        return Err("A duração precisa ser maior que zero.".into());
+                    }
+                    if !c
+                        .items
+                        .iter()
+                        .all(|i| p.functions.iter().any(|f| f.id == i.function))
+                    {
+                        return Err("Criação não encontrada.".into());
+                    }
+                }
                 FunctionKind::Scene(scene) => {
                     for (i, g) in scene.groups.iter().enumerate() {
                         if !p.fixture_groups.iter().any(|x| x.id == g.group) {
@@ -491,7 +509,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             for f in &mut p.functions {
                 match &mut f.kind {
                     FunctionKind::Chaser(chaser) => chaser.steps.retain(|step| step.function != id),
-                    FunctionKind::Collection(c) => c.functions.retain(|f| *f != id),
+                    FunctionKind::Collection(c) => c.items.retain(|i| i.function != id),
                     _ => {}
                 }
             }
@@ -1397,12 +1415,29 @@ fn program(
             let (times, parts) = scene_times(scene, [dial[0], dial[1]], fade);
             Some(scene_program(p, &scene_values(p, scene), times, &parts))
         }
-        FunctionKind::Collection(c) => Some(Program::Collection(
-            c.functions
-                .iter()
-                .filter_map(|f| program(s, f, dial, path, play))
-                .collect(),
-        )),
+        // A velocidade muda os tempos da linha do tempo em segundos; nos em batidas, manda o BPM
+        FunctionKind::Collection(c) => {
+            let time = |v: u32| match ms(if c.beats { Span::Beats(v) } else { Span::Ms(v) }) {
+                Span::Ms(v) | Span::Beats(v) => v,
+            };
+            Some(Program::Timeline(TimelineProgram {
+                items: c
+                    .items
+                    .iter()
+                    .filter_map(|item| {
+                        Some(rlc_engine::TimelineItem {
+                            program: program(s, &item.function, dial, path, play)?,
+                            start: time(item.start),
+                            duration: item.duration.map(time),
+                            priority: item.priority,
+                        })
+                    })
+                    .collect(),
+                run_order: c.run_order,
+                beats: c.beats,
+                length: c.length.map(time),
+            }))
+        }
         FunctionKind::Chaser(c) | FunctionKind::Sequence(c) => {
             let unit = |v: u32| if c.beats { Span::Beats(v) } else { Span::Ms(v) };
             let time = |mode: SpeedMode, common: u32, step: u32| match mode {
@@ -2595,7 +2630,7 @@ fn check_folder(p: &Project, folder: &Folder) -> Result<(), String> {
 fn members(kind: &FunctionKind) -> Vec<&Id> {
     match kind {
         FunctionKind::Chaser(c) => c.steps.iter().map(|step| &step.function).collect(),
-        FunctionKind::Collection(c) => c.functions.iter().collect(),
+        FunctionKind::Collection(c) => c.items.iter().map(|i| &i.function).collect(),
         _ => vec![],
     }
 }
@@ -4447,11 +4482,17 @@ mod tests {
         assert_eq!(first.times.fade_in, Span::Ms(1000));
         assert_eq!(q1.steps[0].times.fade_in, Some(Span::Ms(800)));
         // "Abertura": o chaser, as duas cenas e o EFX
-        let Program::Collection(k1) = &runs[1].program else {
+        let Program::Timeline(k1) = &runs[1].program else {
             panic!("k1 não é coleção")
         };
-        assert_eq!(k1.len(), 4);
-        assert!(matches!(k1[0], Program::Chaser(_)) && matches!(k1[2], Program::Efx(_)));
+        assert_eq!(k1.items.len(), 4);
+        assert!(matches!(k1.items[0].program, Program::Chaser(_)));
+        assert!(matches!(k1.items[2].program, Program::Efx(_)));
+        assert!(
+            k1.items
+                .iter()
+                .all(|i| i.start == 0 && i.duration.is_none())
+        );
     }
 
     #[test]
@@ -4484,9 +4525,93 @@ mod tests {
             .cloned()
             .unwrap();
         if let FunctionKind::Collection(c) = &mut k1.kind {
-            c.functions.push("k1".into());
+            let mut item = c.items[0].clone();
+            item.function = "k1".into();
+            c.items.push(item);
         }
         assert!(apply(&mut s, Op::SaveFunction { function: k1 }).is_err());
+    }
+
+    fn collection_mut<'a>(s: &'a mut Snapshot, id: &str) -> &'a mut Collection {
+        let f = s.project.functions.iter_mut().find(|f| f.id == id);
+        match f.map(|f| &mut f.kind) {
+            Some(FunctionKind::Collection(c)) => c,
+            _ => panic!("{id} não é coleção"),
+        }
+    }
+
+    #[test]
+    fn the_timeline_goes_with_its_times_priorities_and_speed() {
+        let mut s = example();
+        let k1 = collection_mut(&mut s, "k1");
+        k1.beats = false;
+        k1.run_order = RunOrder::PingPong;
+        k1.length = Some(8000);
+        k1.items[1].start = 2000;
+        k1.items[1].duration = Some(4000);
+        k1.items[1].priority = Some(Priority::High);
+        run(&mut s, "k1");
+        let timeline = |s: &Snapshot| match running_programs(s).remove(0).program {
+            Program::Timeline(t) => t,
+            _ => panic!("k1 não é coleção"),
+        };
+        let t = timeline(&s);
+        assert_eq!(
+            (t.run_order, t.beats, t.length),
+            (RunOrder::PingPong, false, Some(8000))
+        );
+        let item = &t.items[1];
+        assert_eq!(
+            (item.start, item.duration, item.priority),
+            (2000, Some(4000), Some(Priority::High))
+        );
+        // Um slider de velocidade em ×4 encurta os tempos em segundos
+        let mut rate = widget(&s, "sl3");
+        rate.id = "rt".into();
+        let rt = slider(&mut rate);
+        (rt.mode, rt.functions) = (SliderMode::Rate, vec!["k1".into()]);
+        save_widget(&mut s, rate);
+        set_value(&mut s, "rt", vec![255]);
+        let t = timeline(&s);
+        assert_eq!(
+            (t.items[1].start, t.items[1].duration, t.length),
+            (500, Some(1000), Some(2000))
+        );
+        // Em batidas, manda o BPM
+        collection_mut(&mut s, "k1").beats = true;
+        assert_eq!(timeline(&s).items[1].start, 2000);
+    }
+
+    #[test]
+    fn the_timeline_is_checked_when_saved_and_loses_removed_creations() {
+        let mut s = example();
+        let save = |s: &mut Snapshot, change: fn(&mut Collection)| {
+            let mut copy = s.clone();
+            change(collection_mut(&mut copy, "k1"));
+            let function = copy.project.functions.into_iter().find(|f| f.id == "k1");
+            apply(
+                s,
+                Op::SaveFunction {
+                    function: function.unwrap(),
+                },
+            )
+            .map(|_| ())
+        };
+        assert!(save(&mut s, |c| c.run_order = RunOrder::Random).is_err());
+        assert!(save(&mut s, |c| c.length = Some(0)).is_err());
+        assert!(save(&mut s, |c| c.items[0].duration = Some(0)).is_err());
+        assert!(save(&mut s, |c| c.items[0].function = "nada".into()).is_err());
+        // A mesma criação duas vezes, em tempos diferentes, pode
+        save(&mut s, |c| {
+            let mut again = c.items[0].clone();
+            again.start = 4000;
+            c.items.push(again);
+        })
+        .unwrap();
+        apply(&mut s, Op::RemoveFunction { id: "c1".into() }).unwrap();
+        let k1 = collection_mut(&mut s, "k1");
+        assert_eq!(k1.items.len(), 3);
+        assert!(k1.items.iter().all(|i| i.function != "c1"));
     }
 
     fn efx_mut<'a>(s: &'a mut Snapshot, id: &str) -> &'a mut Efx {

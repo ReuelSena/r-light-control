@@ -259,6 +259,14 @@ fn entry(imposed: Imposed, program: &Program, beat: Duration) -> Duration {
             .map(|p| entry(imposed, p, beat))
             .max()
             .unwrap_or_default(),
+        // Na linha do tempo, só os itens que começam no zero
+        Program::Timeline(t) => t
+            .items
+            .iter()
+            .filter(|item| item.start == 0)
+            .map(|item| entry(imposed, &item.program, beat))
+            .max()
+            .unwrap_or_else(|| own(Span::Ms(0), Span::Ms(0))),
         Program::Collection(_) | Program::Chaser(_) => own(Span::Ms(0), Span::Ms(0)),
     }
 }

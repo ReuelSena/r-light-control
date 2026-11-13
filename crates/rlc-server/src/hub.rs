@@ -76,6 +76,7 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
         },
         running: vec![],
         chaser_steps: vec![],
+        timeline_clock: vec![],
         failures: vec![],
         paused: vec![],
         loaded_steps: vec![],
@@ -455,7 +456,7 @@ impl Hub {
             .store(!self.macros.is_empty(), Ordering::Relaxed);
     }
 
-    /// Acompanha o motor: o passo atual de cada chaser e as criações que terminaram sozinhas (o
+    /// Acompanha o motor: o passo atual de cada chaser, o cursor de cada coleção e as criações que terminaram sozinhas (o
     /// Single Shot que apagou no fim), que saem das criações rodando.
     pub fn follow_engine(&mut self, frames: &Frames) {
         let s = &mut self.snapshot;
@@ -500,6 +501,19 @@ impl Hub {
         if steps != s.chaser_steps {
             s.chaser_steps = steps;
             topics.push(Topic::ChaserSteps);
+        }
+        let clock: Vec<TimelinePosition> = frames
+            .timelines
+            .iter()
+            .filter(|(id, _)| s.running.contains(id))
+            .map(|(id, position)| TimelinePosition {
+                collection: id.clone(),
+                position: *position,
+            })
+            .collect();
+        if clock != s.timeline_clock {
+            s.timeline_clock = clock;
+            topics.push(Topic::TimelineClock);
         }
         if !topics.is_empty() {
             self.publish(&topics);
@@ -1292,7 +1306,7 @@ mod tests {
             name: "Show de exemplo".into(),
         })
         .unwrap();
-        for id in ["c1", "q1"] {
+        for id in ["c1", "q1", "k1"] {
             let run = Op::SetFunctionRunning {
                 id: id.into(),
                 running: true,
@@ -1302,6 +1316,7 @@ mod tests {
         // A sequência terminou sozinha; um chaser que já foi parado não aparece
         let frames = Frames {
             chasers: vec![("c1".into(), 2), ("q1".into(), 0), ("parado".into(), 1)],
+            timelines: vec![("k1".into(), 1500), ("parada".into(), 10)],
             done: vec!["q1".into()],
             ..Default::default()
         };
@@ -1310,8 +1325,14 @@ mod tests {
             chaser: "c1".into(),
             step: 2,
         };
-        assert_eq!(hub.snapshot.running, ["c1"]);
+        assert_eq!(hub.snapshot.running, ["c1", "k1"]);
         assert_eq!(hub.snapshot.chaser_steps, [step]);
+        // O cursor de cada coleção rodando
+        let clock = TimelinePosition {
+            collection: "k1".into(),
+            position: 1500,
+        };
+        assert_eq!(hub.snapshot.timeline_clock, [clock]);
         std::fs::remove_dir_all(dir).unwrap();
     }
 

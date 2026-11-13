@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 16;
+const SCHEMA_VERSION: u32 = 17;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -318,6 +318,32 @@ fn migrate(project: &mut Value, version: u32) {
     }
     // 13 → 16: as paletas (versões 14 e 15, F12b) foram removidas; os campos delas num arquivo
     // dessas versões são ignorados ao ler, e a cena que as usava perde a cor
+    // 16 → 17 (F11b): a coleção virou uma linha do tempo; cada criação de antes é um item que começa
+    // no zero e fica até a coleção parar, numa trilha própria: tudo acende junto, como antes
+    if version < 17 {
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+            .filter(|f| f.get("type").and_then(Value::as_str) == Some("collection"))
+        {
+            let Some(Value::Array(ids)) = f.remove("functions") else {
+                continue;
+            };
+            let items: Vec<Value> = ids
+                .into_iter()
+                .enumerate()
+                .map(|(layer, function)| {
+                    json!({ "function": function, "start": 0, "duration": null, "layer": layer.min(255), "priority": null })
+                })
+                .collect();
+            f.insert("items".into(), items.into());
+            f.insert("runOrder".into(), "loop".into());
+            f.insert("beats".into(), true.into());
+            f.insert("length".into(), Value::Null);
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -538,6 +564,7 @@ mod tests {
                         t.curve = Curve::Linear;
                     }
                 }
+                FunctionKind::Collection(c) => c.items.iter_mut().for_each(|i| i.priority = None),
                 _ => {}
             }
         }
@@ -713,6 +740,35 @@ mod tests {
             std::fs::write(&file, v.to_string()).unwrap();
             assert_eq!(read(&file).unwrap().0, project);
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_16_opens_with_each_collection_function_as_an_item_from_zero() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = crate::hub::example_snapshot(None).project;
+        let mut old = serde_json::to_value(&project).unwrap();
+        let k1 = old["functions"]
+            .as_array_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|f| f["id"] == "k1")
+            .unwrap();
+        let ids: Vec<Value> = k1["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["function"].clone())
+            .collect();
+        for key in ["items", "runOrder", "beats", "length"] {
+            k1.as_object_mut().unwrap().remove(key);
+        }
+        k1["functions"] = ids.into();
+        let file = dir.join("antigo.rlc");
+        let v16 = json!({ "format": FORMAT, "schemaVersion": 16, "project": old });
+        std::fs::write(&file, v16.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

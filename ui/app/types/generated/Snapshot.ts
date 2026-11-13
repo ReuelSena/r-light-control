@@ -11,6 +11,7 @@ import type { RemoteAccess } from "./RemoteAccess";
 import type { RunFailure } from "./RunFailure";
 import type { Stats } from "./Stats";
 import type { TestPattern } from "./TestPattern";
+import type { TimelinePosition } from "./TimelinePosition";
 import type { WidgetValue } from "./WidgetValue";
 
 /**
@@ -46,6 +47,10 @@ running: Array<string>,
  * Passo atual de cada chaser (ou sequência) da lista `running`, vindo do motor.
  */
 chaserSteps: Array<CurrentStep>, 
+/**
+ * Posição do cursor de cada coleção da lista `running`, vinda do motor.
+ */
+timelineClock: Array<TimelinePosition>, 
 /**
  * Criações da lista `running` pausadas: os fades, os delays e os passos delas não andam (R1).
  */

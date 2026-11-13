@@ -14,8 +14,8 @@ import type { Fixture } from '~/types/generated/Fixture'
 // O botão esquerdo (ou o toque) só escolhe, e só o que é da aba aberta (`layer`): fixtures ou elementos.
 // Com "Editar posição" (`editing`), arrastar o escolhido o move em qualquer vista (no toque, depois de
 // escolher). Modelos de verdade, gobos e zoom ficam para a F15.
-const props = defineProps<{ view: 'perspective' | 'top' | 'front' | 'side'; editing: boolean; layer?: 'fixtures' | 'elements' }>()
-const selected = defineModel<string>('selected')
+const props = defineProps<{ view: 'perspective' | 'top' | 'front' | 'side'; editing: boolean; layer?: 'fixtures' | 'elements'; hidden?: { fixtures: boolean; elements: boolean; ids: string[] } }>()
+const selected = defineModel<string[]>('selected', { default: () => [] })
 const { state, output, send } = useEngine()
 const prefs = usePrefs()
 const project = computed(() => state.value.project)
@@ -132,6 +132,7 @@ function build() {
     group.traverse((o) => {
       if ((o as Mesh).isMesh) o.userData.id = fixture.id
     })
+    group.userData.id = fixture.id
     pickables.fixtures.push(group)
     looks.push(look)
     scene.add(group)
@@ -200,12 +201,17 @@ function colorOf(f: Fixture, v: Partial<Record<string, number>>) {
   return { color: c, intensity: v.dimmer !== undefined ? v.dimmer / 255 : Math.max(c.r, c.g, c.b) }
 }
 
+// Visibilidade só para arrumar o palco: tudo (por tipo) ou uma peça escondida some da tela e não se escolhe
+const shown = (layer: 'fixtures' | 'elements', id: string) => !props.hidden?.[layer] && !props.hidden?.ids.includes(id)
+const pickable = (layer: 'fixtures' | 'elements') => pickables[layer].filter((o) => o.visible)
+
 function onLoop() {
   const frames = output.value
     looks.forEach((look) => {
     const f = look.fixture
-    placeObject(look.group, drag?.id === f.id ? drag.position : stagePosition(project.value, f))
-    look.body.emissive.set(selected.value === f.id ? '#ff8000' : '#000000')
+    look.group.visible = shown('fixtures', f.id)
+    placeObject(look.group, drag?.positions.get(f.id) ?? stagePosition(project.value, f))
+    look.body.emissive.set(selected.value.includes(f.id) ? '#ff8000' : '#000000')
     look.body.emissiveIntensity = 0.35
     const frame = frames[f.universe]
     const v = attributeValues(f, frame)
@@ -221,9 +227,10 @@ function onLoop() {
     })
   })
   pieces.forEach((piece) => {
-    const p = drag?.id === piece.id ? drag.position : elementsById.value.get(piece.id)
+    const p = drag?.positions.get(piece.id) ?? elementsById.value.get(piece.id)
+    piece.group.visible = shown('elements', piece.id)
     if (p) placeObject(piece.group, p)
-    piece.materials.forEach((m) => m.emissive.set(selected.value === piece.id ? '#ff8000' : '#000000'))
+    piece.materials.forEach((m) => m.emissive.set(selected.value.includes(piece.id) ? '#ff8000' : '#000000'))
   })
   controls?.update()
 }
@@ -266,65 +273,115 @@ onMounted(() => {
 onBeforeUnmount(() => resize?.disconnect())
 
 // ---------- Escolher e arrastar fixtures e elementos ----------
+// Shift + clique soma ou tira da escolha; arrastar no vazio (mouse) abre uma caixa que escolhe o que ficar dentro
+// (com Shift, soma à escolha). Arrastar um dos escolhidos move todos pelo mesmo deslocamento.
 const raycaster = new Raycaster()
-let drag: { id: string; position: Placement; offset: Vector3; plane: Plane; moved: boolean } | undefined
-let downAt: { x: number; y: number } | undefined
+type Drag = { id: string; starts: Map<string, Placement>; positions: Map<string, Placement>; offset: Vector3; plane: Plane; moved: boolean }
+let drag: Drag | undefined
+// `collapse`: clique sem arrastar num dos vários escolhidos fica só com ele
+// e `empty`: o toque começou no vazio (a tela pode se redimensionar até o fim do gesto, então não se confere de novo)
+let downAt: { x: number; y: number; empty: boolean; collapse?: string } | undefined
+const box = ref<{ x0: number; y0: number; x1: number; y1: number }>()
+let boxBase: string[] = []
 
 function ray(e: PointerEvent) {
-  const box = wrapper.value!.getBoundingClientRect()
-  raycaster.setFromCamera(new Vector2(((e.clientX - box.left) / box.width) * 2 - 1, -((e.clientY - box.top) / box.height) * 2 + 1), camera)
+  const rect = wrapper.value!.getBoundingClientRect()
+  raycaster.setFromCamera(new Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), camera)
   return raycaster
 }
 // O que está sob o ponteiro, entre as coisas da aba aberta
-const hitId = (e: PointerEvent) => props.layer && (ray(e).intersectObjects(pickables[props.layer], true)[0]?.object.userData.id as string | undefined)
+const hitId = (e: PointerEvent) => props.layer && (ray(e).intersectObjects(pickable(props.layer), true)[0]?.object.userData.id as string | undefined)
+
+const placementOf = (id: string): Placement =>
+  props.layer === 'fixtures' ? { ...stagePosition(project.value, project.value.fixtures.find((f) => f.id === id)!) } : { ...elementsById.value.get(id)! }
 
 // Na fase de captura, antes dos controles da câmera: sobre uma fixture ou um elemento, o gesto é dele.
 // Só o botão esquerdo (ou o toque) escolhe; o do meio e o direito são sempre da câmera
 function down(e: PointerEvent) {
   if (e.button !== 0) return
-  downAt = { x: e.clientX, y: e.clientY }
+  const rect = wrapper.value!.getBoundingClientRect()
   const id = hitId(e)
-  if (!id) return
-  const wasSelected = selected.value === id
-  selected.value = id
+  downAt = { x: e.clientX, y: e.clientY, empty: !id }
+  if (!id) {
+    if (props.layer && e.pointerType === 'mouse') {
+      boxBase = e.shiftKey ? selected.value : []
+      box.value = { x0: e.clientX - rect.left, y0: e.clientY - rect.top, x1: e.clientX - rect.left, y1: e.clientY - rect.top }
+      wrapper.value!.setPointerCapture(e.pointerId)
+    }
+    return
+  }
+  const ids = selected.value
+  const wasSelected = ids.includes(id)
+  if (e.shiftKey) {
+    selected.value = wasSelected ? ids.filter((x) => x !== id) : [...ids, id]
+    return
+  }
+  if (wasSelected && ids.length > 1) downAt.collapse = id
+  else selected.value = [id]
   if (!props.editing || (e.pointerType !== 'mouse' && !wasSelected)) return
-  const position = props.layer === 'fixtures' ? { ...stagePosition(project.value, project.value.fixtures.find((f) => f.id === id)!) } : { ...elementsById.value.get(id)! }
+  const moving = wasSelected ? ids : [id]
+  const starts = new Map(moving.map((m) => [m, placementOf(m)]))
+  const position = starts.get(id)!
   // A fixture (ou o elemento) anda num plano de frente para a câmera: chão no topo, X e altura na frente, Z e altura na
   // lateral; na vista 3D, o plano acompanha a câmera (girando a câmera, ela vai em qualquer direção)
   const normal = { top: new Vector3(0, 1, 0), front: new Vector3(0, 0, 1), side: new Vector3(1, 0, 0), perspective: camera.getWorldDirection(new Vector3()) }[props.view]
   const plane = new Plane().setFromNormalAndCoplanarPoint(normal, new Vector3(position.x, position.y, position.z))
   const point = ray(e).ray.intersectPlane(plane, new Vector3())
   if (!point) return
-  drag = { id, position, offset: point.sub(new Vector3(position.x, position.y, position.z)), plane, moved: false }
+  drag = { id, starts, positions: new Map(starts), offset: point.sub(new Vector3(position.x, position.y, position.z)), plane, moved: false }
   controls!.enabled = false
   wrapper.value!.setPointerCapture(e.pointerId)
 }
 
+// O que tem a origem dentro da caixa, na tela
+function inBox() {
+  const rect = wrapper.value!.getBoundingClientRect()
+  const { x0, y0, x1, y1 } = box.value!
+  const [left, right, top, bottom] = [Math.min(x0, x1), Math.max(x0, x1), Math.min(y0, y1), Math.max(y0, y1)]
+  return pickable(props.layer!).filter((o) => {
+    const p = o.getWorldPosition(new Vector3()).project(camera)
+    const [x, y] = [((p.x + 1) / 2) * rect.width, ((1 - p.y) / 2) * rect.height]
+    return p.z < 1 && x >= left && x <= right && y >= top && y <= bottom
+  }).map((o) => o.userData.id as string)
+}
+
 function move(e: PointerEvent) {
+  if (box.value) {
+    const rect = wrapper.value!.getBoundingClientRect()
+    box.value = { ...box.value, x1: e.clientX - rect.left, y1: e.clientY - rect.top }
+    selected.value = [...new Set([...boxBase, ...inBox()])]
+    return
+  }
   if (!drag) return
   const point = ray(e).ray.intersectPlane(drag.plane, new Vector3())
   if (!point) return
-  // Encaixe de 10 cm; nada desce abaixo do chão
+  // Encaixe de 10 cm na peça que está sob o ponteiro; as outras andam o mesmo tanto. Nada desce abaixo do chão
   const snap = (v: number) => Math.round(v * 10) / 10
-  drag.position.x = snap(point.x - drag.offset.x)
-  drag.position.y = Math.max(0, snap(point.y - drag.offset.y))
-  drag.position.z = snap(point.z - drag.offset.z)
+  const base = drag.starts.get(drag.id)!
+  const delta = { x: snap(point.x - drag.offset.x) - base.x, y: snap(point.y - drag.offset.y) - base.y, z: snap(point.z - drag.offset.z) - base.z }
+  delta.y = Math.max(delta.y, -Math.min(...[...drag.starts.values()].map((p) => p.y)))
+  const round = (v: number) => Math.round(v * 1000) / 1000
+  drag.starts.forEach((p, id) => drag!.positions.set(id, { ...p, x: round(p.x + delta.x), y: round(p.y + delta.y), z: round(p.z + delta.z) }))
   drag.moved = true
 }
 
 function up(e: PointerEvent) {
+  const click = downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 4
   if (drag?.moved) {
-    const { id, position } = drag
+    const { positions } = drag
     const { fixtures, elements } = stage.value
     send({
       op: 'saveStage',
       stage: props.layer === 'fixtures'
-        ? { ...stage.value, fixtures: [...fixtures.filter((p) => p.fixture !== id), { ...position, fixture: id }] }
-        : { ...stage.value, elements: elements.map((x) => (x.id === id ? { ...x, ...position } : x)) },
+        ? { ...stage.value, fixtures: [...fixtures.filter((p) => !positions.has(p.fixture)), ...[...positions].map(([fixture, p]) => ({ ...p, fixture }))] }
+        : { ...stage.value, elements: elements.map((x) => ({ ...x, ...positions.get(x.id) })) },
     })
-  } else if (!drag && downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 4 && !hitId(e)) {
-    selected.value = undefined // toque no vazio solta a escolha
+  } else if (click && downAt?.collapse) {
+    selected.value = [downAt.collapse]
+  } else if (click && downAt?.empty && !e.shiftKey) {
+    selected.value = [] // toque no vazio solta a escolha
   }
+  box.value = undefined
   drag = undefined
   downAt = undefined
   if (controls) controls.enabled = true
@@ -347,6 +404,11 @@ function up(e: PointerEvent) {
       <TresDirectionalLight :position="[5, 10, 5]" :intensity="1.2" />
       <primitive :key="shape" :object="root" />
     </TresCanvas>
+    <div
+      v-if="box"
+      class="pointer-events-none absolute border border-dashed border-select bg-select/15"
+      :style="{ left: `${Math.min(box.x0, box.x1)}px`, top: `${Math.min(box.y0, box.y1)}px`, width: `${Math.abs(box.x1 - box.x0)}px`, height: `${Math.abs(box.y1 - box.y0)}px` }"
+    />
   </div>
 </template>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Copy, Maximize2, Minimize2, Move3d, Plus, Trash2 } from 'lucide-vue-next'
+import { Box, Copy, Eye, EyeOff, Lightbulb, Maximize2, Minimize2, Move3d, Plus, Trash2 } from 'lucide-vue-next'
 import type { Stage } from '~/types/generated/Stage'
 import type { StageElement } from '~/types/generated/StageElement'
 import type { StageElementKind } from '~/types/generated/StageElementKind'
@@ -19,8 +19,12 @@ const only3d = ref(false)
 const tab = ref('fixtures')
 const layer = computed(() => (tab.value === 'fixtures' || tab.value === 'elements' ? tab.value : undefined))
 // Cada aba guarda a sua escolha
-const selection = reactive<Record<string, string | undefined>>({})
+// (Shift ou Ctrl + clique na lista, ou no palco, soma à escolha)
+const selection = reactive<Record<string, string[]>>({ fixtures: [], elements: [] })
 const adding = ref(false)
+// Visibilidade, só para arrumar o palco (não vai para o projeto): por tipo e por peça
+const hide = reactive({ fixtures: false, elements: false, ids: [] as string[] })
+const toggleHidden = (id: string) => (hide.ids = hide.ids.includes(id) ? hide.ids.filter((x) => x !== id) : [...hide.ids, id])
 
 const views = computed(() => (['perspective', 'top', 'front', 'side'] as const).map((value) => ({ value, label: t(`view3d.views.${value}`) })))
 const tabs = computed(() => [
@@ -31,19 +35,28 @@ const tabs = computed(() => [
 
 const saveStage = (patch: Partial<Stage>) => send({ op: 'saveStage', stage: { ...stage.value, ...patch } })
 
-const fixture = computed(() => project.value.fixtures.find((f) => f.id === selection.fixtures))
-const position = computed(() => fixture.value && stagePosition(project.value, fixture.value))
-function moveFixture(patch: Partial<Placement>) {
-  const next = { ...position.value!, ...patch }
-  saveStage({ fixtures: [...stage.value.fixtures.filter((p) => p.fixture !== next.fixture), next] })
+function pick(key: 'fixtures' | 'elements', id: string, add: boolean) {
+  const ids = selection[key]!
+  selection[key] = !add ? [id] : ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]
+}
+
+const chosenFixtures = computed(() => selection.fixtures!.flatMap((id) => project.value.fixtures.find((f) => f.id === id) ?? []))
+const fixturePlacements = computed(() => chosenFixtures.value.map((f) => stagePosition(project.value, f)))
+const fixture = computed(() => (chosenFixtures.value.length === 1 ? chosenFixtures.value[0] : undefined))
+const position = computed(() => fixture.value && fixturePlacements.value[0])
+// Aplica um ajuste a cada fixture escolhida, na ordem da escolha
+function moveFixtures(patches: Partial<Placement>[]) {
+  const next = chosenFixtures.value.map((f, i) => ({ ...stagePosition(project.value, f), ...patches[i] }))
+  saveStage({ fixtures: [...stage.value.fixtures.filter((p) => !next.some((n) => n.fixture === p.fixture)), ...next] })
 }
 
 // ---------- Elementos de palco ----------
-const element = computed(() => stage.value.elements.find((e) => e.id === selection.elements))
+const chosenElements = computed(() => selection.elements!.flatMap((id) => stage.value.elements.find((e) => e.id === id) ?? []))
+const element = computed(() => (chosenElements.value.length === 1 ? chosenElements.value[0] : undefined))
 const elementKinds = Object.keys(stageElementKinds) as StageElementKind[]
 const elementName = (e: StageElement) => t(`view3d.elements.${e.kind}`)
 
-function saveElements(elements: StageElement[], select?: string) {
+function saveElements(elements: StageElement[], select: string[] = []) {
   saveStage({ elements })
   selection.elements = select
 }
@@ -53,22 +66,28 @@ function addElement(kind: StageElementKind) {
   let x = 0
   while (stage.value.elements.some((e) => Math.abs(e.x - x) < 0.05 && Math.abs(e.z) < 0.05)) x += stageElementKinds[kind].width
   const created = { id: uuidv7(), kind, x, y: 0, z: 0, rotationX: 0, rotationY: 0, rotationZ: 0 }
-  saveElements([...stage.value.elements, created], created.id)
+  saveElements([...stage.value.elements, created], [created.id])
   adding.value = false
 }
 
-const moveElement = (patch: Partial<Placement>) => saveElements(stage.value.elements.map((e) => (e.id === element.value!.id ? { ...e, ...patch } : e)), element.value!.id)
-
-function duplicate() {
-  const copy = { ...element.value!, id: uuidv7(), ...besideOf(element.value!) }
-  saveElements([...stage.value.elements, copy], copy.id)
+function moveElements(patches: Partial<Placement>[]) {
+  const byId = new Map(chosenElements.value.map((e, i) => [e.id, patches[i]]))
+  saveStage({ elements: stage.value.elements.map((e) => ({ ...e, ...byId.get(e.id) })) })
 }
 
-const removeElement = () => saveElements(stage.value.elements.filter((e) => e.id !== element.value!.id))
+// A cópia de vários anda como a do primeiro: o conjunto inteiro um passo ao lado
+function duplicate() {
+  const [first] = chosenElements.value
+  const beside = besideOf(first!)
+  const copies = chosenElements.value.map((e) => ({ ...e, id: uuidv7(), x: e.x + beside.x - first!.x, y: Math.max(0, e.y + beside.y - first!.y), z: e.z + beside.z - first!.z }))
+  saveElements([...stage.value.elements, ...copies], copies.map((c) => c.id))
+}
+
+const removeElement = () => saveElements(stage.value.elements.filter((e) => !selection.elements!.includes(e.id)))
 
 // Com um elemento escolhido na aba Elementos: Ctrl + D duplica ao lado e Del exclui
 function onKey(e: KeyboardEvent) {
-  if (tab.value !== 'elements' || !element.value || (e.target as HTMLElement).closest('input, textarea, select')) return
+  if (tab.value !== 'elements' || !chosenElements.value.length || (e.target as HTMLElement).closest('input, textarea, select')) return
   if (e.ctrlKey && e.code === 'KeyD') {
     e.preventDefault()
     if (!e.repeat) duplicate()
@@ -84,10 +103,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 <template>
   <div
     class="grid h-full gap-2 p-2"
-    :class="only3d ? 'grid-rows-1' : 'grid-rows-[minmax(260px,1fr)_auto] @5xl:grid-cols-[1fr_380px] @5xl:grid-rows-1'"
+    :class="only3d ? 'grid-rows-1' : 'grid-rows-[minmax(260px,1fr)_auto] @5xl:grid-cols-[1fr_430px] @5xl:grid-rows-1'"
   >
     <div class="relative min-h-0">
-      <View3dStage v-model:selected="selection[tab]" :view="view" :editing="editingPosition" :layer="layer" class="absolute! inset-0" />
+      <View3dStage :hidden="hide" :selected="selection[tab]" :view="view" :editing="editingPosition" :layer="layer" class="absolute! inset-0" @update:selected="selection[tab] = $event" />
       <div class="pointer-events-none absolute inset-x-2 top-2 flex flex-wrap items-start gap-2">
         <RlSegmented v-model="view" size="sm" class="sunken pointer-events-auto" :options="views" />
         <div class="pointer-events-auto flex items-center gap-2">
@@ -96,6 +115,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             {{ t('view3d.editPosition') }}
           </RlButton>
           <RlInfo :text="t('view3d.info')" />
+          <RlButton :model-value="!hide.fixtures" mode="toggle" highlight="led" size="sm" :title="t('view3d.showFixtures')" @update:model-value="hide.fixtures = !$event">
+            <Lightbulb :size="16" />
+            {{ t('screens.fixtures') }}
+          </RlButton>
+          <RlButton :model-value="!hide.elements" mode="toggle" highlight="led" size="sm" :title="t('view3d.showElements')" @update:model-value="hide.elements = !$event">
+            <Box :size="16" />
+            {{ t('view3d.elementsTab') }}
+          </RlButton>
         </div>
         <RlButton v-model="only3d" mode="toggle" highlight="led" size="sm" class="pointer-events-auto ml-auto" :title="t('view3d.only3d')" :aria-label="t('view3d.only3d')">
           <component :is="only3d ? Minimize2 : Maximize2" :size="16" />
@@ -104,48 +131,48 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
     </div>
 
-    <section v-if="!only3d" class="panel min-h-0 overflow-y-auto @max-5xl:max-h-[45vh]">
+    <section v-if="!only3d" class="panel min-h-0 overflow-y-auto @max-5xl:h-[45vh]">
       <RlTabs v-model="tab" :tabs="tabs">
+        <template #actions>
+          <RlButton v-if="tab === 'elements'" size="sm" :title="t('view3d.addElement')" :aria-label="t('view3d.addElement')" @press="adding = true"><Plus :size="16" /></RlButton>
+        </template>
         <template #fixtures>
           <div class="flex flex-col gap-3">
             <div class="sunken max-h-64 overflow-y-auto rounded-md">
-              <button
-                v-for="f in project.fixtures"
-                :key="f.id"
-                type="button"
-                class="row"
-                :class="{ active: f.id === selection.fixtures }"
-                @click="selection.fixtures = f.id"
-              >
-                <span class="h-3 w-3 shrink-0 rounded-sm" :style="{ background: f.color }" />
-                <span class="flex-1 truncate">{{ f.name }}</span>
-                <span class="text-xs text-fg-muted">{{ t(`kind.${findDef(project, f.defId)?.kind ?? 'other'}`) }}</span>
-              </button>
+              <div v-for="f in project.fixtures" :key="f.id" class="row" :class="{ active: selection.fixtures!.includes(f.id) }">
+                <button type="button" class="eye" :class="{ off: hide.ids.includes(f.id) }" :title="t('view3d.toggleVisible')" :aria-label="t('view3d.toggleVisible')" @click="toggleHidden(f.id)">
+                  <component :is="hide.ids.includes(f.id) ? EyeOff : Eye" :size="16" />
+                </button>
+                <button type="button" class="pick" :class="{ off: hide.ids.includes(f.id) }" @click="pick('fixtures', f.id, $event.shiftKey || $event.ctrlKey)">
+                  <span class="h-3 w-3 shrink-0 rounded-sm" :style="{ background: f.color }" />
+                  <span class="flex-1 truncate">{{ f.name }}</span>
+                  <span class="text-xs text-fg-muted">{{ t(`kind.${findDef(project, f.defId)?.kind ?? 'other'}`) }}</span>
+                </button>
+              </div>
             </div>
-            <View3dPlacement v-if="fixture && position" :value="position" :title="t('view3d.position', { name: fixture.name })" @change="moveFixture" />
+            <View3dPlacement v-if="fixture && position" :value="position" :title="t('view3d.position', { name: fixture.name })" @change="moveFixtures([$event])" />
+            <View3dGroup v-else-if="chosenFixtures.length > 1" :items="fixturePlacements" :title="t('view3d.group', { count: chosenFixtures.length })" @change="moveFixtures" />
             <p v-else class="text-sm text-fg-muted">{{ t('view3d.pick') }}</p>
           </div>
         </template>
 
         <template #elements>
           <div class="flex flex-col gap-3">
-            <RlButton size="sm" class="self-start" @press="adding = true"><Plus :size="16" />{{ t('view3d.addElement') }}</RlButton>
             <div v-if="stage.elements.length" class="sunken max-h-64 overflow-y-auto rounded-md">
-              <button
-                v-for="e in stage.elements"
-                :key="e.id"
-                type="button"
-                class="row"
-                :class="{ active: e.id === selection.elements }"
-                @click="selection.elements = e.id"
-              >
-                <component :is="stageElementKinds[e.kind].icon" :size="16" class="shrink-0 text-fg-muted" />
-                <span class="flex-1 truncate">{{ elementName(e) }}</span>
-              </button>
+              <div v-for="e in stage.elements" :key="e.id" class="row" :class="{ active: selection.elements!.includes(e.id) }">
+                <button type="button" class="eye" :class="{ off: hide.ids.includes(e.id) }" :title="t('view3d.toggleVisible')" :aria-label="t('view3d.toggleVisible')" @click="toggleHidden(e.id)">
+                  <component :is="hide.ids.includes(e.id) ? EyeOff : Eye" :size="16" />
+                </button>
+                <button type="button" class="pick" :class="{ off: hide.ids.includes(e.id) }" @click="pick('elements', e.id, $event.shiftKey || $event.ctrlKey)">
+                  <component :is="stageElementKinds[e.kind].icon" :size="16" class="shrink-0 text-fg-muted" />
+                  <span class="flex-1 truncate">{{ elementName(e) }}</span>
+                </button>
+              </div>
             </div>
             <p v-else class="text-sm text-fg-muted">{{ t('view3d.noElements') }}</p>
-            <template v-if="element">
-              <View3dPlacement :value="element" :title="t('view3d.position', { name: elementName(element) })" @change="moveElement" />
+            <template v-if="chosenElements.length">
+              <View3dPlacement v-if="element" :value="element" :title="t('view3d.position', { name: elementName(element) })" @change="moveElements([$event])" />
+              <View3dGroup v-else :items="chosenElements" :title="t('view3d.group', { count: chosenElements.length })" @change="moveElements" />
               <div class="flex gap-2">
                 <RlButton size="sm" :title="`${t('common.duplicate')} (Ctrl+D)`" @press="duplicate"><Copy :size="16" />{{ t('common.duplicate') }}</RlButton>
                 <RlButton size="sm" color="var(--color-danger)" :title="`${t('common.remove')} (Del)`" @press="removeElement">
@@ -213,14 +240,36 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 <style scoped>
 .row {
   display: flex;
-  gap: 10px;
   width: 100%;
   min-height: 44px;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 12px 0 4px;
   border-bottom: 1px solid rgb(255 255 255 / 0.05);
   font-size: 14px;
   text-align: left;
+}
+
+.pick {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  align-self: stretch;
+  text-align: left;
+}
+
+.eye {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--color-fg-muted);
+}
+
+.off {
+  opacity: 0.45;
 }
 
 .active {

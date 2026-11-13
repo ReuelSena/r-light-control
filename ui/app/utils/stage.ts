@@ -46,6 +46,25 @@ export function placeObject(o: { position: Vector3; rotation: Euler }, p: Placem
   o.rotation.set(rad(p.rotationX), rad(p.rotationY), rad(p.rotationZ), 'YXZ')
 }
 
+export type Arrange = 'min' | 'center' | 'max' | 'distribute'
+
+/**
+ * Novo valor de cada item num eixo: alinha ao menor, ao centro ou ao maior, ou distribui por igual entre o primeiro e
+ * o último (na ordem dos valores; com `byValue` falso, na ordem da escolha, como nas rotações).
+ */
+export function arrangeValues(values: number[], mode: Arrange, byValue = true) {
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  if (mode !== 'distribute') return values.map(() => (mode === 'min' ? min : mode === 'max' ? max : (min + max) / 2))
+  const order = values.map((_, i) => i)
+  if (byValue) order.sort((a, b) => values[a]! - values[b]!)
+  const first = values[order[0]!]!
+  const last = values[order.at(-1)!]!
+  const out = [...values]
+  order.forEach((i, n) => (out[i] = Math.round((first + ((last - first) * n) / (order.length - 1)) * 1000) / 1000))
+  return out
+}
+
 /** Lugar da cópia: ao lado, na direção da largura do elemento (girado, um truss duplicado continua a linha). */
 export function besideOf(e: StageElement) {
   const step = new Vector3(stageElementKinds[e.kind].width, 0, 0).applyEuler(new Euler(rad(e.rotationX), rad(e.rotationY), rad(e.rotationZ), 'YXZ'))

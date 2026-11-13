@@ -817,7 +817,7 @@
       "side": "Lateral"
     },
     "stage": "Palco",
-    "info": "Prévia ao vivo: as fixtures acendem com o que sai nos universos.\nCâmera com o mouse: arrastar com o botão do meio (a roda) gira, na vista 3D, ou desloca, nas outras; o botão direito desloca; a roda aproxima. No toque, um dedo gira ou desloca e a pinça aproxima.\nO botão esquerdo (ou o toque) só escolhe, e só o que é da aba aberta: fixtures na aba Fixtures, elementos de palco na aba Elementos.\nCom \"Editar posição\" ligado, arrastar o escolhido o move (no toque, escolha antes): no Topo pelo chão, na Frente em X e altura, na Lateral em Z e altura, e no 3D de frente para a câmera.\nNa aba Elementos, Ctrl + D duplica o elemento ao lado e Del o exclui.",
+    "info": "Prévia ao vivo: as fixtures acendem com o que sai nos universos.\nCâmera com o mouse: arrastar com o botão do meio (a roda) gira, na vista 3D, ou desloca, nas outras; o botão direito desloca; a roda aproxima. No toque, um dedo gira ou desloca e a pinça aproxima.\nO botão esquerdo (ou o toque) só escolhe, e só o que é da aba aberta: fixtures na aba Fixtures, elementos de palco na aba Elementos.\nCom \"Editar posição\" ligado, arrastar o escolhido o move (no toque, escolha antes): no Topo pelo chão, na Frente em X e altura, na Lateral em Z e altura, e no 3D de frente para a câmera.\nShift + clique soma ou tira da escolha; arrastar no vazio (botão esquerdo) abre uma caixa que escolhe o que ficar dentro (com Shift, soma). Arrastar um dos escolhidos move todos, e o painel edita a posição, a rotação, o alinhamento e a distribuição em grupo.\nNa aba Elementos, Ctrl + D duplica os elementos ao lado e Del os exclui.",
     "position": "{name}: posição",
     "rotation": "Rotação",
     "axis": {
@@ -829,6 +829,18 @@
       "rotationZ": "Z (°)"
     },
     "pick": "Escolha uma fixture na lista ou no palco.",
+    "group": "{count} escolhidos: em grupo",
+    "showFixtures": "Mostrar ou esconder todas as fixtures (só para arrumar o palco)",
+    "showElements": "Mostrar ou esconder todos os elementos (só para arrumar o palco)",
+    "toggleVisible": "Mostrar ou esconder",
+    "groupPosition": "Posição (centro do grupo)",
+    "arrange": {
+      "min": "Mín",
+      "center": "Centro",
+      "max": "Máx",
+      "distribute": "Distribuir"
+    },
+    "arrangeTitle": "Alinhar e distribuir",
     "size": {
       "width": "Largura (m)",
       "depth": "Profundidade (m)",

@@ -460,6 +460,8 @@
     "length": "Comprimento",
     "lengthInfo": "Onde a passada termina e recomeça (laço) ou acaba (uma vez). Arraste a linha laranja. Automático: o fim do último clipe com duração.",
     "auto": "Automático",
+    "clip": "Clipe",
+    "timeline": "Linha do tempo",
     "start": "Início",
     "duration": "Duração",
     "track": "Trilha",

@@ -119,7 +119,8 @@ function wheel(e: WheelEvent) {
 
 <template>
   <div class="flex flex-col gap-3">
-    <div class="flex flex-wrap items-center gap-2">
+    <!-- Barra: o que entra, como repete e o comprimento; o zoom fica no fim -->
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
       <RlButton size="sm" @press="adding = true">
         <Plus :size="16" />
         {{ t('collection.add') }}
@@ -130,80 +131,105 @@ function wheel(e: WheelEvent) {
         :options="orders.map((value) => ({ value, label: t(`runOrder.${value}`) }))"
         @update:model-value="(runOrder) => save({ runOrder })"
       />
-      <span class="flex items-center gap-1">
+      <span class="flex items-center gap-1.5 text-sm">
         <RlSwitch :model-value="fn.beats" @update:model-value="(beats) => save({ beats })">{{ t('collection.beats') }}</RlSwitch>
         <RlInfo :text="t('collection.beatsInfo')" />
       </span>
-      <span class="flex items-center gap-1 text-sm">
+      <span class="flex items-center gap-1.5 text-sm">
         {{ t('collection.length') }}
         <RlInfo :text="t('collection.lengthInfo')" />
         <RlTimeField class="w-28" :beats="fn.beats" :model-value="fn.length ?? autoEnd" @update:model-value="(ms) => save({ length: ms || null })" />
         <RlButton v-if="fn.length !== null" size="sm" @press="save({ length: null })">{{ t('collection.auto') }}</RlButton>
       </span>
-      <span class="ml-auto flex items-center gap-1">
-        <RlInfo :text="t('collection.timelineInfo')" />
-        <RlStepper v-model="zoom" :steps="zoomSteps" :default="60" :format="(v) => `${Math.round((v / 60) * 100)}%`" />
-      </span>
     </div>
 
-    <div class="sunken overflow-x-auto rounded-md" @wheel="wheel">
-      <div class="relative" :style="{ width: `${extent * zoom}px` }">
-        <div class="relative h-6 border-b border-line text-xs text-fg-muted">
-          <span v-for="tick in ticks" :key="tick" class="absolute top-1 pl-1" :style="{ left: `${tick * zoom}px` }">{{ tick }}</span>
-        </div>
-        <div
-          class="relative"
-          :style="{
-            height: `${rows * ROW}px`,
-            backgroundImage: `linear-gradient(90deg, var(--color-line) 1px, transparent 1px), linear-gradient(var(--color-surface-2) 1px, transparent 1px)`,
-            backgroundSize: `${zoom}px 100%, 100% ${ROW}px`,
-          }"
-          @pointerdown.self="selected = null"
-        >
-          <div
-            v-for="(item, i) in items"
-            :key="i"
-            class="absolute flex cursor-grab items-center gap-1.5 overflow-hidden rounded px-2 text-sm font-bold text-fg select-none active:cursor-grabbing"
-            :class="selected === i ? 'outline-2 outline-select' : ''"
-            :style="{
-              left: `${px(item.start)}px`,
-              top: `${item.layer * ROW + 3}px`,
-              width: `${item.duration === null ? (extent * 1000 - item.start) * zoom / 1000 : Math.max(px(item.duration), 8)}px`,
-              height: `${ROW - 6}px`,
-              touchAction: 'none',
-              border: `1px solid ${colorOf(item)}`,
-              background: `color-mix(in srgb, ${colorOf(item)} 35%, #000)`,
-            }"
-            @pointerdown="down($event, i, 'move')"
-          >
-            <component :is="functionIcons[fnOf(item)?.type ?? 'scene']" :size="16" class="shrink-0" />
-            <span class="truncate">{{ fnOf(item)?.name }}</span>
-            <span v-if="item.duration === null" class="ml-auto shrink-0">∞→</span>
-            <span v-if="item.duration !== null" class="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-white/20" @pointerdown.stop="down($event, i, 'left')" />
-            <span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-white/20" @pointerdown.stop="down($event, i, 'right')" />
+    <!-- Linha do tempo: o cabeçalho tem o zoom; a coluna fixa à esquerda numera as trilhas e diz a unidade da régua -->
+    <div class="sunken rounded-md">
+      <div class="flex items-center justify-between gap-2 border-b border-line px-2 py-1.5">
+        <span class="flex items-center gap-1.5 text-sm font-bold">{{ t('collection.timeline') }} <RlInfo :text="t('collection.timelineInfo')" /></span>
+        <RlStepper v-model="zoom" :steps="zoomSteps" :default="60" :format="(v) => `${Math.round((v / 60) * 100)}%`" />
+      </div>
+      <div class="flex">
+      <div class="shrink-0 border-r border-line text-xs text-fg-muted" style="width: 36px">
+        <div class="flex h-6 items-center justify-center border-b border-line">{{ fn.beats ? 'bt' : 's' }}</div>
+        <div v-for="r in rows" :key="r" class="flex items-center justify-center" :style="{ height: `${ROW}px` }">{{ r }}</div>
+      </div>
+      <div class="min-w-0 flex-1 overflow-x-auto" @wheel="wheel">
+        <div class="relative" :style="{ width: `${extent * zoom}px` }">
+          <div class="relative h-6 border-b border-line text-xs text-fg-muted">
+            <span v-for="tick in ticks" :key="tick" class="absolute top-1 pl-1" :style="{ left: `${tick * zoom}px` }">{{ tick }}</span>
           </div>
-          <div v-if="clock !== undefined" class="pointer-events-none absolute inset-y-0 w-0.5 bg-lcd" :style="{ left: `${px(clock)}px` }" />
+          <div
+            class="relative"
+            :style="{
+              height: `${rows * ROW}px`,
+              backgroundImage: `linear-gradient(90deg, var(--color-line) 1px, transparent 1px), linear-gradient(var(--color-line) 1px, transparent 1px)`,
+              backgroundSize: `${zoom}px 100%, 100% ${ROW}px`,
+            }"
+            @pointerdown.self="selected = null"
+          >
+            <div
+              v-for="(item, i) in items"
+              :key="i"
+              class="absolute flex cursor-grab items-center gap-1.5 overflow-hidden rounded px-2 text-sm font-bold text-fg select-none active:cursor-grabbing"
+              :class="selected === i ? 'outline-2 outline-select' : ''"
+              :style="{
+                left: `${px(item.start)}px`,
+                top: `${item.layer * ROW + 3}px`,
+                width: `${item.duration === null ? ((extent * 1000 - item.start) * zoom) / 1000 : Math.max(px(item.duration), 8)}px`,
+                height: `${ROW - 6}px`,
+                touchAction: 'none',
+                border: `1px solid ${colorOf(item)}`,
+                background: `color-mix(in srgb, ${colorOf(item)} 35%, #000)`,
+              }"
+              @pointerdown="down($event, i, 'move')"
+            >
+              <component :is="functionIcons[fnOf(item)?.type ?? 'scene']" :size="16" class="shrink-0" />
+              <span class="truncate">{{ fnOf(item)?.name }}</span>
+              <span v-if="item.duration === null" class="ml-auto shrink-0">∞</span>
+              <span v-if="item.duration !== null" class="absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-white/20" @pointerdown.stop="down($event, i, 'left')" />
+              <span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-white/20" @pointerdown.stop="down($event, i, 'right')" />
+            </div>
+            <div v-if="clock !== undefined" class="pointer-events-none absolute inset-y-0 w-0.5 bg-lcd" :style="{ left: `${px(clock)}px` }" />
+          </div>
+          <!-- Comprimento do laço: a linha atravessa régua e trilhas; a alça fica na régua -->
+          <div class="pointer-events-none absolute top-0 bottom-0 w-3 -translate-x-1/2" :style="{ left: `${px(length ?? autoEnd)}px` }">
+            <div class="mx-auto h-full w-0.5" :class="length === null ? 'bg-fg-dim' : 'bg-select'" />
+            <div class="pointer-events-auto absolute top-0 h-6 w-3 cursor-ew-resize" style="touch-action: none" @pointerdown="down($event, 0, 'length')" />
+          </div>
         </div>
-        <!-- Comprimento do laço: a linha atravessa régua e trilhas; a alça fica na régua -->
-        <div class="pointer-events-none absolute top-0 bottom-0 w-3 -translate-x-1/2" :style="{ left: `${px(length ?? autoEnd)}px` }">
-          <div class="mx-auto h-full w-0.5" :class="length === null ? 'bg-fg-dim' : 'bg-select'" />
-          <div class="pointer-events-auto absolute top-0 h-6 w-3 cursor-ew-resize" :style="{ touchAction: 'none' }" @pointerdown="down($event, 0, 'length')" />
-        </div>
+      </div>
       </div>
     </div>
 
-    <div v-for="(item, i) in items" :key="i" class="sunken flex flex-col gap-2 rounded-md p-2" :class="selected === i ? 'outline-2 outline-select' : ''" @pointerdown="selected = i">
-      <div class="flex flex-wrap items-end gap-2">
-        <span class="flex min-w-32 flex-1 items-center gap-2 pb-2">
-          <component :is="functionIcons[fnOf(item)?.type ?? 'scene']" :size="18" class="shrink-0 text-fg-muted" />
+    <!-- Os mesmos clipes em campos numéricos, com a cor da prioridade. Largo: uma linha por clipe, com cabeçalho. Estreito: um cartão por clipe -->
+    <div v-if="items.length" class="sunken rounded-md">
+      <div class="hidden grid-cols-[minmax(9rem,1fr)_7rem_9rem_4.5rem_9rem_5.5rem] items-center gap-2 border-b border-line px-2 py-1.5 text-xs text-fg-muted @3xl:grid">
+        <span>{{ t('collection.clip') }}</span>
+        <span>{{ t('collection.start') }}</span>
+        <span>{{ t('collection.duration') }}</span>
+        <span>{{ t('collection.track') }}</span>
+        <span class="flex items-center gap-1">{{ t('studio.priority') }} <RlInfo :text="t('collection.priorityInfo')" /></span>
+        <span />
+      </div>
+      <div
+        v-for="(item, i) in items"
+        :key="i"
+        class="grid grid-cols-2 items-end gap-2 border-b border-line px-2 py-2 last:border-b-0 @3xl:grid-cols-[minmax(9rem,1fr)_7rem_9rem_4.5rem_9rem_5.5rem] @3xl:items-center @3xl:py-1.5"
+        :class="selected === i ? 'bg-select/15' : ''"
+        @pointerdown="selected = i"
+      >
+        <span class="col-span-2 flex min-w-0 items-center gap-2 @3xl:col-span-1">
+          <span class="size-2.5 shrink-0 rounded-full" :style="{ background: colorOf(item) }" />
+          <component :is="functionIcons[fnOf(item)?.type ?? 'scene']" :size="16" class="shrink-0 text-fg-muted" />
           <span class="truncate">{{ fnOf(item)?.name }}</span>
         </span>
-        <label class="field-label w-28">
-          {{ t('collection.start') }}
+        <label class="field-label @3xl:text-base">
+          <span class="@3xl:hidden">{{ t('collection.start') }}</span>
           <RlTimeField :beats="fn.beats" :model-value="item.start" @update:model-value="(start) => saveItem(i, { start })" />
         </label>
-        <label class="field-label w-36">
-          {{ t('collection.duration') }}
+        <label class="field-label @3xl:text-base">
+          <span class="@3xl:hidden">{{ t('collection.duration') }}</span>
           <RlTimeField
             :beats="fn.beats"
             infinite
@@ -211,24 +237,24 @@ function wheel(e: WheelEvent) {
             @update:model-value="(ms) => saveItem(i, { duration: ms === INFINITE ? null : Math.max(ms, 10) })"
           />
         </label>
-        <label class="field-label w-20">
-          {{ t('collection.track') }}
+        <label class="field-label @3xl:text-base">
+          <span class="@3xl:hidden">{{ t('collection.track') }}</span>
           <input class="field" type="number" min="1" max="256" :value="item.layer + 1" @change="saveItem(i, { layer: Math.min(255, Math.max(0, Math.round(number($event)) - 1)) })">
         </label>
-      </div>
-      <div v-if="selected === i" class="flex flex-wrap items-center gap-2">
-        <span class="flex items-center gap-1 text-sm">{{ t('studio.priority') }} <RlInfo :text="t('collection.priorityInfo')" /></span>
-        <RlSegmented
-          size="sm"
-          :model-value="item.priority ?? 'inherit'"
-          :options="[{ value: 'inherit', label: t('collection.inherit') }, ...(['low', 'normal', 'high'] as const).map((value) => ({ value, label: t(`priority.${value}`) }))]"
-          @update:model-value="(p) => saveItem(i, { priority: p === 'inherit' ? null : p })"
-        />
-        <RlButton class="ml-auto" size="sm" :aria-label="t('common.duplicate')" :title="t('common.duplicate')" @press="duplicate(i)"><Copy :size="14" /></RlButton>
-        <RlButton size="sm" :aria-label="t('common.remove')" :title="t('common.remove')" @press="remove(i)"><Trash2 :size="14" /></RlButton>
+        <label class="field-label @3xl:text-base">
+          <span class="@3xl:hidden">{{ t('studio.priority') }}</span>
+          <select class="field" :value="item.priority ?? 'inherit'" @change="saveItem(i, { priority: ($event.target as HTMLSelectElement).value === 'inherit' ? null : (($event.target as HTMLSelectElement).value as Priority) })">
+            <option value="inherit">{{ t('collection.inherit') }}</option>
+            <option v-for="p in (['low', 'normal', 'high'] as const)" :key="p" :value="p">{{ t(`priority.${p}`) }}</option>
+          </select>
+        </label>
+        <span class="col-span-2 flex justify-end gap-1 @3xl:col-span-1">
+          <RlButton size="sm" :aria-label="t('common.duplicate')" :title="t('common.duplicate')" @press="duplicate(i)"><Copy :size="14" /></RlButton>
+          <RlButton size="sm" :aria-label="t('common.remove')" :title="t('common.remove')" @press="remove(i)"><Trash2 :size="14" /></RlButton>
+        </span>
       </div>
     </div>
-    <p v-if="!items.length" class="text-sm text-fg-muted">{{ t('collection.empty') }}</p>
+    <p v-else class="text-sm text-fg-muted">{{ t('collection.empty') }}</p>
 
     <RlDialog v-model:open="adding" :title="t('collection.add')" sheet>
       <div class="grid gap-1.5">

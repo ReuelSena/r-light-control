@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Asterisk, Grid3x3, LocateFixed, Plus, Undo2 } from 'lucide-vue-next'
-import type { Attribute } from '~/types/generated/Attribute'
 import type { AttributeKind } from '~/types/generated/AttributeKind'
 import type { AttributeTiming } from '~/types/generated/AttributeTiming'
 import type { AttributeValue } from '~/types/generated/AttributeValue'
@@ -18,7 +17,6 @@ type Scene = Extract<Function, { type: 'scene' }>
 // da cena mexem em várias de uma vez.
 const props = defineProps<{ fn: Scene }>()
 const { t } = useI18n()
-const { format } = useValueFormat()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
 const selection = ref<string[]>([])
@@ -27,19 +25,6 @@ const tool = ref('channels')
 const editingFixtures = ref(false)
 const sameType = ref(false)
 const pickingGroup = ref(false)
-
-// Atributos de cada ferramenta: knobs para níveis, botões para as faixas (gobo, roda de cores…)
-const panels: Record<'color' | 'effects', { knobs: Attribute[]; caps: Attribute[] }> = {
-  color: { knobs: ['white', 'amber', 'uv', 'lime', 'indigo', 'colorTemperature'], caps: ['colorWheel', 'colorMacro'] },
-  effects: { knobs: ['zoom', 'focus', 'iris', 'goboRotation'], caps: ['shutter', 'gobo', 'prism'] },
-}
-// A aba aparece só se a fixture tem algum destes atributos
-const toolAttributes: Record<string, Attribute[]> = {
-  intensity: ['dimmer'],
-  color: ['red', ...panels.color.knobs, ...panels.color.caps],
-  position: ['pan'],
-  effects: [...panels.effects.knobs, ...panels.effects.caps],
-}
 
 // Valores de cada fixture: os dos grupos, com as exceções por cima (as mesmas contas do servidor)
 const effective = computed(() => sceneValues(project.value, props.fn))
@@ -66,15 +51,10 @@ const valueOf = (channel: number) => {
 const exceptions = (f: Fixture) => (covered.value.includes(f.id) ? props.fn.values.filter((v) => v.fixture === f.id) : [])
 const isException = (channel: number) => !group.value && !!fixture.value && exceptions(fixture.value).some((v) => v.channel === channel)
 const withExceptions = computed(() => (group.value ? [] : selected.value.filter((f) => exceptions(f).length)))
-const channelsWith = (a: Attribute) => channels.value.flatMap((c, i) => (c.attribute === a && !c.fine ? [i] : []))
-// Valor (0–255) do atributo na fixture escolhida; undefined se ela não tem o atributo
-const attr = (a: Attribute) => {
-  const channel = channelsWith(a)[0]
-  return channel === undefined ? undefined : valueOf(channel)
-}
-const present = (list: Attribute[]) => list.filter((a) => attr(a) !== undefined)
-const capsOf = (a: Attribute) => channels.value[channelsWith(a)[0]!]!.capabilities
-const tools = computed(() => ['channels', ...Object.keys(toolAttributes).filter((name) => present(toolAttributes[name]!).length)])
+const tools = computed(() => [
+  'channels',
+  ...attributeKinds.filter((k) => toolAttributes[k].some((a) => channels.value.some((c) => c.attribute === a))),
+])
 const groups = computed(() =>
   props.fn.channelGroups.flatMap((level) => project.value.channelGroups.filter((g) => g.id === level.group).map((g) => ({ ...g, value: level.value }))),
 )
@@ -128,24 +108,6 @@ function pickGroup(id: string) {
 function backToGroup() {
   save({ values: props.fn.values.filter((v) => !withExceptions.value.some((f) => f.id === v.fixture)) })
 }
-
-// Grava por atributo, em todos os canais dele (ex.: o vermelho de cada pixel de uma barra)
-function setAttributes(values: Partial<Record<Attribute, number>>) {
-  setChannels(Object.entries(values).flatMap(([a, value]) => channelsWith(a as Attribute).map((channel): [number, number] => [channel, value])))
-}
-
-const color = computed({
-  get: () => `#${(['red', 'green', 'blue'] as const).map((a) => (attr(a) ?? 0).toString(16).padStart(2, '0')).join('')}`,
-  set: (hex) => {
-    const [red, green, blue] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
-    setAttributes({ red, green, blue })
-  },
-})
-
-const position = computed({
-  get: () => ({ x: (attr('pan') ?? 0) / 255, y: (attr('tilt') ?? 0) / 255 }),
-  set: ({ x, y }) => setAttributes({ pan: x * 255, tilt: y * 255 }),
-})
 
 // Valores zerados de todos os canais das fixtures que ainda não estão na cena (ao entrar nela)
 const zeros = (ids: string[]) =>
@@ -315,44 +277,8 @@ function setKind(kind: AttributeKind, changes: Partial<AttributeTiming>) {
           </RlChannelStrip>
         </div>
       </template>
-
-      <template #intensity>
-        <div class="flex h-80 w-24 flex-col gap-2">
-          <RlLcd>{{ format(attr('dimmer')! / 255) }}</RlLcd>
-          <RlFader class="flex-1" :model-value="attr('dimmer')! / 255" @update:model-value="(v) => setAttributes({ dimmer: v * 255 })" />
-        </div>
-      </template>
-
-      <template v-for="(panel, name) in panels" :key="name" #[name]>
-        <div class="flex flex-wrap items-start gap-5">
-          <RlColorPicker v-if="name === 'color' && attr('red') !== undefined" v-model="color" class="w-full max-w-xs" />
-          <div v-if="present(panel.knobs).length" class="flex flex-wrap gap-4">
-            <div v-for="a in present(panel.knobs)" :key="a" class="flex flex-col items-center gap-1">
-              <RlKnob :model-value="attr(a)! / 255" :color="attributeLook[a].color" @update:model-value="(v) => setAttributes({ [a]: v * 255 })" />
-              <span class="text-xs text-fg-muted">{{ t(`attribute.${a}`) }} · {{ format(attr(a)! / 255) }}</span>
-            </div>
-          </div>
-          <div v-for="a in present(panel.caps)" :key="a" class="grid gap-1.5">
-            <h4 class="field-label">{{ t(`attribute.${a}`) }}</h4>
-            <div class="flex flex-wrap gap-1.5">
-              <RlButton
-                v-for="cap in capsOf(a)"
-                :key="cap.min"
-                size="sm"
-                highlight="led"
-                :color="cap.color ?? 'var(--color-select)'"
-                :model-value="attr(a)! >= cap.min && attr(a)! <= cap.max"
-                @press="setAttributes({ [a]: cap.min })"
-              >
-                {{ cap.name }}
-              </RlButton>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <template #position>
-        <RlXYPad v-model="position" class="aspect-square w-full max-w-xs" />
+      <template v-for="kind in attributeKinds" :key="kind" #[kind]>
+        <StudioAttributeTools :channels="channels" :kind="kind" :get="valueOf" @set="setChannels" />
       </template>
     </RlTabs>
 

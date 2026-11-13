@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 13;
+const SCHEMA_VERSION: u32 = 16;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -316,6 +316,8 @@ fn migrate(project: &mut Value, version: u32) {
             w.entry("groups").or_insert(json!([]));
         }
     }
+    // 13 → 16: as paletas (versões 14 e 15, F12b) foram removidas; os campos delas num arquivo
+    // dessas versões são ignorados ao ler, e a cena que as usava perde a cor
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -686,6 +688,31 @@ mod tests {
         let v12 = json!({ "format": FORMAT, "schemaVersion": 12, "project": old });
         std::fs::write(&file, v12.to_string()).unwrap();
         assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn versions_14_and_15_open_ignoring_the_removed_palettes() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = crate::hub::example_snapshot(None).project;
+        let mut old = serde_json::to_value(&project).unwrap();
+        old["palettes"] =
+            json!([{ "id": "p1", "name": "Verde", "kind": "color", "models": [], "fixtures": [] }]);
+        for f in old["functions"].as_array_mut().unwrap() {
+            if f["type"] == "scene" {
+                f["fixturePalettes"] = json!([{ "fixture": "par1", "palette": "p1" }]);
+                for g in f["groups"].as_array_mut().unwrap() {
+                    g["palettes"] = json!(["p1"]);
+                }
+            }
+        }
+        let file = dir.join("antigo.rlc");
+        for version in [14, 15] {
+            let v = json!({ "format": FORMAT, "schemaVersion": version, "project": old });
+            std::fs::write(&file, v.to_string()).unwrap();
+            assert_eq!(read(&file).unwrap().0, project);
+        }
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

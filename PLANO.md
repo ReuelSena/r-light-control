@@ -20,9 +20,13 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 5. Ajustar → validar de novo.
 6. Marcar a fase aqui e registrar as decisões novas no `DECISOES.md`. Commit se o usuário pedir.
 
-## Pendências (2026-11-06)
+## Pendências (2026-11-13)
 
-**Onde paramos (2026-11-06):** o usuário tem um evento hoje e vai validar o software inteiro com o rig montado. A pedido dele, a [F11](docs/fases/fase-11.md) entrou só com o console (XY Pad, Animation e macros), e a segurança dela ficou para depois. Depois do console, as Paletas (F12b). A validação de hoje cobre a F9, a F9b, a F10c, a F10d e o console da F11.
+**Entregue (2026-11-13):** a [F12b](docs/fases/fase-12b.md) (Gravação: gravar a saída, Update e filtro por tipo; as paletas foram tentadas e removidas no mesmo dia), aguardando a validação do usuário junto com a F9, a F9b, a F10c, a F10d e a F11. Próxima na ordem: F11b (coleção com linha do tempo).
+
+**Onde paramos (2026-11-13):** a F12b (Gravação) foi entregue sem a validação da F9, da F9b, da F10c, da F10d e da F11, a pedido do usuário (exceção ao G1). Falta ele validar tudo numa rodada só, com o rig montado: o checklist de cada fase está no arquivo dela. Depois, a F11b e as fases seguintes da ordem.
+
+**Antes (2026-11-06):** o usuário tem um evento hoje e vai validar o software inteiro com o rig montado. A pedido dele, a [F11](docs/fases/fase-11.md) entrou só com o console (XY Pad, Animation e macros), e a segurança dela ficou para depois. Depois do console, as Paletas (F12b). A validação de hoje cobre a F9, a F9b, a F10c, a F10d e o console da F11.
 
 **Antes (2026-10-27):** a [F10d](docs/fases/fase-10d.md) (EFX avançado) foi entregue e commitada em 2026-10-27, e falta o usuário validá-la junto com a F10c, numa rodada só ([checklist](docs/fases/fase-10d.md#validação-com-você), pedido dele). A [F9](docs/fases/fase-09.md) (RGB Matrix) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação e o arquivo salvo) ganhou os exemplos dela, com cópia dos arquivos antes. A [F9b](docs/fases/fase-09b.md) (Phaser) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação, pelo app aberto, e o arquivo salvo) ganhou a pasta "Phaser", com cópia dos arquivos antes. Detalhes que não estão no código:
 - Em 2026-10-22, o app abre o "Show de exemplo" pela recuperação: o arquivo salvo ainda é da versão 8, e o trabalho da F10c e os exemplos da F10d estão na recuperação (os da F10d também foram postos no arquivo salvo). Antes de qualquer teste que abra outro projeto, guardar uma cópia da recuperação e restaurá-la no fim (abrir um projeto descarta a recuperação).
@@ -442,16 +446,21 @@ Validação:
 - [ ] Mapeamentos sobrevivem a replugar.
 - [ ] Um MSC "GO" de um programa de teste dispara a criação ligada.
 
-### F12b — Paletas e gravação · ⬜ (nova, 2026-10-21)
+### F12b — Gravação (P5 e P7) · 🟡 (nova, 2026-10-21; em andamento desde 2026-11-13)
 
-- **P1, as paletas:** uma "receita" com nome (uma cor, uma posição, um gobo). As cenas guardam a referência: corrigir a paleta uma vez corrige todas as cenas que a usam. Paleta por fixture, por modelo e universal.
+Mini-plano e checklist de execução: [docs/fases/fase-12b.md](docs/fases/fase-12b.md). O usuário pediu para seguir sem validar a F9, a F9b, a F10c, a F10d e a F11 (exceção ao G1).
+
+- **P1, as paletas: removida (2026-11-13, pedido do usuário).** Foi implementada e retirada inteira no mesmo dia: não fez sentido na prática. A diferença de cor entre fixtures (o Strobo com vermelho e verde cheios fica muito verde; o ParLed tem âmbar intenso) se resolve com cenas de cada cor para cada fixture.
 - **P5, gravar a partir da saída e "Update":** gravar numa cena o que está saindo na luz agora (criações, Mesa simples e o resto juntos), o "dump" que estava no Backlog. O "Update" grava de volta, na criação que está rodando, um ajuste feito ao vivo. Ao gravar sobre algo que já existe: perguntar, sobrescrever, mesclar ou remover.
 - **P7, filtros de atributo:** ao gravar ou aplicar, escolher quais tipos de atributo valem (só a posição, só a cor). Sem os "Worlds", que dependiam do multiusuário.
 - **Onde mexe:** o contrato (nova versão do projeto, com migração), o editor de cena e o Studio.
-- Catálogo: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P1, P5 e P7).
+- Catálogo: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P5 e P7; o P1 foi removido).
 
-Validação:
-- [ ] Mudar uma paleta muda todas as cenas que a usam.
+Entregue em 2026-11-13, antes da validação das fases anteriores (G1: o usuário pediu para seguir), com as quatro respostas dele e as recomendações do mini-plano (para ajustar na entrega). Projeto na versão 16 (as versões 14 e 15, das paletas, foram removidas).
+- **Gravar saída:** botão no Studio. Grava numa cena nova ou existente os canais controlados agora (criações, prévia e Mesa simples), com Sobrescrever ou Mesclar e o filtro por tipo. O motor responde ao `Command::Capture`; o Localizar, o Grand Master e o blackout ficam de fora.
+- **Update:** botão na Mesa simples; grava os canais dela na cena escolhida (filtro por tipo) e a Mesa solta o que foi gravado.
+
+Validação (detalhada em [docs/fases/fase-12b.md](docs/fases/fase-12b.md#validação-com-você)):
 - [ ] Gravar numa cena o que está saindo, com cenas e a Mesa simples juntas.
 - [ ] O "Update" grava um ajuste ao vivo na cena que está rodando.
 - [ ] Um filtro "só posição" não mexe nas cores da cena.
@@ -545,7 +554,7 @@ Validação:
 - Android como host USB.
 - Art-Net/sACN e OSC.
 - Show/timeline com áudio.
-- Paletas: saíram do Backlog e entram na F12b (2026-10-21).
+- Paletas: entraram na F12b (2026-10-21) e foram removidas em 2026-11-13, a pedido do usuário.
 - Só se o usuário pedir (explicados a ele na F5):
   - modificadores de canal (curvas por canal);
   - HTP/LTP forçado por canal;

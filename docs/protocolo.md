@@ -38,7 +38,7 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 - **`clientId`:** é o id do aparelho em `remote.clients`. É assim que ele se reconhece na lista do ⚙.
 
 **Tópicos do `evt`** (o caminho no `Snapshot`, aplicado no lugar pelo cliente):
-- **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`, `project.scripts`.
+- **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`, `project.scripts`. A captura avisa `project.functions` e `dirty`; o `updateScene`, `project.functions` e `desk`.
 - **Arquivo e biblioteca:** `projectPath`, `dirty`, `recovered`, `projects` (os projetos da pasta, relidos a cada segundo) e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
 - **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `paused`, `loadedSteps`, `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (o "Localizar": as `fixtures` acesas e a intensidade `others` das outras, de 0 a 255).
@@ -114,6 +114,8 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `saveStage` | `stage` | Palco da 3D View: tamanho, posição das fixtures e elementos de palco |
 | `setPreview` | `function?` | Cena em prévia na luz (só cenas); sem `function`, desliga. Uma por vez, acima das criações rodando e abaixo da Mesa simples |
 | `setHighlight` | `fixtures`, `others` | Fixtures do "Localizar": dimmer e RGBW a 100%, shutter no padrão, acima da Mesa simples; sem fixtures, apaga. `others` (0 a 255, como o Grand Master) é a intensidade (dimmer e cores) de todas as outras fixtures enquanto algo está localizado: 255 não reduz nada e 0 deixa só as localizadas acesas. Pan, tilt e gobo não mudam |
+| `captureOutput` | `target, merge, kinds` | Grava numa cena o que está saindo na luz (F12b). `target` é `{ "type": "new", "id", "name" }` (cena nova, sem pasta) ou `{ "type": "scene", "id" }`. O servidor pede ao motor o quadro antes do Localizar, do Grand Master e do blackout, só dos canais controlados (faders das criações acesas, prévia e Mesa simples; fora os que estão em fade out ou no delay de entrada, e tudo no padrão de teste), e grava os valores como valores próprios das fixtures. `kinds` são os tipos do filtro (`intensity`, `color`, `position`, `effects`); vazio = tudo, e só ele leva os atributos sem tipo. `merge: false` é o Sobrescrever (tira da cena os valores dos tipos do filtro, e mantém os grupos); `true` mescla por cima. Sem nada para gravar, recusa. Entra no desfazer. Resposta: `null` |
+| `updateScene` | `function, kinds` | "Update" (F12b): grava na cena os canais de fixtures que a Mesa simples segura (como valores próprios, filtrados por `kinds`, vazio = tudo) e solta esses canais da Mesa (e o nível do grupo de canais quando todos saíram). O fino só entra se a Mesa o segura; canais sem fixture ficam. Sem canais para gravar, recusa. A cena entra no desfazer; a Mesa não. Resposta: `null` |
 | `setTestPattern` | `pattern?` | Padrão de teste da saída (`ramp` ou `chase`; sem ele, desliga). Página `/dev/dmx` |
 | `setInterfaceKind` | `interface, kind?` | Tipo de uma interface USB (`enttecPro` ou `openDmx`) escolhido à mão e guardado no `settings.json`; sem `kind`, volta ao automático. A saída reabre no protocolo novo |
 
@@ -145,6 +147,8 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 - A fixture `i` anda a onda atrasada em `phase + i × spread`, e `i` conta só as fixtures (cabeças) do grupo que têm o atributo da camada, na ordem da grade, cada canal uma vez.
 - O `saveFunction` confere: grupo que existe, de 1 a 8 camadas, atributo contínuo, no máximo uma camada por atributo e tipo (absoluta ou relativa), largura, fase, defasagem e piso abaixo do teto. Remover o grupo deixa o Phaser sem grupo.
 - Não há operação nova: o Phaser roda como as outras criações (`setFunctionRunning`), e entra em chasers, coleções e no elemento "Tempos" (a duração é a do ciclo).
+
+**Versão 16 (2026-11-13):** as paletas (versões 14 e 15, F12b) foram removidas; os campos delas num arquivo dessas versões são ignorados ao abrir.
 
 ## Estado de execução
 

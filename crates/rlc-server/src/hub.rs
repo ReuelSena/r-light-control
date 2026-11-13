@@ -21,8 +21,8 @@ use tokio::sync::{broadcast, watch};
 
 use crate::Settings;
 use crate::apply::{
-    Topic, apply, console_op, empty_project, fixture_blackout, highlight, is_live, new_id,
-    preview_levels, running_programs, script_matrix, universe_patch,
+    Topic, apply, captured_scene, console_op, empty_project, fixture_blackout, highlight, is_live,
+    new_id, preview_levels, running_programs, script_matrix, universe_patch,
 };
 use crate::script::Previews;
 use crate::{library, project};
@@ -294,6 +294,25 @@ impl Hub {
                 .preview(&self.snapshot.project, id, &matrix, *step)?;
             return Ok(json!(preview));
         }
+        // A captura da saída pede o quadro ao motor (que responde no fim do próximo tick) e vira um
+        // `SaveFunction`, com o desfazer de sempre
+        let op = match op {
+            Op::CaptureOutput {
+                target,
+                merge,
+                kinds,
+            } => {
+                let (reply, answer) = std::sync::mpsc::channel();
+                self.engine.send(Command::Capture(reply));
+                let captured = answer
+                    .recv_timeout(Duration::from_secs(1))
+                    .map_err(|_| "O motor não respondeu.")?;
+                let p = &self.snapshot.project;
+                let function = captured_scene(p, &captured, target, merge, &kinds)?;
+                Op::SaveFunction { function }
+            }
+            op => op,
+        };
         let (mut topics, reply) = match op {
             Op::OpenProject { name } => (self.open(&name)?, Value::Null),
             Op::SaveProject { name } => (self.save(name)?, Value::Null),
@@ -1319,6 +1338,55 @@ mod tests {
         hub.command(Op::Redo).unwrap();
         assert_eq!(hub.snapshot.project.stage.width, 13.0);
         assert!(hub.command(Op::Redo).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn capturing_the_output_asks_the_engine_and_can_be_undone() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        // O vermelho do PAR 1 na Mesa simples, por baixo de um Localizar
+        hub.command(Op::SetDeskLevel {
+            universe: "u1".into(),
+            channel: 2,
+            value: 99,
+        })
+        .unwrap();
+        hub.command(Op::SetHighlight {
+            fixtures: vec!["par1".into()],
+            others: 255,
+        })
+        .unwrap();
+        let capture = Op::CaptureOutput {
+            target: CaptureTarget::New {
+                id: "gravada".into(),
+                name: "Gravada".into(),
+            },
+            merge: false,
+            kinds: vec![],
+        };
+        hub.command(capture).unwrap();
+        let f = hub.snapshot.project.functions.last().unwrap();
+        let FunctionKind::Scene(scene) = &f.kind else {
+            panic!("a captura grava uma cena");
+        };
+        let value = SceneValue {
+            fixture: "par1".into(),
+            channel: 1,
+            value: 99,
+        };
+        assert_eq!((f.id.as_str(), &scene.values), ("gravada", &vec![value]));
+        hub.command(Op::Undo).unwrap();
+        assert!(
+            !hub.snapshot
+                .project
+                .functions
+                .iter()
+                .any(|f| f.id == "gravada")
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

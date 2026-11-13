@@ -264,6 +264,17 @@ pub enum Command {
     GrandMaster(u8),
     Blackout(bool),
     Test(Option<TestPattern>),
+    /// Pede o que está saindo para gravar numa cena (P5); a resposta vem no próximo tick.
+    Capture(Sender<Vec<Capture>>),
+}
+
+/// A saída de um universo antes do Localizar, do Grand Master e do blackout, com os canais que alguma
+/// coisa controla: os faders das criações acesas (sem as que estão apagando ou no delay de entrada),
+/// a prévia, os EFX e Phasers relativos e a Mesa simples. Os outros estão no valor padrão.
+pub struct Capture {
+    pub universe: Id,
+    pub frame: Frame,
+    pub controlled: Box<[bool; 512]>,
 }
 
 /// Último quadro publicado, trocado sem trava: as saídas e o servidor leem no próprio ritmo e o
@@ -704,6 +715,10 @@ struct State {
     serial: u64,
     /// Saída das criações no último quadro: de onde parte o fade de uma cena que começa.
     mixed: Vec<(Id, Frame)>,
+    /// Quadro de cada universo antes do Localizar, do Grand Master e do blackout (a captura).
+    unlit: Vec<Frame>,
+    /// Pedidos de captura, respondidos no fim do próximo quadro (com os comandos de antes já nele).
+    captures: Vec<Sender<Vec<Capture>>>,
     desk: Vec<DeskLevel>,
     preview: Vec<DeskLevel>,
     highlight: Highlight,
@@ -728,6 +743,8 @@ impl Default for State {
             faders: Vec::new(),
             serial: 0,
             mixed: Vec::new(),
+            unlit: Vec::new(),
+            captures: Vec::new(),
             desk: Vec::new(),
             preview: Vec::new(),
             highlight: Highlight::default(),
@@ -789,7 +806,45 @@ impl State {
             Command::Blackout(on) => self.blackout = on,
             // Trocar de padrão recomeça a rampa do zero
             Command::Test(pattern) => self.test = pattern.map(|p| (p, now)),
+            Command::Capture(reply) => self.captures.push(reply),
         }
+    }
+
+    /// O último quadro de antes do Localizar e os canais que alguma coisa controla agora.
+    fn capture(&self) -> Vec<Capture> {
+        let lit = self
+            .faders
+            .iter()
+            .filter(|f| f.stopped.is_none() && f.waiting.is_none());
+        let faders: Vec<&Fade> = lit.flat_map(|f| &f.channels).collect();
+        self.universes
+            .iter()
+            .zip(&self.unlit)
+            .enumerate()
+            .map(|(index, (u, frame))| {
+                let mut controlled = Box::new([false; 512]);
+                let mut mark = |channel: u16| {
+                    if let Some(c) = controlled.get_mut(usize::from(channel).wrapping_sub(1)) {
+                        *c = true;
+                    }
+                };
+                for f in faders.iter().filter(|f| f.universe == Some(index)) {
+                    for channel in std::iter::once(f.level.channel).chain(f.level.fine) {
+                        mark(channel);
+                    }
+                }
+                for l in self.preview.iter().chain(&self.desk) {
+                    if l.universe == u.id {
+                        mark(l.channel);
+                    }
+                }
+                Capture {
+                    universe: u.id.clone(),
+                    frame: *frame,
+                    controlled,
+                }
+            })
+            .collect()
     }
 
     fn ctx<'a>(
@@ -953,6 +1008,7 @@ impl State {
 
         let mut mixed: Vec<Frame> = self.universes.iter().map(|u| *u.defaults).collect();
         self.mix(&mut mixed, now);
+        let mut unlit = Vec::with_capacity(mixed.len());
         let frames = self
             .universes
             .iter()
@@ -986,6 +1042,8 @@ impl State {
                         set(&mut frame, &self.preview);
                         self.relative(index, &mut frame, now);
                         set(&mut frame, &self.desk);
+                        // Com o padrão de teste, nada fica para a captura
+                        unlit.push(frame);
                         set(&mut frame, &self.highlight.levels);
                         // As outras fixtures ficam mais fracas enquanto algo está localizado
                         if self.highlight.others < 255 && !self.highlight.located.is_empty() {
@@ -1013,6 +1071,7 @@ impl State {
                 (u.id.clone(), frame)
             })
             .collect();
+        self.unlit = unlit;
         self.mixed = self
             .universes
             .iter()
@@ -1023,6 +1082,10 @@ impl State {
             f.stopped
                 .is_none_or(|(at, time)| now.saturating_duration_since(at) + TICK < time)
         });
+        for reply in std::mem::take(&mut self.captures) {
+            // Quem pediu pode ter desistido: não é erro
+            let _ = reply.send(self.capture());
+        }
         frames
     }
 
@@ -1292,6 +1355,39 @@ mod tests {
         // O blackout vale também para o "Localizar"
         s.apply(Command::Blackout(true), now);
         assert_eq!(frame(&mut s)[..2], [0, 0]);
+    }
+
+    #[test]
+    fn capture_takes_the_output_under_the_highlight_and_the_controlled_channels() {
+        let mut s = patched();
+        let now = Instant::now();
+        s.apply(Command::Running(vec![run("a", scene(&[(5, 77)], 0))]), now);
+        s.apply(Command::Preview(vec![level(8, 30)]), now);
+        s.apply(Command::Desk(vec![level(1, 200)]), now);
+        let highlight = Highlight {
+            levels: vec![level(1, 255), level(2, 255)],
+            located: vec![("u1".into(), 1)],
+            others: 0,
+        };
+        s.apply(Command::Highlight(highlight), now);
+        s.apply(Command::GrandMaster(0), now);
+        let (reply, answer) = mpsc::channel();
+        s.apply(Command::Capture(reply), now);
+        s.render(now);
+        let captured = answer.recv().expect("resposta da captura");
+        let u = &captured[0];
+        assert_eq!(u.universe, "u1");
+        // Sem o Localizar e o Grand Master: a mesa, a cena, a prévia e o padrão do strobo
+        assert_eq!(u.frame[..8], [200, 0, 0, 255, 77, 0, 0, 30]);
+        // O strobo só está no padrão: não é controlado
+        let controlled: Vec<usize> = (0..512).filter(|&i| u.controlled[i]).collect();
+        assert_eq!(controlled, [0, 4, 7]);
+        // Parada (no fade out), a cena deixa de contar
+        s.apply(Command::Running(vec![]), now);
+        let (reply, answer) = mpsc::channel();
+        s.apply(Command::Capture(reply), now);
+        s.render(now);
+        assert!(!answer.recv().expect("resposta")[0].controlled[4]);
     }
 
     #[test]

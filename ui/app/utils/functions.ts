@@ -37,6 +37,28 @@ export const INFINITE = 4294967295
 export const curves = ['linear', 'easeIn', 'easeOut', 'easeInOut'] as const
 export const attributeKinds = ['intensity', 'color', 'position', 'effects'] as const
 
+/** Os atributos de cada tipo, como o `attribute_kind` do servidor (crates/rlc-server/src/apply.rs). */
+export const kindAttributes: Record<(typeof attributeKinds)[number], Attribute[]> = {
+  intensity: ['dimmer'],
+  color: ['red', 'green', 'blue', 'white', 'amber', 'uv', 'lime', 'indigo', 'cyan', 'magenta', 'yellow', 'colorWheel', 'colorMacro', 'colorTemperature'],
+  position: ['pan', 'tilt'],
+  effects: ['shutter', 'gobo', 'goboRotation', 'prism', 'focus', 'zoom', 'iris'],
+}
+export const attributeKind = (a: Attribute) => attributeKinds.find((k) => kindAttributes[k].includes(a))
+
+/** Ferramentas de atributo (editor de cena): knobs para níveis, botões para as faixas (gobo,
+ * roda de cores…). A ferramenta de um tipo só aparece se a fixture tem algum dos `toolAttributes`. */
+export const panels: Record<'color' | 'effects', { knobs: Attribute[]; caps: Attribute[] }> = {
+  color: { knobs: ['white', 'amber', 'uv', 'lime', 'indigo', 'colorTemperature'], caps: ['colorWheel', 'colorMacro'] },
+  effects: { knobs: ['zoom', 'focus', 'iris', 'goboRotation'], caps: ['shutter', 'gobo', 'prism'] },
+}
+export const toolAttributes: Record<(typeof attributeKinds)[number], Attribute[]> = {
+  intensity: ['dimmer'],
+  color: ['red', ...panels.color.knobs, ...panels.color.caps],
+  position: ['pan'],
+  effects: [...panels.effects.knobs, ...panels.effects.caps],
+}
+
 const TAU = Math.PI * 2
 
 /** Quanto do caminho já foi andado (0 a 1) na fração `x` do tempo, em cada curva (`ease` do motor). */

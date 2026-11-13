@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RotateCcw } from 'lucide-vue-next'
+import { RotateCcw, Save } from 'lucide-vue-next'
 import type { Fixture } from '~/types/generated/Fixture'
 
 // Mesa simples (E12): um fader por canal DMX, os 512 do universo numa faixa só, e um por grupo de
@@ -13,6 +13,9 @@ const project = computed(() => state.value.project)
 const wide = useMediaQuery('(min-width: 1024px)')
 const tab = ref(project.value.universes[0]?.id ?? 'groups')
 const bank = ref<HTMLElement>()
+const updating = ref(false)
+// O Update só aparece quando a Mesa segura canais
+const holding = computed(() => state.value.desk.levels.length > 0 || state.value.desk.groups.length > 0)
 const view = ref({ left: 0, width: 0 })
 
 const tabs = computed(() => [
@@ -65,6 +68,10 @@ function ctrlScroll(e: WheelEvent) {
   <div class="flex h-full flex-col gap-3 p-2">
     <RlTabs v-model="tab" :class="tab === 'groups' ? 'flex-none' : 'min-h-0 flex-3'" :tabs="tabs">
       <template #actions>
+        <RlButton v-if="holding" size="sm" @press="updating = true">
+          <Save :size="16" />
+          {{ t('desk.update') }}
+        </RlButton>
         <RlButton size="sm" @press="send({ op: 'resetDesk', universe: tab === 'groups' ? null : tab })">
           <RotateCcw :size="16" />
           {{ t('desk.reset') }}
@@ -120,6 +127,8 @@ function ctrlScroll(e: WheelEvent) {
         </RlChannelStrip>
       </div>
     </section>
+
+    <StudioDeskUpdate v-model:open="updating" />
   </div>
 </template>
 

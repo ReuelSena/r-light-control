@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, Copy, Eye, Pause, Play, Plus, Search, Square, Trash2 } from 'lucide-vue-next'
+import { ChevronLeft, CircleDot, Copy, Eye, Pause, Play, Plus, Search, Square, Trash2 } from 'lucide-vue-next'
 import type { Chaser } from '~/types/generated/Chaser'
 import type { Function } from '~/types/generated/Function'
 
@@ -11,6 +11,7 @@ const project = computed(() => state.value.project)
 const selectedId = ref<string>()
 const query = ref('')
 const creating = ref(false)
+const capturing = ref(false)
 const askCollection = ref(false)
 const confirmRemove = ref(false)
 
@@ -117,6 +118,9 @@ function remove() {
         >
           <Square :size="16" />
         </RlButton>
+        <RlButton :aria-label="t('studio.capture')" :title="t('studio.capture')" @press="capturing = true">
+          <CircleDot :size="16" />
+        </RlButton>
         <RlButton @press="creating = true">
           <Plus :size="16" />
           {{ t('studio.new') }}
@@ -200,6 +204,8 @@ function remove() {
         </RlButton>
       </div>
     </RlDialog>
+
+    <StudioCapture v-model:open="capturing" @created="(id) => (selectedId = id)" />
 
     <RlDialog v-model:open="askCollection" :title="t('studio.newCollection')">
       <div class="grid gap-4">

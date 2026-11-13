@@ -4,9 +4,9 @@
 
 use rlc_core::*;
 use rlc_engine::{
-    CellOutput, ChaserProgram, EfxProgram, Imposed, MatrixCell, MatrixProgram, MatrixSource,
-    PhaserProgram, PhaserTrack, Program, Run, SceneLevel, SceneProgram, Span, Step, Times,
-    UniversePatch,
+    Capture, CellOutput, ChaserProgram, EfxProgram, Imposed, MatrixCell, MatrixProgram,
+    MatrixSource, PhaserProgram, PhaserTrack, Program, Run, SceneLevel, SceneProgram, Span, Step,
+    Times, UniversePatch,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -522,6 +522,45 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 s.preview = None;
             }
             vec![T::Functions, T::Console, T::Running, T::Preview]
+        }
+        // Pede a saída ao motor: fica no hub, que a converte num `SaveFunction`
+        Op::CaptureOutput { .. } => return Err("Operação do servidor.".into()),
+        // Os canais das fixtures que a Mesa simples segura entram na cena e saem da Mesa; os canais
+        // sem fixture e os de fora do filtro ficam nela
+        Op::UpdateScene { function, kinds } => {
+            let values = fixture_values(p, &kinds, |universe, channel| {
+                let mut held = s.desk.levels.iter();
+                let held = held.find(|l| l.universe == *universe && l.channel == channel);
+                held.map(|l| l.value)
+            });
+            if values.is_empty() {
+                return Err("A Mesa simples não segura canais de fixtures desses tipos.".into());
+            }
+            let released: Vec<(Id, u16)> = values
+                .iter()
+                .filter_map(|v| channel_address(p, &v.fixture, v.channel))
+                .map(|l| (l.universe, l.channel))
+                .collect();
+            let f = p.functions.iter_mut().find(|f| f.id == function);
+            let Some(FunctionKind::Scene(scene)) = f.map(|f| &mut f.kind) else {
+                return Err("O Update grava só em cenas.".into());
+            };
+            for v in values {
+                scene
+                    .values
+                    .retain(|o| o.fixture != v.fixture || o.channel != v.channel);
+                scene.values.push(v);
+            }
+            s.desk
+                .levels
+                .retain(|l| !released.contains(&(l.universe.clone(), l.channel)));
+            // O grupo de canais sem nenhum canal na Mesa sai junto
+            let p = &s.project;
+            s.desk.groups.retain(|g| {
+                let held = group_addresses(p, &g.group);
+                !held.iter().all(|a| released.contains(a))
+            });
+            vec![T::Functions, T::Desk]
         }
         Op::SaveFolder { folder } => {
             check_folder(p, &folder)?;
@@ -1110,6 +1149,110 @@ fn scene_values(p: &Project, scene: &Scene) -> Vec<SceneValue> {
         merged.push(v);
     }
     merged
+}
+
+/// Valores próprios das fixtures a partir dos endereços DMX (a saída, a Mesa simples), canal a canal,
+/// só dos tipos do filtro (vazio = tudo, também os atributos sem tipo; o fino segue o atributo dele).
+/// `value` dá o valor de um endereço, ou `None` para deixá-lo de fora.
+fn fixture_values(
+    p: &Project,
+    kinds: &[AttributeKind],
+    value: impl Fn(&Id, u16) -> Option<u8>,
+) -> Vec<SceneValue> {
+    let mut values = vec![];
+    for f in &p.fixtures {
+        for (i, c) in mode_channels(p, f).enumerate() {
+            let address = f.address + i as u16;
+            let wanted =
+                kinds.is_empty() || attribute_kind(c.attribute).is_some_and(|k| kinds.contains(&k));
+            if wanted
+                && address <= 512
+                && let Some(value) = value(&f.universe, address)
+            {
+                values.push(SceneValue {
+                    fixture: f.id.clone(),
+                    channel: i as u16,
+                    value,
+                });
+            }
+        }
+    }
+    values
+}
+
+/// A cena que a captura da saída grava (`CaptureOutput`, P5): os canais controlados das fixtures, como
+/// valores próprios. Sem `merge`, a cena perde antes os valores (próprios e dos grupos) dos
+/// tipos do filtro. O hub a grava como um `SaveFunction`.
+pub fn captured_scene(
+    p: &Project,
+    captured: &[Capture],
+    target: CaptureTarget,
+    merge: bool,
+    kinds: &[AttributeKind],
+) -> Result<Function, String> {
+    let values = fixture_values(p, kinds, |universe, channel| {
+        let c = captured.iter().find(|c| c.universe == *universe)?;
+        let i = usize::from(channel) - 1;
+        c.controlled[i].then_some(c.frame[i])
+    });
+    if values.is_empty() {
+        return Err("Nada controla as fixtures desses tipos agora.".into());
+    }
+    let (mut function, mut scene) = match target {
+        CaptureTarget::New { id, name } => {
+            if p.functions.iter().any(|f| f.id == id) {
+                return Err("Já existe uma criação com esse id.".into());
+            }
+            let scene = Scene {
+                values: vec![],
+                groups: vec![],
+                channel_groups: vec![],
+                delay_in_ms: 0,
+                fade_in_ms: 0,
+                delay_out_ms: 0,
+                fade_out_ms: 0,
+                curve: Curve::Linear,
+                attribute_times: vec![],
+            };
+            let function = Function {
+                id,
+                name,
+                folder: None,
+                priority: Priority::Normal,
+                kind: FunctionKind::Scene(scene.clone()),
+            };
+            (function, scene)
+        }
+        CaptureTarget::Scene { id } => {
+            let f = p.functions.iter().find(|f| f.id == id);
+            let f = f.ok_or("Criação não encontrada.")?;
+            let FunctionKind::Scene(scene) = &f.kind else {
+                return Err("A gravação é só em cenas.".into());
+            };
+            (f.clone(), scene.clone())
+        }
+    };
+    if !merge {
+        let wanted = |kind: Option<AttributeKind>| {
+            kinds.is_empty() || kind.is_some_and(|k| kinds.contains(&k))
+        };
+        let channel_kind = |v: &SceneValue| {
+            let f = p.fixtures.iter().find(|f| f.id == v.fixture)?;
+            attribute_kind(mode_channels(p, f).nth(usize::from(v.channel))?.attribute)
+        };
+        scene.values.retain(|v| !wanted(channel_kind(v)));
+        for g in &mut scene.groups {
+            g.values.retain(|v| !wanted(attribute_kind(v.attribute)));
+        }
+    }
+    for v in values {
+        scene
+            .values
+            .retain(|o| o.fixture != v.fixture || o.channel != v.channel);
+        scene.values.push(v);
+    }
+    function.kind = FunctionKind::Scene(scene);
+    Ok(function)
 }
 
 /// UUIDv7 (A4), para o que o servidor cria sem receber o id (fixtures, universos).
@@ -4902,5 +5045,123 @@ mod tests {
         let mut def = s.project.fixture_defs[0].clone();
         def.id = "../fora".into();
         assert!(apply(&mut s, Op::SaveFixtureDef { def }).is_err());
+    }
+
+    fn scene(s: &Snapshot, id: &str) -> Scene {
+        let f = s.project.functions.iter().find(|f| f.id == id);
+        match f.map(|f| &f.kind) {
+            Some(FunctionKind::Scene(scene)) => scene.clone(),
+            _ => panic!("cena {id} não encontrada"),
+        }
+    }
+
+    fn own(scene: &Scene) -> Vec<(&str, u16, u8)> {
+        let mut values: Vec<_> = scene
+            .values
+            .iter()
+            .map(|v| (v.fixture.as_str(), v.channel, v.value))
+            .collect();
+        values.sort();
+        values
+    }
+
+    #[test]
+    fn capture_records_only_the_controlled_channels_of_the_chosen_kinds() {
+        let mut s = example();
+        // PAR 1 (1 a 7: dimmer, vermelho, verde, azul, branco, strobo, macro) e PAR 2 (8 a 14). O
+        // verde do PAR 1 está no 77, mas nada o controla
+        let mut frame = [0; 512];
+        let mut controlled = Box::new([false; 512]);
+        for (channel, value) in [(1, 200), (2, 255), (4, 10), (6, 0), (8, 100), (9, 50)] {
+            frame[channel - 1] = value;
+            controlled[channel - 1] = true;
+        }
+        frame[2] = 77;
+        let captured = [Capture {
+            universe: "u1".into(),
+            frame,
+            controlled,
+        }];
+        let capture = |s: &Snapshot, target, merge, kinds: &[AttributeKind]| {
+            captured_scene(&s.project, &captured, target, merge, kinds)
+        };
+        let new = |id: &str| CaptureTarget::New {
+            id: id.into(),
+            name: "Gravada".into(),
+        };
+        let all = capture(&s, new("n1"), false, &[]).unwrap();
+        apply(&mut s, Op::SaveFunction { function: all }).unwrap();
+        let all = [
+            ("par1", 0, 200),
+            ("par1", 1, 255),
+            ("par1", 3, 10),
+            ("par1", 5, 0),
+            ("par2", 0, 100),
+            ("par2", 1, 50),
+        ];
+        assert_eq!(own(&scene(&s, "n1")), all);
+        let color = capture(&s, new("n2"), false, &[AttributeKind::Color]).unwrap();
+        let FunctionKind::Scene(color) = color.kind else {
+            unreachable!()
+        };
+        assert_eq!(
+            own(&color),
+            [("par1", 1, 255), ("par1", 3, 10), ("par2", 1, 50)]
+        );
+        // Recusados: um id que já existe, uma criação que não é cena e nada controlado
+        assert!(capture(&s, new("n1"), false, &[]).is_err());
+        let chaser = CaptureTarget::Scene { id: "c1".into() };
+        assert!(capture(&s, chaser, false, &[]).is_err());
+        let position = &[AttributeKind::Position];
+        assert!(capture(&s, new("n3"), false, position).is_err());
+
+        // "Frente âmbar": dimmer, vermelho e verde no grupo dos PARs. Mesclar só põe as cores por
+        // cima; Sobrescrever tira antes as cores do grupo (o dimmer fica)
+        let s1 = || CaptureTarget::Scene { id: "s1".into() };
+        let merged = capture(&s, s1(), true, &[AttributeKind::Color]).unwrap();
+        let FunctionKind::Scene(merged) = merged.kind else {
+            unreachable!()
+        };
+        assert_eq!(merged.groups, scene(&s, "s1").groups);
+        let replaced = capture(&s, s1(), false, &[AttributeKind::Color]).unwrap();
+        let FunctionKind::Scene(replaced) = replaced.kind else {
+            unreachable!()
+        };
+        let attributes: Vec<Attribute> = replaced.groups[0]
+            .values
+            .iter()
+            .map(|v| v.attribute)
+            .collect();
+        assert_eq!(attributes, [Attribute::Dimmer]);
+        assert_eq!(own(&replaced), own(&color));
+    }
+
+    #[test]
+    fn update_records_the_desk_in_the_scene_and_releases_it() {
+        let mut s = example();
+        // Na Mesa: o dimmer e o vermelho do PAR 1 e um canal sem fixture
+        for (channel, value) in [(1, 50), (2, 99), (512, 30)] {
+            let op = Op::SetDeskLevel {
+                universe: "u1".into(),
+                channel,
+                value,
+            };
+            apply(&mut s, op).unwrap();
+        }
+        let update = |function: &str, kinds: Vec<AttributeKind>| Op::UpdateScene {
+            function: function.into(),
+            kinds,
+        };
+        assert!(apply(&mut s, update("c1", vec![])).is_err());
+        assert!(apply(&mut s, update("s1", vec![AttributeKind::Position])).is_err());
+        let (topics, _) = apply(&mut s, update("s1", vec![AttributeKind::Color])).unwrap();
+        assert_eq!(topics, [Topic::Functions, Topic::Desk]);
+        assert_eq!(own(&scene(&s, "s1")), [("par1", 1, 99)]);
+        let held: Vec<u16> = s.desk.levels.iter().map(|l| l.channel).collect();
+        assert_eq!(held, [1, 512]);
+        // Sem filtro, o dimmer entra; o canal sem fixture fica na Mesa
+        apply(&mut s, update("s1", vec![])).unwrap();
+        assert_eq!(own(&scene(&s, "s1")), [("par1", 0, 50), ("par1", 1, 99)]);
+        assert_eq!(s.desk.levels.len(), 1);
     }
 }

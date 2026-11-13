@@ -338,6 +338,7 @@
   },
   "studio": {
     "search": "Buscar criação",
+    "capture": "Gravar saída",
     "new": "Nova",
     "newName": "{type} {n}",
     "copyName": "{name} (cópia)",
@@ -585,8 +586,26 @@
     "amber": "Âmbar",
     "uv": "UV"
   },
+  "capture": {
+    "title": "Gravar saída",
+    "info": "Grava numa cena o que está saindo na luz agora (criações, prévia e Mesa simples juntas), como valores das fixtures.\nSobrescrever tira da cena os tipos escolhidos antes de gravar; Mesclar grava por cima.\nSem tipo ligado, grava tudo (inclusive velocidade e manutenção).",
+    "all": "Tudo",
+    "newScene": "Cena nova",
+    "name": "Nome da cena",
+    "defaultName": "Gravação {n}",
+    "overwrite": "Sobrescrever",
+    "merge": "Mesclar",
+    "save": "Gravar"
+  },
+  "update": {
+    "title": "Update",
+    "info": "Grava numa cena os ajustes feitos na Mesa simples nos canais de fixtures. Os canais gravados são soltos da Mesa.\nAs cenas rodando aparecem primeiro. Sem tipo ligado, grava tudo.",
+    "running": "rodando",
+    "save": "Gravar"
+  },
   "desk": {
-    "reset": "Zerar"
+    "reset": "Zerar",
+    "update": "Update"
   },
   "monitor": {
     "app": "App e máquina",

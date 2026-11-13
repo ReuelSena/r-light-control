@@ -64,7 +64,7 @@ Muita coisa do console existe como tela, mas o motor ainda não a usa. Pelo cód
 
 ### Programação: como se criam os looks
 
-#### P1 · Paletas (presets) com referência · M · ★
+#### P1 · Paletas (presets) com referência · M · ★ (tentada em 2026-11-13 na F12b e removida a pedido do usuário: não fez sentido na prática; o caminho é cena de cada cor para cada fixture)
 
 - **O que faz:** uma paleta é uma "receita" com nome: uma cor ("Azul fundo"), uma posição dos Beams ("Centro da pista"), um gobo. Ao montar uma cena, em vez de gravar os números do canal, você aponta para a paleta. A cena guarda só a referência. A paleta "universal" vale para fixtures de modelos diferentes que tenham o atributo.
 - **Vantagem:** o azul ficou escuro? Você corrige a paleta uma vez e as 40 cenas que a usam mudam juntas. O palco mudou de lugar? Corrige a posição "Centro" e todas as cenas acompanham.
@@ -274,7 +274,7 @@ Prioridade: a operação ao vivo. Os números das fases atuais não mudam (as no
 | 5 | F9b Efeitos por passos | nova | P4: efeito em qualquer atributo, com fase por fixture e BPM, reaproveitando a base do EFX. Não muda o desenho da F9 |
 | 6 | F11 Console II | original | Mais E6 (macros) |
 | 7 | F12 MIDI | original | Mais S6 (MIDI Show Control) |
-| 8 | F12b Paletas e gravação | nova | P1 (paletas), P5 (gravar a partir da saída e Update) e P7 (filtros de atributo) |
+| 8 | F12b Gravação | nova | P5 (gravar a partir da saída e Update) e P7 (filtros de atributo) |
 | 9 | F12c Seleção | nova | P2 (ordem e leque), P3 (dividir a seleção e espalhar tempo ou fase) e P9 (ID numérico e seleção por faixa) |
 | 10 | F13 Editor de fixtures | original | - |
 | 11 | F13b Intercâmbio | nova | S2 (GDTF e MVR) e S4 (importação parcial de show) |

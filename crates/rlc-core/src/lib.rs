@@ -365,6 +365,14 @@ pub struct Scene {
     pub attribute_times: Vec<AttributeTiming>,
 }
 
+/// Onde a captura da saída grava: uma cena nova ou uma que já existe.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum CaptureTarget {
+    New { id: Id, name: String },
+    Scene { id: Id },
+}
+
 /// Como o valor anda do começo ao fim de um fade (R2).
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -1370,6 +1378,21 @@ pub enum Op {
     },
     SaveFolder {
         folder: Folder,
+    },
+    /// Grava numa cena o que está saindo na luz agora (P5): só os canais que alguma coisa controla
+    /// (criações, prévia e Mesa simples), sem o Localizar, o Grand Master e o blackout. Com `merge`, os
+    /// valores entram por cima; sem, a cena perde antes os valores dos tipos do filtro.
+    /// `kinds` vazio = tudo (os atributos sem tipo, como a velocidade, só entram assim).
+    CaptureOutput {
+        target: CaptureTarget,
+        merge: bool,
+        kinds: Vec<AttributeKind>,
+    },
+    /// O "Update": grava na cena os canais das fixtures que a Mesa simples segura (dos tipos do
+    /// filtro; vazio = tudo) e os solta da Mesa simples.
+    UpdateScene {
+        function: Id,
+        kinds: Vec<AttributeKind>,
     },
     /// Remove a pasta; as criações e as pastas dela passam para a pasta de cima (ou ficam soltas no tipo).
     RemoveFolder {

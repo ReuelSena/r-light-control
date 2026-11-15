@@ -4,6 +4,7 @@ import type { Attribute } from '~/types/generated/Attribute'
 import type { Channel } from '~/types/generated/Channel'
 import type { ChannelGroup } from '~/types/generated/ChannelGroup'
 import type { Fixture } from '~/types/generated/Fixture'
+import type { FixtureGroup } from '~/types/generated/FixtureGroup'
 import type { FixturePosition } from '~/types/generated/FixturePosition'
 import type { Project } from '~/types/generated/Project'
 
@@ -54,6 +55,22 @@ export function modeChannels(project: Project, fixture: Fixture) {
 export function groupFixtures(project: Project, id: string) {
   const cells = [...(project.fixtureGroups.find((g) => g.id === id)?.cells ?? [])].sort((a, b) => a.y - b.y || a.x - b.x)
   return [...new Set(cells.map((c) => c.fixture))].flatMap((fixture) => project.fixtures.filter((f) => f.id === fixture))
+}
+
+/** Grupos de fixtures na ordem da árvore (cada pai com os filhos logo abaixo, na ordem do projeto), com o nível de cada um. */
+export function groupTree(project: Project) {
+  const all = project.fixtureGroups
+  const list: { group: FixtureGroup; depth: number }[] = []
+  const level = (parent: string | null, depth: number) => {
+    // Um pai que não existe conta como a raiz
+    const here = (g: FixtureGroup) => (g.parent && all.some((x) => x.id === g.parent) ? g.parent : null) === parent
+    for (const group of all.filter(here)) {
+      list.push({ group, depth })
+      level(group.id, depth + 1)
+    }
+  }
+  level(null, 0)
+  return list
 }
 
 /** Posição do canal `i` entre os canais do mesmo atributo (o `index` dos valores de um grupo na cena). */

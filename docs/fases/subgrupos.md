@@ -30,6 +30,17 @@ Pedido: dentro de um grupo de fixtures, criar subgrupos para escolher só aquela
   - Seletores de grupo (cena, EFX, RGB Matrix, Phaser, console, grupo de canais): lista na ordem da árvore, com recuo.
 - **Exemplo (G8):** no `exemplo.json` e no "Show de exemplo" salvo: "ParLeds" com os subgrupos "Esquerda" e "Direita" (6 cabeças em 2 × 3 cada), e uma cena que usa só "Esquerda".
 
+## Execução (checklist de continuidade)
+
+Plano **aprovado em 2026-11-15** com as decisões 3 a 6 propostas. Marcar `[x]` a cada tarefa concluída; quem continuar parte do primeiro `[ ]`.
+
+- [x] T1. Contrato: `FixtureGroup.parent` em `rlc-core`, `cargo test -p rlc-core` (gera os tipos TS), projeto na versão 21 com migração (`project.rs`).
+- [x] T2. Servidor (`apply.rs`): `check_group` (cabeças no pai, sem ciclo), `follow_groups` (tira dos descendentes), `RemoveFixtureGroup` (filhos sobem), `MoveFixtureGroup` com novo pai; testes de Rust; `docs/protocolo.md`.
+- [x] T3. UI: árvore em `FixturesGroups.vue`, "Novo subgrupo", arrastar para outro pai, editor do subgrupo só com cabeças do pai; textos em `pt-BR.json`.
+- [x] T4. UI: seletores de grupo (cena, EFX, RGB Matrix, Phaser, console, grupo de canais) na ordem da árvore, com recuo; um utilitário só em `utils/`.
+- [x] T5. Exemplo (G8): `exemplo.json` (+ teste) e "Show de exemplo" salvo (cópia antes).
+- [x] T6. `pnpm check` passa; `PLANO.md`, `DECISOES.md` e `CLAUDE.md` atualizados; relatório final com as decisões tomadas.
+
 ## Validação com você
 
 - [ ] A árvore mostra grupos e subgrupos de imediato, com abrir e fechar.

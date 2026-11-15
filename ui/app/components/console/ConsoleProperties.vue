@@ -26,6 +26,7 @@ const pick = (e: Event) => (e.target as HTMLSelectElement).value || null
 // Ícone do botão: ao ligar, começa com o do tipo da criação (ou o da ação) e pode ser trocado
 const { icon } = useIconLibrary()
 const pickingIcon = ref(false)
+const picking = ref(false)
 function defaultIcon() {
   const w = props.widget
   if (w.type === 'macro') return 'Workflow'
@@ -131,29 +132,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
       </label>
       <div v-if="widget.action === 'blackoutFixtures'" class="field-label">
         {{ t('vc.blackoutTargets') }}
-        <div class="flex flex-wrap gap-1.5">
-          <RlButton
-            v-for="g in project.fixtureGroups"
-            :key="g.id"
-            size="sm"
-            highlight="led"
-            :model-value="widget.groups.includes(g.id)"
-            @press="save({ groups: toggled(widget.groups, g.id) })"
-          >
-            {{ g.name }}
-          </RlButton>
-          <RlButton
-            v-for="f in project.fixtures"
-            :key="f.id"
-            size="sm"
-            highlight="led"
-            :color="f.color"
-            :model-value="widget.fixtures.includes(f.id)"
-            @press="save({ fixtures: toggled(widget.fixtures, f.id) })"
-          >
-            {{ f.name }}
-          </RlButton>
-        </div>
+        <RlButton size="sm" @press="picking = true">{{ t('vc.pickTargets', { n: widget.groups.length + widget.fixtures.length }) }}</RlButton>
       </div>
       <!-- As ações de um toque não têm modo; o Pausar acende enquanto a criação está pausada -->
       <div v-if="!['stopAll', 'previous', 'pause'].includes(widget.action)" class="field-label">
@@ -273,29 +252,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
 
     <div v-else-if="widget.type === 'xyPad'" class="field-label">
       {{ t('vc.movers') }}
-      <div class="flex flex-wrap gap-1.5">
-        <RlButton
-          v-for="g in project.fixtureGroups"
-          :key="g.id"
-          size="sm"
-          highlight="led"
-          :model-value="widget.groups.includes(g.id)"
-          @press="save({ groups: toggled(widget.groups, g.id) })"
-        >
-          {{ g.name }}
-        </RlButton>
-        <RlButton
-          v-for="f in movers"
-          :key="f.id"
-          size="sm"
-          highlight="led"
-          :color="f.color"
-          :model-value="widget.fixtures.includes(f.id)"
-          @press="save({ fixtures: toggled(widget.fixtures, f.id) })"
-        >
-          {{ f.name }}
-        </RlButton>
-      </div>
+      <RlButton size="sm" @press="picking = true">{{ t('vc.pickTargets', { n: widget.groups.length + widget.fixtures.length }) }}</RlButton>
     </div>
 
     <!-- Speed dial (VC-3) -->
@@ -409,5 +366,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
         <p v-if="capturing === control && reserved" class="text-xs text-flash">{{ t('vc.reservedKey', { key: reserved }) }}</p>
       </div>
     </section>
+
+    <!-- Alvos do blackout de fixtures e do XY Pad -->
+    <FixturesPicker
+      v-if="widget.type === 'xyPad' || widget.type === 'button'"
+      v-model:open="picking"
+      :title="widget.type === 'xyPad' ? t('vc.movers') : t('vc.blackoutTargets')"
+      :groups="groupTree(project)"
+      :fixtures="widget.type === 'xyPad' ? movers : project.fixtures"
+      :is-group-on="(id: string) => 'groups' in widget && widget.groups.includes(id)"
+      :is-fixture-on="(id: string) => 'fixtures' in widget && widget.fixtures.includes(id)"
+      clearable
+      @group="(id: string) => 'groups' in widget && save({ groups: toggled(widget.groups, id) })"
+      @fixture="(id: string) => 'fixtures' in widget && save({ fixtures: toggled(widget.fixtures, id) })"
+      @clear="save({ groups: [], fixtures: [] })"
+    />
   </div>
 </template>

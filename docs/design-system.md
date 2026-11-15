@@ -56,7 +56,7 @@ Para montar telas:
 
 | Componente | Quando usar | Comportamento |
 |---|---|---|
-| `RlButton` | Qualquer ação | `mode`: `action`, `toggle` ou `flash`. `highlight`: `face` (o botão inteiro acende, padrão) ou `led` (só o filete acende e o botão fica afundado). `color`: cor do destaque e do filete. `size`: `sm`, `md` ou `lg`. Emite `press` com o evento (para ler `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`. |
+| `RlButton` | Qualquer ação | `mode`: `action`, `toggle` ou `flash`. `highlight`: `face` (o botão inteiro acende, padrão) ou `led` (só o filete acende e o botão fica afundado; num botão com largura ≥ 4× a altura, o LED vira um círculo à esquerda, como nas listas). `color`: cor do destaque e do filete. `size`: `sm`, `md` ou `lg`. Emite `press` com o evento (para ler `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`. |
 | `RlLcd` | Mostrar valores e estados | Texto ciano por padrão; `color` muda a cor (ex.: blackout em vermelho). |
 | `RlFader` | Nível contínuo (intensidade, submaster, GM) | Arrasto relativo, botão FINO (×0,1), toque duplo volta ao `default`, roda do mouse, setas e PageUp/PageDown. `meter` opcional; `cap="red"` para o master. `marks`: a escala ao lado do trilho (rótulo, número ou texto, e posição de 0 a 1; sem ela, 0 a 100%). `fineStep`: o passo da roda e das setas com o FINO (padrão 0,001, ou 0,1% do curso). |
 | `RlKnob` | Parâmetros secundários (zoom, foco, velocidade) | Arrasto vertical relativo (150 px = curso todo), roda do mouse, toque duplo volta ao padrão. |

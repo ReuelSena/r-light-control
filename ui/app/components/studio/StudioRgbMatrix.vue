@@ -115,7 +115,7 @@ function setProperty(name: string, value: string) {
         {{ t('matrix.group') }}
         <select class="field" :value="fn.group ?? ''" @change="save({ group: ($event.target as HTMLSelectElement).value || null })">
           <option value="">{{ t('io.none') }}</option>
-          <option v-for="g in project.fixtureGroups" :key="g.id" :value="g.id">{{ g.name }} ({{ g.width }}×{{ g.height }})</option>
+          <option v-for="{ group: g, depth } in groupTree(project)" :key="g.id" :value="g.id">{{ '— '.repeat(depth) }}{{ g.name }} ({{ g.width }}×{{ g.height }})</option>
         </select>
       </label>
       <label class="field-label">

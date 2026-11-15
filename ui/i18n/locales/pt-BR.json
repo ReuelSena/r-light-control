@@ -11,6 +11,15 @@
     "less": "Menos",
     "more": "Mais"
   },
+  "picker": {
+    "groups": "Grupos",
+    "fixtures": "Fixtures",
+    "menu": "Mais opções",
+    "sameType": "Selecionar do mesmo tipo",
+    "clear": "Desmarcar todos",
+    "noGroups": "Nenhum grupo disponível",
+    "noFixtures": "Nenhuma fixture disponível"
+  },
   "screens": {
     "console": "Console",
     "fixtures": "Fixtures",
@@ -154,6 +163,9 @@
     "newFixtureGroup": "Novo grupo de fixtures",
     "newChannelGroup": "Novo grupo de canais",
     "newName": "Grupo {n}",
+    "newSubgroup": "Novo subgrupo",
+    "newSubgroupName": "{name} (sub)",
+    "toggle": "Abrir ou fechar",
     "width": "Largura",
     "height": "Altura",
     "fillInOrder": "Preencher em ordem",
@@ -686,6 +698,7 @@
     "loaded": "Carregado para o próximo Go",
     "movers": "Grupos e fixtures com pan e tilt",
     "blackoutTargets": "Grupos e fixtures apagados",
+    "pickTargets": "Escolher ({n})",
     "mode": "Modo",
     "highlight": "Destaque",
     "look": "Aparência",

@@ -418,7 +418,18 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     _ => None,
                 })
                 .collect();
+            // Os subgrupos dele sobem para o pai dele (ou para a raiz)
+            let up = p
+                .fixture_groups
+                .iter()
+                .find(|g| g.id == id)
+                .and_then(|g| g.parent.clone());
             p.fixture_groups.retain(|g| g.id != id);
+            for g in &mut p.fixture_groups {
+                if g.parent.as_ref() == Some(&id) {
+                    g.parent = up.clone();
+                }
+            }
             for f in &mut p.functions {
                 match &mut f.kind {
                     FunctionKind::Scene(scene) => {
@@ -465,7 +476,16 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             }
             vec![T::FixtureGroups, T::ChannelGroups, T::Functions, T::Console]
         }
-        Op::MoveFixtureGroup { id, to } => {
+        Op::MoveFixtureGroup { id, to, parent } => {
+            let i = p
+                .fixture_groups
+                .iter()
+                .position(|g| g.id == id)
+                .ok_or("Grupo não encontrado.")?;
+            let mut moved = p.fixture_groups[i].clone();
+            moved.parent = parent;
+            check_group(p, &moved)?;
+            p.fixture_groups[i].parent = moved.parent;
             move_to(&mut p.fixture_groups, &id, to, |g| &g.id)?;
             vec![T::FixtureGroups]
         }
@@ -1199,13 +1219,51 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         T::FixtureGroups,
         T::ChannelGroups,
     ];
-    if topics.iter().any(|t| patch.contains(t))
-        && follow_groups(&mut s.project)
-        && !topics.contains(&T::ChannelGroups)
-    {
-        topics.push(T::ChannelGroups);
+    if topics.iter().any(|t| patch.contains(t)) {
+        if prune_subgroups(&mut s.project) && !topics.contains(&T::FixtureGroups) {
+            topics.push(T::FixtureGroups);
+        }
+        if follow_groups(&mut s.project) && !topics.contains(&T::ChannelGroups) {
+            topics.push(T::ChannelGroups);
+        }
     }
     Ok((topics, Value::Null))
+}
+
+/// Tira dos subgrupos as cabeças que saíram do pai (e, repetindo, dos filhos deles). Diz se algum mudou.
+fn prune_subgroups(p: &mut Project) -> bool {
+    let mut changed = false;
+    loop {
+        let mut again = false;
+        for i in 0..p.fixture_groups.len() {
+            let Some(parent) = p.fixture_groups[i].parent.clone() else {
+                continue;
+            };
+            let kept: Vec<GroupCell> = {
+                let up = p.fixture_groups.iter().find(|g| g.id == parent);
+                let cells = &p.fixture_groups[i].cells;
+                cells
+                    .iter()
+                    .filter(|c| {
+                        up.is_some_and(|u| {
+                            u.cells
+                                .iter()
+                                .any(|o| o.fixture == c.fixture && o.head == c.head)
+                        })
+                    })
+                    .cloned()
+                    .collect()
+            };
+            if kept.len() != p.fixture_groups[i].cells.len() {
+                p.fixture_groups[i].cells = kept;
+                again = true;
+            }
+        }
+        changed |= again;
+        if !again {
+            return changed;
+        }
+    }
 }
 
 /// Refaz os canais dos grupos de canais que acompanham um grupo de fixtures: os atributos deles (sem
@@ -2726,6 +2784,33 @@ fn check_group(p: &Project, group: &FixtureGroup) -> Result<(), String> {
             return Err("O grupo tem uma cabeça que não existe.".into());
         }
     }
+    // Subgrupo: o pai existe, não há ciclo e as cabeças são todas do pai
+    if let Some(parent) = &group.parent {
+        let mut up = Some(parent);
+        while let Some(id) = up {
+            if *id == group.id {
+                return Err("Um grupo não pode ficar dentro de si mesmo.".into());
+            }
+            up = p
+                .fixture_groups
+                .iter()
+                .find(|g| g.id == *id)
+                .ok_or("O grupo de cima não existe.")?
+                .parent
+                .as_ref();
+        }
+        let up = p.fixture_groups.iter().find(|g| g.id == *parent);
+        let all_in = group.cells.iter().all(|c| {
+            up.is_some_and(|u| {
+                u.cells
+                    .iter()
+                    .any(|o| o.fixture == c.fixture && o.head == c.head)
+            })
+        });
+        if !all_in {
+            return Err("O subgrupo só pode ter cabeças do grupo de cima.".into());
+        }
+    }
     Ok(())
 }
 
@@ -3018,7 +3103,8 @@ mod tests {
                 &mut s,
                 Op::MoveFixtureGroup {
                     id: "nao-existe".into(),
-                    to: 0
+                    to: 0,
+                    parent: None
                 }
             )
             .is_err()
@@ -4946,6 +5032,88 @@ mod tests {
         levels
     }
 
+    /// Subgrupo "sub" de "g1" com as duas primeiras cabeças dele, em uma linha.
+    fn subgroup(s: &Snapshot, id: &str, parent: &str) -> FixtureGroup {
+        let mut cells: Vec<GroupCell> = fixture_group(s, parent).cells[..2].to_vec();
+        for (x, c) in cells.iter_mut().enumerate() {
+            (c.x, c.y) = (x as u16, 0);
+        }
+        FixtureGroup {
+            id: id.into(),
+            name: id.into(),
+            width: 2,
+            height: 1,
+            cells,
+            parent: Some(parent.into()),
+        }
+    }
+
+    #[test]
+    fn a_subgroup_only_takes_heads_of_its_parent_and_never_loops() {
+        let mut s = example();
+        let sub = subgroup(&s, "sub", "g1");
+        apply(&mut s, Op::SaveFixtureGroup { group: sub.clone() }).unwrap();
+        // Cabeça de fora do pai, pai que não existe e grupo dentro de si mesmo são recusados
+        let mut outside = sub.clone();
+        outside.cells[0].fixture = "par7".into();
+        let mut orphan = sub.clone();
+        orphan.parent = Some("nao-existe".into());
+        let mut itself = sub.clone();
+        itself.parent = Some("sub".into());
+        for group in [outside, orphan, itself] {
+            assert!(apply(&mut s, Op::SaveFixtureGroup { group }).is_err());
+        }
+        // O pai não vira filho do próprio subgrupo
+        let mut g1 = fixture_group(&s, "g1");
+        g1.parent = Some("sub".into());
+        assert!(apply(&mut s, Op::SaveFixtureGroup { group: g1 }).is_err());
+        // Mover para dentro de um descendente é recusado; para a raiz, vale
+        let mv = |parent: Option<&str>| Op::MoveFixtureGroup {
+            id: "g1".into(),
+            to: 0,
+            parent: parent.map(Into::into),
+        };
+        assert!(apply(&mut s, mv(Some("sub"))).is_err());
+        assert!(apply(&mut s, mv(None)).is_ok());
+        // Um grupo com cabeças que o novo pai não tem não entra nele
+        let other = apply(
+            &mut s,
+            Op::MoveFixtureGroup {
+                id: "sub".into(),
+                to: 0,
+                parent: Some("g2".into()),
+            },
+        );
+        assert!(other.is_err());
+        assert_eq!(fixture_group(&s, "sub").parent.as_deref(), Some("g1"));
+    }
+
+    #[test]
+    fn leaving_the_parent_leaves_the_subgroup_and_removing_it_lifts_the_children() {
+        let mut s = example();
+        let sub = subgroup(&s, "sub", "g1");
+        apply(&mut s, Op::SaveFixtureGroup { group: sub }).unwrap();
+        let deep = subgroup(&s, "deep", "sub");
+        apply(&mut s, Op::SaveFixtureGroup { group: deep }).unwrap();
+        // Tirar a primeira cabeça do pai a tira do filho e do neto
+        let gone = fixture_group(&s, "g1").cells[0].clone();
+        let mut g1 = fixture_group(&s, "g1");
+        g1.cells.remove(0);
+        let (topics, _) = apply(&mut s, Op::SaveFixtureGroup { group: g1 }).unwrap();
+        assert!(topics.contains(&Topic::FixtureGroups));
+        for id in ["sub", "deep"] {
+            let cells = fixture_group(&s, id).cells;
+            assert_eq!(cells.len(), 1);
+            assert!(cells.iter().all(|c| c.fixture != gone.fixture));
+        }
+        // Remover o filho do meio leva o neto para o pai dele
+        apply(&mut s, Op::RemoveFixtureGroup { id: "sub".into() }).unwrap();
+        assert_eq!(fixture_group(&s, "deep").parent.as_deref(), Some("g1"));
+        // Remover o pai leva o filho para a raiz
+        apply(&mut s, Op::RemoveFixtureGroup { id: "g1".into() }).unwrap();
+        assert_eq!(fixture_group(&s, "deep").parent, None);
+    }
+
     #[test]
     fn a_group_scene_lights_who_is_in_the_group_now() {
         let mut s = example();
@@ -4991,6 +5159,7 @@ mod tests {
                 fixture: "par1".into(),
                 head: 0,
             }],
+            parent: None,
         };
         apply(&mut s, Op::SaveFixtureGroup { group }).unwrap();
         let red = |value| AttributeValue {

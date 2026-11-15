@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 20;
+const SCHEMA_VERSION: u32 = 21;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -351,6 +351,7 @@ fn migrate(project: &mut Value, version: u32) {
     {
         stage.remove("looks");
     }
+    // 20 → 21: subgrupos de fixtures (`FixtureGroup.parent`); os grupos antigos ficam na raiz
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -798,6 +799,29 @@ mod tests {
             std::fs::write(&file, v.to_string()).unwrap();
             assert_eq!(read(&file).unwrap().0, project);
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn versions_before_21_open_with_the_fixture_groups_at_the_root() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut project = old_example();
+        // O exemplo tem subgrupos; o arquivo antigo não os conhece
+        project
+            .fixture_groups
+            .iter_mut()
+            .for_each(|g| g.parent = None);
+        let mut old = serde_json::to_value(&project).unwrap();
+        for g in old["fixtureGroups"].as_array_mut().unwrap() {
+            g.as_object_mut().unwrap().remove("parent");
+        }
+        let v20 = json!({ "format": FORMAT, "schemaVersion": 20, "project": old });
+        let file = dir.join("antigo.rlc");
+        std::fs::write(&file, v20.to_string()).unwrap();
+        let opened = read(&file).unwrap().0;
+        assert!(opened.fixture_groups.iter().all(|g| g.parent.is_none()));
+        assert_eq!(opened, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

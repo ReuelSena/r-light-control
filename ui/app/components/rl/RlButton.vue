@@ -2,6 +2,7 @@
 // Botão físico. Modos: `action` (clique), `toggle` (liga/desliga) e `flash`
 // (ligado só enquanto pressionado; solta ao levantar o dedo, cancelar o toque ou perder a captura).
 // Destaque quando ativo: `face` (o botão inteiro acende) ou `led` (só o filete acende e o botão fica afundado).
+// O LED vira um círculo à esquerda quando o botão é bem mais largo que alto (`dot`, razão ≥ 4).
 // `press` traz o evento (ex.: `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`.
 const props = withDefaults(defineProps<{
   mode?: 'action' | 'toggle' | 'flash'
@@ -14,6 +15,13 @@ const props = withDefaults(defineProps<{
 }>(), { mode: 'action', highlight: 'face', color: 'var(--color-select)', size: 'md', onLongpress: undefined })
 
 const active = defineModel<boolean>({ default: false })
+const el = ref<HTMLElement>()
+const dot = ref(false)
+onMounted(() => {
+  const observer = new ResizeObserver(([e]) => (dot.value = e!.target.clientWidth >= 4 * e!.target.clientHeight))
+  observer.observe(el.value!)
+  onBeforeUnmount(() => observer.disconnect())
+})
 const emit = defineEmits<{ press: [event: MouseEvent] }>()
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 let held = false
@@ -74,9 +82,10 @@ function key(e: KeyboardEvent, pressed: boolean) {
 
 <template>
   <button
+    ref="el"
     type="button"
     class="rl-button raised"
-    :class="[mode, size, highlight, { lit: active }]"
+    :class="[mode, size, highlight, { lit: active, dot }]"
     :style="{ '--lit': color }"
     @pointerdown="down"
     @pointerup="up"
@@ -145,6 +154,24 @@ function key(e: KeyboardEvent, pressed: boolean) {
   background: var(--lit);
   /* Apagado bem fraco, para o aceso se destacar */
   opacity: 0.3;
+}
+
+/* Botão retangular: o LED é um círculo à esquerda, como nas listas */
+.dot.toggle::after,
+.dot.flash::after,
+.dot.led::after {
+  left: 14px;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  width: 8px;
+  height: 8px;
+  translate: 0 -50%;
+  border-radius: 50%;
+}
+
+.dot.led.lit::after {
+  height: 8px;
 }
 
 /* Destaque "face": o botão inteiro acende */

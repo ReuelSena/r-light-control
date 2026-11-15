@@ -4,7 +4,8 @@ import { X } from 'lucide-vue-next'
 
 // Diálogo modal. Com `sheet` vira painel: sobe de baixo no celular e entra pela direita em telas maiores.
 // `info` põe o "i" com a explicação ao lado do título.
-defineProps<{ title: string; sheet?: boolean; info?: string }>()
+// `wide` alarga o painel lateral; o slot `actions` põe botões ao lado do fechar.
+defineProps<{ title: string; sheet?: boolean; info?: string; wide?: boolean }>()
 const open = defineModel<boolean>('open', { default: false })
 const { t } = useI18n()
 </script>
@@ -13,13 +14,16 @@ const { t } = useI18n()
   <DialogRoot v-model:open="open">
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-40 bg-black/60" />
-      <DialogContent class="rl-dialog" :class="{ sheet }" :aria-describedby="undefined">
+      <DialogContent class="rl-dialog" :class="{ sheet, wide }" :aria-describedby="undefined">
         <header class="brushed flex items-center justify-between gap-2 py-1.5 pr-1.5 pl-3">
           <span class="flex items-center gap-2">
             <DialogTitle class="text-sm font-semibold tracking-wide uppercase">{{ title }}</DialogTitle>
             <RlInfo v-if="info" :text="info" />
           </span>
-          <RlButton size="sm" :aria-label="t('rl.close')" @press="open = false"><X :size="18" /></RlButton>
+          <span class="flex items-center gap-1.5">
+            <slot name="actions" />
+            <RlButton size="sm" :aria-label="t('rl.close')" @press="open = false"><X :size="18" /></RlButton>
+          </span>
         </header>
         <div class="body">
           <slot />
@@ -72,6 +76,10 @@ const { t } = useI18n()
     width: 340px;
     max-height: none;
     border-radius: 0;
+  }
+
+  .sheet.wide {
+    width: 520px;
   }
 }
 </style>

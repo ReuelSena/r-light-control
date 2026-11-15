@@ -4,4 +4,8 @@ import type { GroupCell } from "./GroupCell";
 /**
  * Grade 2D de cabeças, usada pelo RGB Matrix.
  */
-export type FixtureGroup = { id: string, name: string, width: number, height: number, cells: Array<GroupCell>, };
+export type FixtureGroup = { id: string, name: string, width: number, height: number, cells: Array<GroupCell>, 
+/**
+ * Grupo de que este é subgrupo (só com cabeças do pai); `None` fica na raiz.
+ */
+parent: string | null, };

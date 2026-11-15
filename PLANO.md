@@ -22,7 +22,7 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 
 ## Pendências (2026-11-13)
 
-**Pedido novo (2026-11-15, G4): subgrupos de fixtures e árvore de grupos.** Mini-plano em [docs/fases/subgrupos.md](docs/fases/subgrupos.md), aguardando a aprovação do usuário (recorte do pai e sem limite de níveis já respondidos).
+**Pedido novo (2026-11-15, G4): subgrupos de fixtures e árvore de grupos.** Mini-plano em [docs/fases/subgrupos.md](docs/fases/subgrupos.md), aprovado e **entregue em 2026-11-15**, aguardando a validação ([checklist](docs/fases/subgrupos.md#validação-com-você)). Projeto na versão 21. O exemplo (G8) está no `exemplo.json`; o "Show de exemplo" salvo do usuário ainda não o recebeu (o app estava aberto).
 
 **F15b entregue (2026-11-13):** a [F15b](docs/fases/fase-15b.md) (3D realista) aguarda a validação junto com as demais ([checklist](docs/fases/fase-15b.md#validação-com-você)).
 

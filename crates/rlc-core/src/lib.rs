@@ -276,6 +276,8 @@ pub struct FixtureGroup {
     pub width: u16,
     pub height: u16,
     pub cells: Vec<GroupCell>,
+    /// Grupo de que este é subgrupo (só com cabeças do pai); `None` fica na raiz.
+    pub parent: Option<Id>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -1428,10 +1430,12 @@ pub enum Op {
     RemoveFixtureGroup {
         id: Id,
     },
-    /// Leva o grupo para a posição `to` da lista (a partir de 0). A ordem vale em todas as telas.
+    /// Leva o grupo para a posição `to` da lista (a partir de 0) e para dentro de `parent` (sem ele,
+    /// para a raiz). A ordem vale em todas as telas.
     MoveFixtureGroup {
         id: Id,
         to: usize,
+        parent: Option<Id>,
     },
     SaveChannelGroup {
         group: ChannelGroup,

@@ -2781,6 +2781,36 @@
     ]
    },
    {
+    "id": "g7",
+    "name": "Esquerda",
+    "width": 6,
+    "height": 1,
+    "parent": "g4",
+    "cells": [
+     { "x": 0, "y": 0, "fixture": "rpar1", "head": 0 },
+     { "x": 1, "y": 0, "fixture": "rpar2", "head": 0 },
+     { "x": 2, "y": 0, "fixture": "rpar3", "head": 0 },
+     { "x": 3, "y": 0, "fixture": "rpar4", "head": 0 },
+     { "x": 4, "y": 0, "fixture": "rpar5", "head": 0 },
+     { "x": 5, "y": 0, "fixture": "rpar6", "head": 0 }
+    ]
+   },
+   {
+    "id": "g8",
+    "name": "Direita",
+    "width": 6,
+    "height": 1,
+    "parent": "g4",
+    "cells": [
+     { "x": 0, "y": 0, "fixture": "rpar7", "head": 0 },
+     { "x": 1, "y": 0, "fixture": "rpar8", "head": 0 },
+     { "x": 2, "y": 0, "fixture": "rpar9", "head": 0 },
+     { "x": 3, "y": 0, "fixture": "rpar10", "head": 0 },
+     { "x": 4, "y": 0, "fixture": "rpar11", "head": 0 },
+     { "x": 5, "y": 0, "fixture": "rpar12", "head": 0 }
+    ]
+   },
+   {
     "id": "g5",
     "name": "Beams",
     "width": 4,
@@ -5799,6 +5829,30 @@
       "values": []
      }
     ]
+   },
+   {
+    "id": "s16",
+    "name": "Só os ParLeds da esquerda",
+    "folder": "d9",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g7",
+      "values": [
+       { "attribute": "dimmer", "index": 0, "value": 255 },
+       { "attribute": "blue", "index": 0, "value": 255 }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 0,
+    "delayOutMs": 0,
+    "fadeOutMs": 0,
+    "curve": "linear",
+    "attributeTimes": []
    }
   ],
   "folders": [
@@ -5847,6 +5901,12 @@
     "id": "d8",
     "name": "3D realista",
     "kind": "chaser",
+    "parent": null
+   },
+   {
+    "id": "d9",
+    "name": "Subgrupos",
+    "kind": "scene",
     "parent": null
    }
   ],

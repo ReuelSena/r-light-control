@@ -94,7 +94,7 @@ function remove() {
     <div class="flex flex-wrap gap-1.5">
       <RlButton size="sm" highlight="led" :model-value="!following" @press="following && follow(null)">{{ t('groups.pickedChannels') }}</RlButton>
       <RlButton
-        v-for="g in project.fixtureGroups"
+        v-for="{ group: g, depth } in groupTree(project)"
         :key="g.id"
         size="sm"
         highlight="led"
@@ -102,7 +102,7 @@ function remove() {
         @press="following !== g.id && follow(g.id)"
       >
         <Grid3x3 :size="14" />
-        {{ g.name }}
+        {{ '— '.repeat(depth) }}{{ g.name }}
       </RlButton>
     </div>
 

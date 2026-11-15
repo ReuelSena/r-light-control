@@ -14,7 +14,6 @@ const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
 const adding = ref(false)
-const pickingGroup = ref(false)
 const drawing = ref(false)
 
 const algorithms: EfxAlgorithm[] = ['circle', 'eight', 'line', 'line2', 'diamond', 'square', 'squareChoppy', 'squareTrue', 'leaf', 'lissajous', 'freehand']
@@ -38,7 +37,7 @@ const fixtureOf = (id: string) => project.value.fixtures.find((f) => f.id === id
 const movers = (fixtures: Fixture[]) => fixtures.filter((f) => modeChannels(project.value, f).some((c) => c.attribute === 'pan' || c.attribute === 'tilt'))
 const candidates = computed(() => movers(project.value.fixtures).filter((f) => !props.fn.fixtures.some((x) => 'fixture' in x && x.fixture === f.id)))
 const groups = computed(() =>
-  project.value.fixtureGroups.filter((g) => movers(groupFixtures(project.value, g.id)).length && !props.fn.fixtures.some((x) => 'group' in x && x.group === g.id)),
+  groupTree(project.value).filter(({ group: g }) => movers(groupFixtures(project.value, g.id)).length && !props.fn.fixtures.some((x) => 'group' in x && x.group === g.id)),
 )
 // Nome e cor de um item da lista: a fixture, ou o grupo com quantas fixtures dele andam
 function itemLook(x: EfxFixture) {
@@ -223,36 +222,14 @@ function draw(points: [number, number][]) {
       <RlButton size="sm" :aria-label="t('common.remove')" @press="save({ fixtures: fn.fixtures.filter((_, k) => k !== i) })"><Trash2 :size="14" /></RlButton>
     </div>
 
-    <RlDialog v-model:open="adding" :title="t('efx.addFixture')" :info="t('efx.addFixtureInfo')" sheet>
-      <p v-if="!candidates.length && !groups.length" class="text-sm text-fg-muted">{{ t('efx.noCandidates') }}</p>
-      <template v-else-if="groups.length">
-        <div>
-          <RlButton size="sm" highlight="led" :model-value="pickingGroup" @press="pickingGroup = !pickingGroup">{{ t('efx.pickGroup') }}</RlButton>
-        </div>
-        <div v-if="pickingGroup" class="flex flex-wrap gap-1.5">
-          <RlButton
-            v-for="g in groups"
-            :key="g.id"
-            size="sm"
-            @press="add({ group: g.id })"
-          >
-            <Grid3x3 :size="14" />
-            {{ g.name }}
-          </RlButton>
-        </div>
-      </template>
-      <div class="flex flex-wrap gap-1.5">
-        <RlButton
-          v-for="f in candidates"
-          :key="f.id"
-          size="sm"
-          highlight="led"
-          :color="f.color"
-          @press="add({ fixture: f.id })"
-        >
-          {{ f.name }}
-        </RlButton>
-      </div>
-    </RlDialog>
+    <FixturesPicker
+      v-model:open="adding"
+      :title="t('efx.addFixture')"
+      :info="t('efx.addFixtureInfo')"
+      :groups="groups"
+      :fixtures="candidates"
+      @group="(id: string) => add({ group: id })"
+      @fixture="(id: string) => add({ fixture: id })"
+    />
   </div>
 </template>

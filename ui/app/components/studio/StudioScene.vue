@@ -24,7 +24,6 @@ const selectedGroup = ref<string | null>(null)
 const tool = ref('channels')
 const editingFixtures = ref(false)
 const sameType = ref(false)
-const pickingGroup = ref(false)
 
 // Valores de cada fixture: os dos grupos, com as exceções por cima (as mesmas contas do servidor)
 const effective = computed(() => sceneValues(project.value, props.fn))
@@ -154,7 +153,6 @@ function toggleFixtureGroup(id: string) {
   if (props.fn.groups.some((g) => g.group === id)) return save({ groups: props.fn.groups.filter((g) => g.group !== id) })
   save(groupChanges(id))
   pickGroup(id)
-  pickingGroup.value = false
 }
 
 // Ligar um grupo de canais traz para a cena as fixtures dele que ainda não estão; o que acompanha um
@@ -359,41 +357,20 @@ function setKind(kind: AttributeKind, changes: Partial<AttributeTiming>) {
       </div>
     </section>
 
-    <RlDialog v-model:open="editingFixtures" :title="t('scene.addFixtures')" :info="t('scene.addFixturesInfo')" sheet>
-      <div class="flex flex-wrap gap-1.5">
-        <RlButton size="sm" @press="save({ values: [], groups: [] })">{{ t('scene.clearFixtures') }}</RlButton>
-        <RlButton v-model="sameType" size="sm" mode="toggle" highlight="led">{{ t('scene.sameType') }}</RlButton>
-        <RlButton size="sm" highlight="led" :model-value="pickingGroup" @press="pickingGroup = !pickingGroup">{{ t('scene.pickGroup') }}</RlButton>
-      </div>
-      <div v-if="pickingGroup" class="flex flex-wrap gap-1.5">
-        <RlButton
-          v-for="g in project.fixtureGroups"
-          :key="g.id"
-          size="sm"
-          highlight="led"
-          :model-value="fn.groups.some((x) => x.group === g.id)"
-          @press="toggleFixtureGroup(g.id)"
-        >
-          <Grid3x3 :size="14" />
-          {{ g.name }}
-        </RlButton>
-      </div>
-      <!-- A lista só serve de botão: tocar na linha inclui ou tira a fixture (o LED mostra se está na cena) -->
-      <RlList
-        class="min-h-0"
-        :model-value="undefined"
-        :items="project.fixtures.map((f) => ({ id: f.id, label: f.name, color: f.color, universe: project.universes.find((u) => u.id === f.universe)?.name, end: f.address + channelCount(project, f) - 1, address: f.address }))"
-        @update:model-value="(id) => id && toggleFixture(id)"
-      >
-        <template #item="{ item }">
-          <span class="rl-led" :style="{ '--led': hasOwn(item.id) ? 'var(--color-on)' : 'var(--color-fg-dim)', opacity: hasOwn(item.id) ? 1 : 0.3 }" />
-          <span class="h-6 w-1.5 shrink-0 rounded-sm" :style="{ background: item.color }" />
-          <span class="min-w-0 flex-1 truncate font-semibold">{{ item.label }}</span>
-          <Grid3x3 v-if="covered.includes(item.id)" :size="14" class="shrink-0 text-fg-muted" :aria-label="t('scene.inGroup')" />
-          <span class="shrink-0 text-xs text-fg-muted">{{ item.universe }}</span>
-          <span class="w-16 shrink-0 text-right font-lcd text-sm text-lcd">{{ item.address }}–{{ item.end }}</span>
-        </template>
-      </RlList>
-    </RlDialog>
+    <FixturesPicker
+    v-model:open="editingFixtures"
+      v-model:same-type="sameType"
+      :title="t('scene.addFixtures')"
+      :info="t('scene.addFixturesInfo')"
+      :groups="groupTree(project)"
+      :fixtures="project.fixtures"
+      :is-group-on="(id: string) => fn.groups.some((x) => x.group === id)"
+      :is-fixture-on="hasOwn"
+      :in-group="(id: string) => covered.includes(id)"
+      clearable
+      @group="toggleFixtureGroup"
+      @fixture="toggleFixture"
+      @clear="save({ values: [], groups: [] })"
+    />
   </div>
 </template>

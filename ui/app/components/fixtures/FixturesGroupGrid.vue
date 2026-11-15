@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Copy, Eraser, Trash2, Wand2 } from 'lucide-vue-next'
+import { Copy, Eraser, Network, Trash2, Wand2 } from 'lucide-vue-next'
 import type { FixtureGroup } from '~/types/generated/FixtureGroup'
 
 // Grupo de fixtures: grade 2D de cabeças, usada pelo EFX (a ordem das fixtures) e pelo RGB Matrix
 // (F9). Escolha uma cabeça na paleta e toque nas células; tocar numa célula sem cabeça escolhida a
 // esvazia. Cada cabeça entra uma vez só: pintar uma que já está no grupo a muda de lugar.
 const props = defineProps<{ group: FixtureGroup }>()
-const emit = defineEmits<{ duplicated: [id: string] }>()
+const emit = defineEmits<{ selected: [id: string] }>()
 const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
@@ -15,12 +15,13 @@ const confirmRemove = ref(false)
 
 watch(() => props.group.id, () => (confirmRemove.value = false))
 
-// Uma cabeça por fixture, ou uma por pixel em barras de LED
+// Uma cabeça por fixture, ou uma por pixel em barras de LED. Um subgrupo só tem as cabeças do pai.
+const parentCells = computed(() => project.value.fixtureGroups.find((g) => g.id === props.group.parent)?.cells)
 const heads = computed(() =>
   project.value.fixtures.flatMap((f) => {
     const count = Math.max(1, findDef(project.value, f.defId)?.modes.find((m) => m.name === f.mode)?.heads.length ?? 0)
     return Array.from({ length: count }, (_, head) => ({ fixture: f.id, head, color: f.color, label: count > 1 ? `${f.name} · ${head + 1}` : f.name }))
-  }),
+  }).filter((h) => !parentCells.value || parentCells.value.some((c) => c.fixture === h.fixture && c.head === h.head)),
 )
 const headAt = (x: number, y: number) => {
   const cell = props.group.cells.find((c) => c.x === x && c.y === y)
@@ -52,7 +53,14 @@ function resize(width: number, height: number) {
 async function duplicate() {
   const id = uuidv7()
   await send({ op: 'saveFixtureGroup', group: { ...props.group, id, name: t('studio.copyName', { name: props.group.name }) } })
-  emit('duplicated', id)
+  emit('selected', id)
+}
+
+async function createSubgroup() {
+  const id = uuidv7()
+  const { width, height } = props.group
+  await send({ op: 'saveFixtureGroup', group: { id, name: t('groups.newSubgroupName', { name: props.group.name }), width, height, cells: [], parent: props.group.id } })
+  emit('selected', id)
 }
 
 function remove() {
@@ -104,7 +112,11 @@ function remove() {
         {{ t('groups.eraser') }}
       </RlButton>
       <RlButton size="sm" @press="save({ cells: [] })">{{ t('groups.clear') }}</RlButton>
-      <RlButton size="sm" class="ml-auto" @press="duplicate">
+      <RlButton size="sm" class="ml-auto" @press="createSubgroup">
+        <Network :size="16" />
+        {{ t('groups.newSubgroup') }}
+      </RlButton>
+      <RlButton size="sm" @press="duplicate">
         <Copy :size="16" />
         {{ t('common.duplicate') }}
       </RlButton>

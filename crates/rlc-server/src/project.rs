@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 17;
+const SCHEMA_VERSION: u32 = 19;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -344,6 +344,13 @@ fn migrate(project: &mut Value, version: u32) {
             f.insert("length".into(), Value::Null);
         }
     }
+    // 17 → 19 (F15b): a aparência do feixe é por fixture (`stage.looks`); os perfis por tipo da v18 são
+    // descartados e as fixtures voltam aos padrões
+    if version < 19
+        && let Some(stage) = project.get_mut("stage").and_then(Value::as_object_mut)
+    {
+        stage.insert("looks".into(), json!([]));
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -369,6 +376,13 @@ pub fn save_recovery(path: &Path, project: &Project, origin: Option<&str>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// O exemplo sem as aparências de feixe: as migrações antigas (até a v18) as descartam.
+    fn old_example() -> Project {
+        let mut project = crate::hub::example_snapshot(None).project;
+        project.stage.looks.clear();
+        project
+    }
 
     #[test]
     fn saved_project_reads_back_identical_with_backup() {
@@ -427,7 +441,7 @@ mod tests {
     fn version_1_opens_migrated() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut project = crate::hub::example_snapshot(None).project;
+        let mut project = old_example();
         for f in &mut project.functions {
             if let rlc_core::FunctionKind::Chaser(c) = &mut f.kind {
                 c.keep_last = false;
@@ -454,7 +468,7 @@ mod tests {
     fn version_3_opens_the_efx_within_the_limits() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut project = crate::hub::example_snapshot(None).project;
+        let mut project = old_example();
         // O "Círculo nos MHs" gravado com a ordem aleatória e o desenho maior que o curso
         let mut old = serde_json::to_value(&project).unwrap();
         let efx = old["functions"]
@@ -481,7 +495,7 @@ mod tests {
     fn version_4_opens_with_the_console_grid_doubled_twice() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let project = crate::hub::example_snapshot(None).project;
+        let project = old_example();
         let mut old = serde_json::to_value(&project).unwrap();
         shrink_console_grid(&mut old, 4);
         let file = dir.join("antigo.rlc");
@@ -495,7 +509,7 @@ mod tests {
     fn version_6_opens_with_the_old_flash_as_temp_and_the_slider_list() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let project = crate::hub::example_snapshot(None).project;
+        let project = old_example();
         let mut old = serde_json::to_value(&project).unwrap();
         for w in old["console"]["widgets"].as_array_mut().unwrap() {
             if w["mode"] == "temp" {
@@ -516,7 +530,7 @@ mod tests {
     fn version_7_opens_with_the_scenes_and_channel_groups_by_fixture() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut project = crate::hub::example_snapshot(None).project;
+        let mut project = old_example();
         for f in &mut project.functions {
             if let rlc_core::FunctionKind::Scene(scene) = &mut f.kind {
                 scene.groups.clear();
@@ -548,7 +562,7 @@ mod tests {
         use rlc_core::{Curve, FunctionKind, Priority};
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut project = crate::hub::example_snapshot(None).project;
+        let mut project = old_example();
         for f in &mut project.functions {
             f.priority = Priority::Normal;
             match &mut f.kind {
@@ -608,7 +622,7 @@ mod tests {
         use rlc_core::{Curve, FunctionKind};
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut project = crate::hub::example_snapshot(None).project;
+        let mut project = old_example();
         for f in &mut project.functions {
             if let FunctionKind::Efx(efx) = &mut f.kind {
                 if efx.shape.algorithm == rlc_core::EfxAlgorithm::Freehand {
@@ -651,7 +665,7 @@ mod tests {
         use rlc_core::{FunctionKind, RunOrder};
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let project = crate::hub::example_snapshot(None).project;
+        let project = old_example();
         // A versão 10 tinha o nome de um algoritmo de amostra, e a ordem Aleatória
         let mut old = serde_json::to_value(&project).unwrap();
         let mut matrices = 0;
@@ -683,7 +697,7 @@ mod tests {
         use rlc_core::{FunctionKind, FunctionType};
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut project = crate::hub::example_snapshot(None).project;
+        let mut project = old_example();
         project
             .functions
             .retain(|f| !matches!(f.kind, FunctionKind::Phaser(_)));
@@ -699,7 +713,7 @@ mod tests {
     fn version_12_opens_the_xy_pads_without_groups() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let mut project = crate::hub::example_snapshot(None).project;
+        let mut project = old_example();
         for w in &mut project.console.widgets {
             if let rlc_core::VcWidgetKind::XyPad(xy) = &mut w.kind {
                 xy.groups.clear();
@@ -722,7 +736,7 @@ mod tests {
     fn versions_14_and_15_open_ignoring_the_removed_palettes() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let project = crate::hub::example_snapshot(None).project;
+        let project = old_example();
         let mut old = serde_json::to_value(&project).unwrap();
         old["palettes"] =
             json!([{ "id": "p1", "name": "Verde", "kind": "color", "models": [], "fixtures": [] }]);
@@ -747,7 +761,7 @@ mod tests {
     fn version_16_opens_with_each_collection_function_as_an_item_from_zero() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let project = crate::hub::example_snapshot(None).project;
+        let project = old_example();
         let mut old = serde_json::to_value(&project).unwrap();
         let k1 = old["functions"]
             .as_array_mut()
@@ -773,10 +787,43 @@ mod tests {
     }
 
     #[test]
+    fn version_17_opens_without_beam_looks_and_uses_the_defaults() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = old_example();
+        // O exemplo traz perfis (F15b); o projeto antigo não tem nenhum.
+        let mut old = serde_json::to_value(&project).unwrap();
+        old["stage"].as_object_mut().unwrap().remove("looks");
+        let file = dir.join("antigo.rlc");
+        let v17 = json!({ "format": FORMAT, "schemaVersion": 17, "project": old });
+        std::fs::write(&file, v17.to_string()).unwrap();
+        let opened = read(&file).unwrap().0;
+        assert!(opened.stage.looks.is_empty());
+        assert_eq!(opened, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_18_opens_without_the_per_kind_beam_looks() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let project = old_example();
+        let mut old = serde_json::to_value(&project).unwrap();
+        // Perfis por tipo da v18, que não têm `fixture`
+        old["stage"]["looks"] =
+            json!([{ "kind": "colorChanger", "softness": 1, "core": 0.4, "reach": 7 }]);
+        let file = dir.join("antigo.rlc");
+        let v18 = json!({ "format": FORMAT, "schemaVersion": 18, "project": old });
+        std::fs::write(&file, v18.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn version_5_opens_with_the_console_grid_doubled_once() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let project = crate::hub::example_snapshot(None).project;
+        let project = old_example();
         let mut old = serde_json::to_value(&project).unwrap();
         shrink_console_grid(&mut old, 2);
         let file = dir.join("antigo.rlc");

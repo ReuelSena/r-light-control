@@ -68,6 +68,18 @@
     "redone": "Refeito"
   },
   "fixtures": {
+    "look": {
+      "title": "Aparência do feixe",
+      "info": "Vale só para a 3D View e não muda a luz.",
+      "brightness": "Brilho",
+      "angleMin": "Abertura mín.",
+      "angleMax": "Abertura máx.",
+      "softness": "Borda",
+      "core": "Núcleo",
+      "reach": "Alcance",
+      "reset": "Padrão",
+      "sameModel": "Aplicar ao mesmo modelo"
+    },
     "project": "No projeto",
     "library": "Biblioteca",
     "groups": "Grupos",

@@ -333,6 +333,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             p.stage.fixtures.retain(|x| !gone(&x.fixture));
+            p.stage.looks.retain(|l| !gone(&l.fixture));
             s.highlight.fixtures.retain(|id| !gone(id));
             vec![
                 T::Fixtures,
@@ -919,6 +920,24 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         }
         Op::SaveStage { stage } => {
             unique(stage.elements.iter().map(|e| &e.id))?;
+            for (i, l) in stage.looks.iter().enumerate() {
+                if !p.fixtures.iter().any(|f| f.id == l.fixture) {
+                    return Err("Aparência do feixe de uma fixture que não existe.".into());
+                }
+                if stage.looks[..i].iter().any(|o| o.fixture == l.fixture) {
+                    return Err("Fixture repetida na aparência do feixe.".into());
+                }
+                if !(0.0..=2.0).contains(&l.brightness)
+                    || !(1.0..=60.0).contains(&l.angle_min)
+                    || !(1.0..=60.0).contains(&l.angle_max)
+                    || l.angle_min > l.angle_max
+                    || !(0.0..=1.0).contains(&l.softness)
+                    || !(0.0..=4.0).contains(&l.core)
+                    || !(1.0..=30.0).contains(&l.reach)
+                {
+                    return Err("Aparência do feixe fora dos limites.".into());
+                }
+            }
             p.stage = stage;
             vec![T::Stage]
         }
@@ -1341,6 +1360,7 @@ pub fn empty_project() -> Project {
             height: 6.0,
             fixtures: vec![],
             elements: vec![],
+            looks: vec![],
         },
     }
 }
@@ -5221,6 +5241,53 @@ mod tests {
             .map(|c| patch[0].fades[c - 1])
             .into();
         assert_eq!(fades, [true, true, true, false, false]);
+    }
+
+    #[test]
+    fn beam_looks_are_per_fixture_validated_and_cleaned_on_removal() {
+        let mut s = example();
+        let look = |fixture: &str| BeamLook {
+            fixture: fixture.into(),
+            brightness: 1.0,
+            angle_min: 4.0,
+            angle_max: 10.0,
+            softness: 0.2,
+            core: 1.0,
+            reach: 12.0,
+        };
+        let save = |s: &mut Snapshot, looks: Vec<BeamLook>| {
+            let mut stage = s.project.stage.clone();
+            stage.looks = looks;
+            apply(s, Op::SaveStage { stage })
+        };
+        assert!(save(&mut s, vec![look("mh1"), look("mh2")]).is_ok());
+        assert!(save(&mut s, vec![look("nao-existe")]).is_err());
+        assert!(save(&mut s, vec![look("mh1"), look("mh1")]).is_err());
+        let mut bad = look("mh1");
+        bad.angle_min = 20.0; // maior que a máxima
+        assert!(save(&mut s, vec![bad]).is_err());
+        let edits: [fn(&mut BeamLook); 6] = [
+            |l| l.brightness = 2.5,
+            |l| l.angle_max = 61.0,
+            |l| l.angle_min = 0.5,
+            |l| l.softness = 1.5,
+            |l| l.core = 5.0,
+            |l| l.reach = 31.0,
+        ];
+        for edit in edits {
+            let mut bad = look("mh1");
+            edit(&mut bad);
+            assert!(save(&mut s, vec![bad]).is_err());
+        }
+        assert_eq!(s.project.stage.looks.len(), 2);
+        apply(
+            &mut s,
+            Op::RemoveFixtures {
+                ids: vec!["mh1".into()],
+            },
+        )
+        .unwrap();
+        assert_eq!(s.project.stage.looks, [look("mh2")]);
     }
 
     #[test]

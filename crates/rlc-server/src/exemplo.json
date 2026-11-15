@@ -5310,6 +5310,471 @@
     "runOrder": "pingPong",
     "beats": true,
     "length": null
+   },
+   {
+    "id": "s12",
+    "name": "Beams: zoom estreito e foco",
+    "folder": "d7",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g5",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 10
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 0
+       }
+      ]
+     },
+     {
+      "group": "g3",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 50
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 10
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "focus",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s13",
+    "name": "Beams: zoom aberto e foco suave",
+    "folder": "d7",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g5",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 90
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     },
+     {
+      "group": "g3",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 40
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 10
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "focus",
+        "index": 0,
+        "value": 0
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s14",
+    "name": "Beams: prisma girando",
+    "folder": "d7",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g5",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 20
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 120
+       },
+       {
+        "attribute": "prism",
+        "index": 0,
+        "value": 200
+       },
+       {
+        "attribute": "prism",
+        "index": 1,
+        "value": 230
+       }
+      ]
+     },
+     {
+      "group": "g3",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 30
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 10
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 120
+       },
+       {
+        "attribute": "prism",
+        "index": 0,
+        "value": 200
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s15",
+    "name": "Beams: gobo girando",
+    "folder": "d7",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g5",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 60
+       },
+       {
+        "attribute": "gobo",
+        "index": 0,
+        "value": 10
+       }
+      ]
+     },
+     {
+      "group": "g3",
+      "values": [
+       {
+        "attribute": "pan",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "tilt",
+        "index": 0,
+        "value": 128
+       },
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "colorWheel",
+        "index": 0,
+        "value": 0
+       },
+       {
+        "attribute": "shutter",
+        "index": 0,
+        "value": 10
+       },
+       {
+        "attribute": "zoom",
+        "index": 0,
+        "value": 60
+       },
+       {
+        "attribute": "gobo",
+        "index": 0,
+        "value": 20
+       },
+       {
+        "attribute": "goboRotation",
+        "index": 0,
+        "value": 180
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "c3",
+    "name": "Beams: zoom, prisma e gobo",
+    "folder": "d8",
+    "priority": "normal",
+    "type": "chaser",
+    "scene": null,
+    "runOrder": "loop",
+    "direction": "forward",
+    "beats": false,
+    "keepLast": false,
+    "fadeInMode": "default",
+    "holdMode": "common",
+    "fadeOutMode": "default",
+    "common": {
+     "delayInMs": 0,
+     "fadeInMs": 1000,
+     "holdMs": 4000,
+     "delayOutMs": 0,
+     "fadeOutMs": 1000,
+     "curve": "linear"
+    },
+    "steps": [
+     {
+      "function": "s12",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 1000,
+       "holdMs": 4000,
+       "delayOutMs": 0,
+       "fadeOutMs": 1000,
+       "curve": "linear"
+      },
+      "note": "Zoom estreito",
+      "values": []
+     },
+     {
+      "function": "s13",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 1000,
+       "holdMs": 4000,
+       "delayOutMs": 0,
+       "fadeOutMs": 1000,
+       "curve": "linear"
+      },
+      "note": "Zoom aberto",
+      "values": []
+     },
+     {
+      "function": "s14",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 1000,
+       "holdMs": 4000,
+       "delayOutMs": 0,
+       "fadeOutMs": 1000,
+       "curve": "linear"
+      },
+      "note": "Prisma",
+      "values": []
+     },
+     {
+      "function": "s15",
+      "timing": {
+       "delayInMs": 0,
+       "fadeInMs": 1000,
+       "holdMs": 4000,
+       "delayOutMs": 0,
+       "fadeOutMs": 1000,
+       "curve": "linear"
+      },
+      "note": "Gobo",
+      "values": []
+     }
+    ]
    }
   ],
   "folders": [
@@ -5346,6 +5811,18 @@
     "id": "d6",
     "name": "Linha do tempo",
     "kind": "collection",
+    "parent": null
+   },
+   {
+    "id": "d7",
+    "name": "3D realista",
+    "kind": "scene",
+    "parent": null
+   },
+   {
+    "id": "d8",
+    "name": "3D realista",
+    "kind": "chaser",
     "parent": null
    }
   ],
@@ -6979,6 +7456,71 @@
      "rotationX": 0,
      "rotationY": 0,
      "rotationZ": 0
+    }
+   ],
+   "looks": [
+    {
+     "fixture": "rpar1",
+     "brightness": 0.8,
+     "angleMin": 30,
+     "angleMax": 30,
+     "softness": 0.9,
+     "core": 0.3,
+     "reach": 6
+    },
+    {
+     "fixture": "rpar2",
+     "brightness": 0.8,
+     "angleMin": 30,
+     "angleMax": 30,
+     "softness": 0.9,
+     "core": 0.3,
+     "reach": 6
+    },
+    {
+     "fixture": "rpar3",
+     "brightness": 0.8,
+     "angleMin": 30,
+     "angleMax": 30,
+     "softness": 0.9,
+     "core": 0.3,
+     "reach": 6
+    },
+    {
+     "fixture": "rbeam1",
+     "brightness": 0.9,
+     "angleMin": 2,
+     "angleMax": 6,
+     "softness": 0.1,
+     "core": 1,
+     "reach": 12
+    },
+    {
+     "fixture": "rbeam2",
+     "brightness": 0.9,
+     "angleMin": 2,
+     "angleMax": 6,
+     "softness": 0.1,
+     "core": 1,
+     "reach": 12
+    },
+    {
+     "fixture": "rbeam3",
+     "brightness": 0.9,
+     "angleMin": 2,
+     "angleMax": 6,
+     "softness": 0.1,
+     "core": 1,
+     "reach": 12
+    },
+    {
+     "fixture": "rbeam4",
+     "brightness": 0.9,
+     "angleMin": 2,
+     "angleMax": 6,
+     "softness": 0.1,
+     "core": 1,
+     "reach": 12
     }
    ]
   },

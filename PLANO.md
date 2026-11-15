@@ -22,6 +22,8 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 
 ## Pendências (2026-11-13)
 
+**F15b entregue (2026-11-13):** a [F15b](docs/fases/fase-15b.md) (3D realista) aguarda a validação junto com as demais ([checklist](docs/fases/fase-15b.md#validação-com-você)).
+
 **Entregue (2026-11-13):** a [F11b](docs/fases/fase-11b.md) (coleção com linha do tempo, aguardando a validação, [checklist](docs/fases/fase-11b.md#validação-com-você)) e a [F12b](docs/fases/fase-12b.md) (Gravação: gravar a saída, Update e filtro por tipo; as paletas foram tentadas e removidas no mesmo dia), aguardando a validação do usuário junto com a F9, a F9b, a F10c, a F10d e a F11. Próxima na ordem: F12c (Seleção) ou o que o usuário pedir.
 
 **Onde paramos (2026-11-13):** a F12b (Gravação) foi entregue sem a validação da F9, da F9b, da F10c, da F10d e da F11, a pedido do usuário (exceção ao G1). Falta ele validar tudo numa rodada só, com o rig montado: o checklist de cada fase está no arquivo dela. Depois, a F11b e as fases seguintes da ordem.
@@ -43,7 +45,7 @@ O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
 
 **Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
 
-**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário; a F11b, pedido de 2026-11-06, entra depois da F12b):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F11b → F12c → F13 → F13b → F14 → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia; em 2026-10-22 o usuário seguiu para a [F10d](docs/fases/fase-10d.md), entregue no mesmo dia. A [F9](docs/fases/fase-09.md) foi aprovada e entregue em 2026-10-27, antes da validação da F10c e da F10d (G1: o usuário pediu para seguir).
+**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário; a F11b, pedido de 2026-11-06, entra depois da F12b):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F11b → F12c → F13 → F13b → F14 → F15b → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia; em 2026-10-22 o usuário seguiu para a [F10d](docs/fases/fase-10d.md), entregue no mesmo dia. A [F9](docs/fases/fase-09.md) foi aprovada e entregue em 2026-10-27, antes da validação da F10c e da F10d (G1: o usuário pediu para seguir).
 
 **Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
 
@@ -519,6 +521,21 @@ Validação:
 - [ ] 100 fixtures a 30 fps no celular.
 - [ ] Tocar numa fixture do mapa a escolhe no editor de cena.
 - [ ] A planilha mostra os valores ao vivo e edita um valor.
+
+### F15b — 3D realista · 🟡 (nova, 2026-11-13, pedido do usuário; entregue em 2026-11-13, aguardando a validação)
+
+Mini-plano e registro: [docs/fases/fase-15b.md](docs/fases/fase-15b.md). Executada inteira, em 4 rodadas, sem validar cada uma (exceção ao G1). Projeto na versão 18. Exemplos (G8) na pasta "3D realista" do `exemplo.json` (o "Show de exemplo" salvo não foi atualizado).
+
+- **R1, perfil e canais ao vivo:** o feixe tem um perfil por fixture (`stage.looks`: brilho, abertura, borda, núcleo e alcance; padrão por tipo: PAR macio e largo, Beam fechado), editável na edição da fixture (Fixtures). Ajuste de 2026-11-14 (projeto na versão 19): tronco de cone, glow suave, bloom fraco e perfil por fixture no lugar do por tipo. Zoom, foco e shutter agem ao vivo no cone.
+- **R2, mancha e bloom:** o feixe termina no chão com uma mancha; bloom e tone mapping nas qualidades média e alta.
+- **R3, prisma e gobo:** o prisma abre o feixe em leque e gira; o gobo vira máscara da mancha, com rotação.
+- **R4, modelos:** moving head, PAR, scanner e strobo em glTF derivados dos modelos do QLC+ (`ui/public/models/`, atribuição no `NOTICE`).
+
+Validação (detalhada em [docs/fases/fase-15b.md](docs/fases/fase-15b.md#validação-com-você)):
+- [ ] PAR macio e sem foco; Beam 7R de raio duro; zoom e foco ao vivo.
+- [ ] Prisma e gobo com rotação; mancha no chão.
+- [ ] Bloom e desempenho nos três níveis de qualidade.
+- [ ] Os quatro modelos, com pan e tilt certos.
 
 ### F15 — Visualização 3D · ⬜
 

@@ -1156,6 +1156,28 @@ pub struct Stage {
     pub fixtures: Vec<FixturePosition>,
     /// Elementos de palco (truss, caixas, pessoas…), que só complementam a prévia.
     pub elements: Vec<StageElement>,
+    /// Aparência do feixe por fixture; a fixture que não está aqui usa o padrão calculado pela UI.
+    #[serde(default)]
+    pub looks: Vec<BeamLook>,
+}
+
+/// Aparência do feixe de uma fixture na 3D View (F15b). Só a prévia: não muda a luz.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BeamLook {
+    pub fixture: Id,
+    /// Brilho do feixe (0 a 2, 1 = normal).
+    pub brightness: f32,
+    /// Abertura do feixe no zoom mínimo, em graus (1 a 60).
+    pub angle_min: f32,
+    /// Abertura do feixe no zoom máximo, em graus (1 a 60, não menor que a mínima).
+    pub angle_max: f32,
+    /// Borda do feixe: 0 = raio duro (Beam), 1 = banho macio (PAR).
+    pub softness: f32,
+    /// Ganho do brilho do núcleo (0 a 4, 1 = normal).
+    pub core: f32,
+    /// Alcance visível do feixe, em metros.
+    pub reach: f32,
 }
 
 /// Posição (metros: x para a direita, y para cima, z para a plateia) e rotação (graus).

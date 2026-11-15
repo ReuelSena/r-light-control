@@ -48,3 +48,9 @@ forem adicionadas:
   a 3, propriedades e o formato dos métodos write e read), seguindo
   engine/src/rgbscript.cpp e rgbscriptproperty.h, para crates/rlc-script/src/lib.rs.
   Os scripts do QLC+ (resources/rgbscripts) não vêm no app: o usuário os importa.
+
+- Modelos 3D das fixtures: ui/public/models/{moving_head,par,scanner,strobe}.glb
+  são derivados das meshes resources/meshes/fixtures/{moving_head,par,scanner,
+  strobe}.dae do QLC+ 5.3.0, convertidos para glTF com escala, origem e
+  orientação ajustadas, material próprio e um marcador da lente (detalhes em
+  ui/public/models/README.md).

@@ -32,19 +32,32 @@ export function createWsClient(): EngineClient {
   let nextId = 1
   let socket: WebSocket
 
-  // Os quadros de um mesmo envio entram juntos, uma vez por quadro de tela
-  let frames: Record<string, Uint8Array> | undefined
+  // Quadros do motor sombra (o preparado), só enquanto assinado (VC-6)
+  const previewOutput = shallowRef<Record<string, Uint8Array>>({})
+  let previewOn = false
+
+  // Os quadros de um mesmo envio entram juntos, uma vez por quadro de tela (tipo 1 = real, 2 = preview)
+  const batches: Record<number, Record<string, Uint8Array> | undefined> = {}
   function frame(bytes: Uint8Array) {
-    if (bytes[0] !== 1) return
+    const kind = bytes[0]!
+    if (kind !== 1 && kind !== 2) return
+    const target = kind === 1 ? output : previewOutput
     const end = 2 + bytes[1]!
-    if (!frames) {
-      frames = {}
+    let batch = batches[kind]
+    if (!batch) {
+      batch = batches[kind] = {}
       requestAnimationFrame(() => {
-        output.value = { ...output.value, ...frames }
-        frames = undefined
+        target.value = { ...target.value, ...batches[kind] }
+        batches[kind] = undefined
       })
     }
-    frames[decoder.decode(bytes.subarray(2, end))] = bytes.slice(end, end + 512)
+    batch[decoder.decode(bytes.subarray(2, end))] = bytes.slice(end, end + 512)
+  }
+
+  function subscribePreview(on: boolean) {
+    previewOn = on
+    if (!on) previewOutput.value = {}
+    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: 'previewSub', on }))
   }
 
   function receive(message: ServerMessage) {
@@ -83,6 +96,8 @@ export function createWsClient(): EngineClient {
   function connect() {
     socket = new WebSocket(url)
     socket.binaryType = 'arraybuffer'
+    // Reconectou: a assinatura é por conexão, então vale de novo
+    socket.onopen = () => previewOn && socket.send(JSON.stringify({ t: 'previewSub', on: true }))
     socket.onmessage = ({ data }) => (data instanceof ArrayBuffer ? frame(new Uint8Array(data)) : receive(JSON.parse(data)))
     socket.onclose = () => {
       connected.value = false
@@ -96,6 +111,8 @@ export function createWsClient(): EngineClient {
   return {
     state,
     output,
+    previewOutput,
+    subscribePreview,
     connected,
     clientId,
     error,

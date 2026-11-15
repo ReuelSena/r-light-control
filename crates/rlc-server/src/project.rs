@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 19;
+const SCHEMA_VERSION: u32 = 20;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -344,12 +344,12 @@ fn migrate(project: &mut Value, version: u32) {
             f.insert("length".into(), Value::Null);
         }
     }
-    // 17 → 19 (F15b): a aparência do feixe é por fixture (`stage.looks`); os perfis por tipo da v18 são
-    // descartados e as fixtures voltam aos padrões
-    if version < 19
+    // 19 → 20 (F15b): a aparência do feixe passou para a definição da fixture (`FixtureDef.beam`); os
+    // perfis do projeto (`stage.looks`, por tipo na v18 e por fixture na v19) são descartados
+    if version < 20
         && let Some(stage) = project.get_mut("stage").and_then(Value::as_object_mut)
     {
-        stage.insert("looks".into(), json!([]));
+        stage.remove("looks");
     }
 }
 
@@ -377,11 +377,8 @@ pub fn save_recovery(path: &Path, project: &Project, origin: Option<&str>) {
 mod tests {
     use super::*;
 
-    /// O exemplo sem as aparências de feixe: as migrações antigas (até a v18) as descartam.
     fn old_example() -> Project {
-        let mut project = crate::hub::example_snapshot(None).project;
-        project.stage.looks.clear();
-        project
+        crate::hub::example_snapshot(None).project
     }
 
     #[test]
@@ -787,35 +784,20 @@ mod tests {
     }
 
     #[test]
-    fn version_17_opens_without_beam_looks_and_uses_the_defaults() {
-        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let project = old_example();
-        // O exemplo traz perfis (F15b); o projeto antigo não tem nenhum.
-        let mut old = serde_json::to_value(&project).unwrap();
-        old["stage"].as_object_mut().unwrap().remove("looks");
-        let file = dir.join("antigo.rlc");
-        let v17 = json!({ "format": FORMAT, "schemaVersion": 17, "project": old });
-        std::fs::write(&file, v17.to_string()).unwrap();
-        let opened = read(&file).unwrap().0;
-        assert!(opened.stage.looks.is_empty());
-        assert_eq!(opened, project);
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
-    fn version_18_opens_without_the_per_kind_beam_looks() {
+    fn versions_before_20_open_without_the_project_beam_looks() {
         let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
         std::fs::create_dir_all(&dir).unwrap();
         let project = old_example();
         let mut old = serde_json::to_value(&project).unwrap();
-        // Perfis por tipo da v18, que não têm `fixture`
+        // Perfis do projeto: por tipo na v18 e por fixture na v19
         old["stage"]["looks"] =
-            json!([{ "kind": "colorChanger", "softness": 1, "core": 0.4, "reach": 7 }]);
+            json!([{ "fixture": "par1", "softness": 1, "core": 0.4, "reach": 7 }]);
         let file = dir.join("antigo.rlc");
-        let v18 = json!({ "format": FORMAT, "schemaVersion": 18, "project": old });
-        std::fs::write(&file, v18.to_string()).unwrap();
-        assert_eq!(read(&file).unwrap().0, project);
+        for version in [18, 19] {
+            let v = json!({ "format": FORMAT, "schemaVersion": version, "project": old });
+            std::fs::write(&file, v.to_string()).unwrap();
+            assert_eq!(read(&file).unwrap().0, project);
+        }
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

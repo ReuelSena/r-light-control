@@ -1,28 +1,25 @@
 import type { BeamLook } from '~/types/generated/BeamLook'
 import type { Capability } from '~/types/generated/Capability'
-import type { Fixture } from '~/types/generated/Fixture'
 import type { FixtureDef } from '~/types/generated/FixtureDef'
-import type { Stage } from '~/types/generated/Stage'
 
-// Aparência do feixe na 3D View (F15b): o padrão de cada fixture (pelo tipo e pela lente), o ajuste do projeto
-// (`stage.looks`, um por fixture) e o estado ao vivo (zoom, foco e shutter) a partir dos valores dos canais.
+// Aparência do feixe na 3D View (F15b): o padrão de cada definição (pelo tipo e pela lente), o ajuste gravado
+// na definição (`FixtureDef.beam`, na Biblioteca) e o estado ao vivo (zoom, foco e shutter) a partir dos valores dos canais.
 // Só prévia: não muda a luz.
 
 /** O padrão da fixture: banho (PAR, dimmer) ou raio (moving head, scanner); os outros tipos não têm cone (`undefined`). */
-export function defaultLook(def: FixtureDef, fixtureId: string): BeamLook | undefined {
+export function defaultLook(def: FixtureDef): BeamLook | undefined {
   const { lensMinDeg: min, lensMaxDeg: max } = def.physical
   if (def.kind === 'colorChanger' || def.kind === 'dimmer') {
-    return { fixture: fixtureId, brightness: 1, angleMin: Math.max(min || 25, 25), angleMax: Math.max(max || 40, 40), softness: 0.9, core: 0.4, reach: 6 }
+    return { brightness: 1, angleMin: Math.max(min || 25, 25), angleMax: Math.max(max || 40, 40), softness: 0.9, core: 0.4, reach: 6 }
   }
   if (def.kind !== 'movingHead' && def.kind !== 'scanner') return undefined
   // A definição do QLC+ nem sempre é fiel: o raio não passa de 4° a 10°
   const angleMin = Math.max(1, Math.min(min || 4, 4))
-  return { fixture: fixtureId, brightness: 1, angleMin, angleMax: Math.max(angleMin, Math.min(max || 10, 10)), softness: 0.15, core: 1, reach: 12 }
+  return { brightness: 1, angleMin, angleMax: Math.max(angleMin, Math.min(max || 10, 10)), softness: 0.15, core: 1, reach: 12 }
 }
 
-/** A aparência da fixture: o ajuste do projeto, se houver, ou o padrão. */
-export const beamLook = (stage: Stage, fixture: Fixture, def: FixtureDef | undefined) =>
-  stage.looks.find((l) => l.fixture === fixture.id) ?? (def ? defaultLook(def, fixture.id) : undefined)
+/** A aparência do feixe da definição: a da biblioteca (`def.beam`) ou o padrão; `undefined` sem cone. */
+export const beamLook = (def: FixtureDef | undefined) => def && (def.beam ?? defaultLook(def))
 
 const clamp = (v: number, min = 0, max = 1) => Math.min(max, Math.max(min, v))
 

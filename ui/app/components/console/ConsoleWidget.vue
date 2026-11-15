@@ -123,9 +123,9 @@ const matrix = computed(() => {
   return f?.type === 'rgbMatrix' ? f : undefined
 })
 function toggleMatrix(id: string) {
-  if (!vc.running(id)) send({ op: 'setFunctionRunning', id, running: true })
+  if (!vc.running(id)) vc.op({ op: 'setFunctionRunning', id, running: true })
   else if (vc.value(props.widget.id)) vc.setValue(props.widget.id, [])
-  else send({ op: 'setFunctionRunning', id, running: false })
+  else vc.op({ op: 'setFunctionRunning', id, running: false })
 }
 const editingColor = ref<number>()
 function setColor(i: number, color: string) {

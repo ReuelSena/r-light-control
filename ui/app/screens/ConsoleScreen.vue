@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
-  AlignEndHorizontal, AlignEndVertical, AlignStartHorizontal, AlignStartVertical, Copy, EyeOff, Keyboard, LayoutTemplate,
-  Monitor, Pencil, Plus, Settings2, Smartphone, Tablet, TextCursorInput, Trash2,
+  AlignEndHorizontal, AlignEndVertical, AlignStartHorizontal, AlignStartVertical, ClipboardList, Copy, Eraser, EyeOff, Keyboard,
+  LayoutTemplate, Monitor, Pencil, Play, Plus, Settings2, Smartphone, Tablet, TextCursorInput, Trash2,
 } from 'lucide-vue-next'
 import type { Rect } from '~/types/generated/Rect'
 import type { VcWidget } from '~/types/generated/VcWidget'
@@ -190,7 +190,18 @@ const shortcuts: Record<string, () => unknown> = {
   'Num Enter': () => vc.tapBpm(),
   'Alt+E': () => (editing.value = !editing.value),
   'Alt+I': () => (prefs.value.keyHints = !prefs.value.keyHints),
+  'Ctrl+Enter': () => vc.setPrepare(!vc.prepare.value),
 }
+
+// Modo Preparar (VC-6): Executar leva o preparado para a luz; Descartar o joga fora
+const canCommit = computed(() => vc.prepare.value && vc.hasStaged.value)
+// Depois de executar, o modo Preparar desliga sozinho e o console volta a operar a luz real
+const commit = () => {
+  if (!canCommit.value) return
+  send({ op: 'commitStaged' })
+  vc.setPrepare(false)
+}
+const discard = () => vc.hasStaged.value && send({ op: 'clearStaged' })
 
 // Na edição, atalhos dos elementos escolhidos: Delete remove; Ctrl + D duplica; Ctrl + C e Ctrl + V copiam
 // e colam; as setas deslocam 4 células (com Shift, 8; com Ctrl, 1, o menor passo da grade)
@@ -216,8 +227,20 @@ function editKey(e: KeyboardEvent) {
 
 function onKey(e: KeyboardEvent, down: boolean) {
   const target = e.target as HTMLElement
-  // Digitando num campo, só valem as combinações com Alt (que não escrevem nada)
-  if (!e.altKey && target.closest('input, textarea, select')) return
+  // Digitando num campo, só valem as combinações com Alt e o Ctrl + Enter (que não escrevem nada)
+  if (!e.altKey && keyCombo(e) !== 'Ctrl+Enter' && target.closest('input, textarea, select')) return
+  // Enter (fileira de cima) executa o preparado; só com o modo ligado e algo preparado
+  if (down && e.code === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey && !editing.value && canCommit.value && !target.closest('[role="dialog"]')) {
+    e.preventDefault()
+    if (!e.repeat) commit()
+    return
+  }
+  // Backspace limpa o preparado e zera o preview; só com o modo ligado
+  if (down && e.code === 'Backspace' && !e.ctrlKey && !e.altKey && !e.shiftKey && !editing.value && vc.prepare.value && !target.closest('[role="dialog"]')) {
+    e.preventDefault()
+    if (!e.repeat) send({ op: 'clearStaged' })
+    return
+  }
   // Atrás de um diálogo aberto, o teclado não mexe nos elementos
   if (down && editing.value && !target.closest('[role="dialog"]') && editKey(e)) return
   if (e.repeat) return
@@ -274,7 +297,24 @@ onBeforeUnmount(() => {
             <RlButton v-model="editing" mode="toggle" highlight="led" size="sm" :title="`${t('vc.edit')} (Alt+E)`">
               <Pencil :size="16" />
               {{ t('vc.edit') }}
+              <span v-if="prefs.keyHints" class="rl-key">Alt+E</span>
             </RlButton>
+            <RlButton :model-value="vc.prepare.value" mode="toggle" highlight="led" color="var(--color-lcd)" size="sm" :title="`${t('vc.prepare')} (Ctrl+Enter)`" @update:model-value="vc.setPrepare">
+              <ClipboardList :size="16" />
+              {{ t('vc.prepare') }}
+              <span v-if="prefs.keyHints" class="rl-key">Ctrl+Enter</span>
+            </RlButton>
+            <template v-if="vc.prepare.value">
+              <RlButton size="sm" :disabled="!canCommit" :title="`${t('vc.execute')} (Enter)`" @press="commit">
+                <Play :size="16" />
+                {{ t('vc.execute') }}
+                <span v-if="prefs.keyHints" class="rl-key">Enter</span>
+              </RlButton>
+              <RlButton size="sm" :disabled="!vc.hasStaged.value" :aria-label="t('vc.discard')" :title="`${t('vc.discard')} (Backspace)`" @press="discard">
+                <Eraser :size="16" />
+                <span v-if="prefs.keyHints" class="rl-key">Backspace</span>
+              </RlButton>
+            </template>
           </div>
         </template>
 

@@ -9,6 +9,10 @@ export interface EngineClient {
   state: Ref<Snapshot>
   /** Valores de saída de cada universo (512 canais), por id. Do servidor, vêm em frames binários (A3). */
   output: ShallowRef<Record<string, Uint8Array>>
+  /** Valores de saída do motor sombra (o preparado, VC-6); só chegam enquanto `subscribePreview(true)`. */
+  previewOutput: ShallowRef<Record<string, Uint8Array>>
+  /** Liga ou desliga o envio do preview a este aparelho (refeito sozinho ao reconectar). */
+  subscribePreview(on: boolean): void
   /** Conectado e com o estado em dia. */
   connected: Ref<boolean>
   /** Id deste aparelho na lista dos conectados (`remote.clients`). */

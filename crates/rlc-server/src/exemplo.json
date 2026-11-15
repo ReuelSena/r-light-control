@@ -195,6 +195,14 @@
      "lensMaxDeg": 25,
      "panMaxDeg": 0,
      "tiltMaxDeg": 0
+    },
+    "beam": {
+     "brightness": 0.8,
+     "angleMin": 30,
+     "angleMax": 30,
+     "softness": 0.9,
+     "core": 0.3,
+     "reach": 6
     }
    },
    {
@@ -267,6 +275,14 @@
      "lensMaxDeg": 25,
      "panMaxDeg": 0,
      "tiltMaxDeg": 0
+    },
+    "beam": {
+     "brightness": 0.8,
+     "angleMin": 30,
+     "angleMax": 30,
+     "softness": 0.9,
+     "core": 0.3,
+     "reach": 6
     }
    },
    {
@@ -633,6 +649,14 @@
      "lensMaxDeg": 30,
      "panMaxDeg": 540,
      "tiltMaxDeg": 270
+    },
+    "beam": {
+     "brightness": 0.9,
+     "angleMin": 2,
+     "angleMax": 6,
+     "softness": 0.1,
+     "core": 1,
+     "reach": 12
     }
    },
    {
@@ -7456,71 +7480,6 @@
      "rotationX": 0,
      "rotationY": 0,
      "rotationZ": 0
-    }
-   ],
-   "looks": [
-    {
-     "fixture": "rpar1",
-     "brightness": 0.8,
-     "angleMin": 30,
-     "angleMax": 30,
-     "softness": 0.9,
-     "core": 0.3,
-     "reach": 6
-    },
-    {
-     "fixture": "rpar2",
-     "brightness": 0.8,
-     "angleMin": 30,
-     "angleMax": 30,
-     "softness": 0.9,
-     "core": 0.3,
-     "reach": 6
-    },
-    {
-     "fixture": "rpar3",
-     "brightness": 0.8,
-     "angleMin": 30,
-     "angleMax": 30,
-     "softness": 0.9,
-     "core": 0.3,
-     "reach": 6
-    },
-    {
-     "fixture": "rbeam1",
-     "brightness": 0.9,
-     "angleMin": 2,
-     "angleMax": 6,
-     "softness": 0.1,
-     "core": 1,
-     "reach": 12
-    },
-    {
-     "fixture": "rbeam2",
-     "brightness": 0.9,
-     "angleMin": 2,
-     "angleMax": 6,
-     "softness": 0.1,
-     "core": 1,
-     "reach": 12
-    },
-    {
-     "fixture": "rbeam3",
-     "brightness": 0.9,
-     "angleMin": 2,
-     "angleMax": 6,
-     "softness": 0.1,
-     "core": 1,
-     "reach": 12
-    },
-    {
-     "fixture": "rbeam4",
-     "brightness": 0.9,
-     "angleMin": 2,
-     "angleMax": 6,
-     "softness": 0.1,
-     "core": 1,
-     "reach": 12
     }
    ]
   },

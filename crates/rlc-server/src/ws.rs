@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
 use rlc_core::{Id, Op};
+use rlc_engine::Published;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tokio::sync::broadcast::{self, error::RecvError, error::TryRecvError};
@@ -17,8 +18,19 @@ use crate::{AppState, PROTOCOL_VERSION};
 /// Tipo do frame binário com os 512 valores de um universo.
 const UNIVERSE_FRAME: u8 = 1;
 
+/// Mesmo formato do `UNIVERSE_FRAME`, com os valores do motor sombra (o preparado), só para quem
+/// mandou `previewSub`.
+const PREVIEW_FRAME: u8 = 2;
+
 /// Tempo sem nenhuma mensagem do aparelho (nem a resposta ao ping, a cada segundo) para ele cair.
 const SILENCE: Duration = Duration::from_secs(3);
+
+/// `{"t":"previewSub","on":bool}`: liga ou desliga o envio dos quadros do preview a este cliente.
+#[derive(Deserialize)]
+struct PreviewSub {
+    t: String,
+    on: bool,
+}
 
 #[derive(Deserialize)]
 struct Cmd {
@@ -56,6 +68,8 @@ async fn run(
     events: &mut broadcast::Receiver<Utf8Bytes>,
 ) {
     let mut sent: HashMap<Id, [u8; 512]> = HashMap::new();
+    let mut sent_preview: HashMap<Id, [u8; 512]> = HashMap::new();
+    let mut preview = false;
     let mut frames = tokio::time::interval(Duration::from_millis(40));
     let mut ping = tokio::time::interval(Duration::from_secs(1));
     let mut heard = Instant::now();
@@ -66,6 +80,12 @@ async fn run(
             message = socket.recv() => match message {
                 Some(Ok(Message::Text(text))) => {
                     heard = Instant::now();
+                    // Assinatura do preview (VC-6): sem resposta; ao ligar, o quadro atual sai completo
+                    if let Some(sub) = serde_json::from_str::<PreviewSub>(&text).ok().filter(|s| s.t == "previewSub") {
+                        preview = sub.on;
+                        sent_preview.clear();
+                        continue;
+                    }
                     let reply = command(state, client, &text);
                     // Os avisos da operação saem antes da resposta: quem espera a resposta já
                     // encontra o estado novo
@@ -88,7 +108,14 @@ async fn run(
                 Err(RecvError::Lagged(_)) => if !resync(socket, state, events).await { return },
                 Err(RecvError::Closed) => return,
             },
-            _ = frames.tick() => if !send_frames(socket, state, &mut sent).await { return },
+            _ = frames.tick() => {
+                if !send_frames(socket, &state.frames, UNIVERSE_FRAME, &mut sent).await {
+                    return;
+                }
+                if preview && !send_frames(socket, &state.shadow_frames, PREVIEW_FRAME, &mut sent_preview).await {
+                    return;
+                }
+            }
             // Acesso pela rede local desligado: os aparelhos de fora caem na hora
             _ = allow_lan.changed(), if !local => if !*allow_lan.borrow() { return },
         }
@@ -142,20 +169,21 @@ async fn resync(
     send(socket, snapshot).await
 }
 
-/// Valores dos universos que mudaram desde o último envio: `[1, tamanho do id, id, 512 valores]`.
+/// Valores dos universos que mudaram desde o último envio: `[tipo, tamanho do id, id, 512 valores]`.
 async fn send_frames(
     socket: &mut WebSocket,
-    state: &AppState,
+    frames: &Published,
+    kind: u8,
     sent: &mut HashMap<Id, [u8; 512]>,
 ) -> bool {
-    let frames = state.frames.load();
+    let frames = frames.load();
     for (id, frame) in &frames.universes {
         if sent.get(id) == Some(frame) {
             continue;
         }
         let id_bytes = &id.as_bytes()[..id.len().min(255)];
         let mut message = Vec::with_capacity(2 + id_bytes.len() + 512);
-        message.extend([UNIVERSE_FRAME, id_bytes.len() as u8]);
+        message.extend([kind, id_bytes.len() as u8]);
         message.extend_from_slice(id_bytes);
         message.extend_from_slice(frame);
         if socket.send(Message::Binary(message.into())).await.is_err() {

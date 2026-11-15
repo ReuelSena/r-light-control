@@ -102,6 +102,7 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
             fixtures: vec![],
             others: 255,
         },
+        staged: StagedState::default(),
     }
 }
 
@@ -217,13 +218,23 @@ impl Hub {
         self.engine.frames.clone()
     }
 
+    /// Quadros do motor sombra: a luz do que está preparado (VC-6).
+    pub fn shadow_frames(&self) -> Published {
+        self.engine.shadow_frames.clone()
+    }
+
     /// Operação de um aparelho: anota o que ele aperta e solta no console, para soltar se ele cair.
     pub fn command_from(&mut self, client: &str, op: Op) -> Result<Value, String> {
+        // O preparado também: um botão de blackout momentâneo age na luz real
+        let pressed = match &op {
+            Op::Staged { inner } => inner.as_ref(),
+            op => op,
+        };
         if let Op::PressWidget {
             widget,
             control: InputControl::Main,
             down,
-        } = &op
+        } = pressed
         {
             self.holds.retain(|(_, w)| w != widget);
             if *down {
@@ -235,6 +246,9 @@ impl Hub {
 
     /// Aplica uma operação de um cliente. Recusada, nada muda e ninguém é avisado.
     pub fn command(&mut self, op: Op) -> Result<Value, String> {
+        if let Op::Staged { inner } = op {
+            return self.staged(*inner);
+        }
         let kind = |id: &Id| {
             let widgets = &self.snapshot.project.console.widgets;
             widgets.iter().find(|w| w.id == *id).map(|w| &w.kind)
@@ -279,12 +293,14 @@ impl Hub {
             op,
             Op::Panic { .. } | Op::NewProject | Op::OpenProject { .. }
         );
-        // O passo da cue list e o BPM (do tap e do fader) vão direto ao motor, depois das criações rodando
+        // O passo da cue list e o BPM (do tap e do fader) vão direto ao motor, depois das criações
+        // rodando; o BPM vale também no sombra
+        let shadow = |c: Command| Command::Shadow(Box::new(c));
         let direct = match &op {
-            Op::StepChaser { id, action } => Some(Command::Step(id.clone(), *action)),
-            Op::SetBpm { bpm } => Some(Command::Bpm(*bpm)),
-            Op::SetTempo { bpm } => Some(Command::Tempo(*bpm)),
-            _ => None,
+            Op::StepChaser { id, action } => vec![Command::Step(id.clone(), *action)],
+            Op::SetBpm { bpm } => vec![Command::Bpm(*bpm), shadow(Command::Bpm(*bpm))],
+            Op::SetTempo { bpm } => vec![Command::Tempo(*bpm), shadow(Command::Tempo(*bpm))],
+            _ => vec![],
         };
         // A prévia de um script espera a thread dele: fica fora do `apply`, que só vê o estado
         if let Op::PreviewMatrix { id, step } = &op
@@ -344,13 +360,60 @@ impl Hub {
         }
         if cut {
             self.engine.send(Command::Cut);
+            self.engine.send(shadow(Command::Cut));
         }
         self.publish(&topics);
         self.sync_engine(&topics);
-        if let Some(command) = direct {
+        for command in direct {
             self.engine.send(command);
         }
         Ok(reply)
+    }
+
+    /// Modo Preparar (VC-6): a op do console age só no estado preparado, como se ele fosse o ao vivo,
+    /// e o que ele acende vai ao motor sombra. O Blackout e o Stop All dos botões continuam reais; o
+    /// Flash, o Temp e as macros não se preparam.
+    fn staged(&mut self, op: Op) -> Result<Value, String> {
+        let widget = |id: &Id| {
+            let widgets = &self.snapshot.project.console.widgets;
+            widgets.iter().find(|w| w.id == *id).map(|w| &w.kind)
+        };
+        match &op {
+            Op::PressWidget { widget: id, .. } => match widget(id) {
+                Some(VcWidgetKind::Button(b))
+                    if matches!(b.action, ButtonAction::Blackout | ButtonAction::StopAll) =>
+                {
+                    return self.command(op);
+                }
+                Some(VcWidgetKind::Button(b)) if b.mode != ButtonMode::Toggle => {
+                    return Ok(Value::Null);
+                }
+                Some(VcWidgetKind::Macro(_)) => return Ok(Value::Null),
+                _ => {}
+            },
+            Op::SetWidgetValue { .. }
+            | Op::StepChaser { .. }
+            | Op::LoadStep { .. }
+            | Op::SetFunctionRunning { .. }
+            | Op::SetFunctionPaused { .. } => {}
+            _ => return Err("Só as operações do console se preparam.".into()),
+        }
+        let s = &mut self.snapshot;
+        swap_staged(s);
+        let op = console_op(s, op);
+        let step = match &op {
+            Op::StepChaser { id, action } => Some(Command::Step(id.clone(), *action)),
+            _ => None,
+        };
+        let applied = apply(s, op);
+        swap_staged(s);
+        applied?;
+        self.publish(&[Topic::Staged]);
+        self.sync_engine(&[Topic::Staged]);
+        if let Some(step) = step {
+            self.engine.send(Command::Shadow(Box::new(step)));
+        }
+        Ok(Value::Null)
     }
 
     /// O toque numa macro: rodando, ela é interrompida; senão, começa, acesa enquanto roda.
@@ -789,6 +852,8 @@ impl Hub {
             Topic::FixtureDefs,
         ]) {
             self.engine.send(Command::Patch(universe_patch(p)));
+            let patch = Command::Patch(universe_patch(p));
+            self.engine.send(Command::Shadow(Box::new(patch)));
             for slot in &self.outputs {
                 if let Ok(mut patched) = slot.universe.lock() {
                     *patched = patched_universe(p, &slot.interface);
@@ -797,7 +862,7 @@ impl Hub {
         }
         // As criações rodando acompanham as edições, inclusive a delas mesmas e a dos grupos (N1), e os
         // tempos ajustados ao vivo no console
-        if any(&[
+        let running = [
             Topic::Project,
             Topic::Universes,
             Topic::Fixtures,
@@ -809,9 +874,20 @@ impl Hub {
             Topic::Paused,
             Topic::Console,
             Topic::WidgetValues,
-        ]) {
+        ];
+        if any(&running) {
             self.engine
                 .send(Command::Running(running_programs(&self.snapshot)));
+        }
+        // O motor sombra roda o preparado (VC-6), com as mesmas edições
+        let idle = self.snapshot.staged == StagedState::default();
+        if (any(&running) && !idle) || any(&[Topic::Staged]) {
+            let s = &mut self.snapshot;
+            swap_staged(s);
+            let programs = running_programs(s);
+            swap_staged(s);
+            self.engine
+                .send(Command::Shadow(Box::new(Command::Running(programs))));
         }
         if any(&[Topic::Project, Topic::Desk]) {
             self.engine
@@ -987,6 +1063,15 @@ fn start_output(engine: &Engine, project: &Project, interface: &DmxInterface) ->
         output,
         frames_seen: 0,
     }
+}
+
+/// Troca o estado ao vivo do console pelo preparado (VC-6): trocar de novo desfaz.
+fn swap_staged(s: &mut Snapshot) {
+    let staged = &mut s.staged;
+    std::mem::swap(&mut s.running, &mut staged.running);
+    std::mem::swap(&mut s.paused, &mut staged.paused);
+    std::mem::swap(&mut s.widget_values, &mut staged.widget_values);
+    std::mem::swap(&mut s.loaded_steps, &mut staged.loaded_steps);
 }
 
 /// Universo que manda na interface (uma interface manda um universo só).
@@ -1222,6 +1307,153 @@ mod tests {
         // Ele cai: o Temp solta, e o liga/desliga continua
         hub.leave("aparelho");
         assert_eq!(hub.snapshot.running, ["s1"]);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    fn staged(op: Op) -> Op {
+        Op::Staged {
+            inner: Box::new(op),
+        }
+    }
+
+    fn press(widget: &str) -> Op {
+        Op::PressWidget {
+            widget: widget.into(),
+            control: InputControl::Main,
+            down: true,
+        }
+    }
+
+    #[test]
+    fn staged_ops_stay_out_of_the_live_state_until_committed() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        hub.command(Op::SetFunctionRunning {
+            id: "s2".into(),
+            running: true,
+        })
+        .unwrap();
+        // "b1" (liga/desliga do s1) preparado; o Temp "b11" não se prepara
+        hub.command(staged(press("b1"))).unwrap();
+        hub.command(staged(press("b11"))).unwrap();
+        let s = &hub.snapshot;
+        assert_eq!(s.running, ["s2"]);
+        assert_eq!(s.staged.running, ["s1"]);
+        assert!(s.widget_values.is_empty() && s.staged.widget_values.is_empty());
+        // Executar: o preparado entra por cima do que está aceso, e fica vazio
+        hub.command(Op::CommitStaged).unwrap();
+        assert_eq!(hub.snapshot.running, ["s2", "s1"]);
+        assert_eq!(hub.snapshot.staged, StagedState::default());
+        // O desfazer não vê nada disso
+        assert!(hub.undo.is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn clear_staged_and_new_project_drop_what_was_prepared() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        hub.command(staged(press("b1"))).unwrap();
+        // A cena preparada acende só no motor sombra
+        let (real, shadow) = (hub.frames(), hub.shadow_frames());
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while shadow.load().universes == real.load().universes {
+            assert!(
+                Instant::now() < deadline,
+                "o sombra não acendeu o preparado"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        hub.command(Op::ClearStaged).unwrap();
+        assert_eq!(hub.snapshot.staged, StagedState::default());
+        hub.command(staged(press("b1"))).unwrap();
+        hub.command(Op::NewProject).unwrap();
+        assert_eq!(hub.snapshot.staged, StagedState::default());
+        assert!(hub.snapshot.running.is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    fn running(hub: &mut Hub, id: &str) {
+        hub.command(Op::SetFunctionRunning {
+            id: id.into(),
+            running: true,
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn seed_copies_the_live_state_only_into_an_empty_staged() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        running(&mut hub, "s2");
+        hub.command(Op::SeedStaged).unwrap();
+        assert_eq!(hub.snapshot.staged.running, ["s2"]);
+        assert!(hub.snapshot.staged.full);
+        // Já preparado (o "b1" é solo): um novo seed não sobrescreve
+        hub.command(staged(press("b1"))).unwrap();
+        running(&mut hub, "s5");
+        hub.command(Op::SeedStaged).unwrap();
+        assert_eq!(hub.snapshot.staged.running, ["s1"]);
+        assert!(hub.snapshot.staged.full);
+        // Descartar volta a `full` para falso
+        hub.command(Op::ClearStaged).unwrap();
+        assert_eq!(hub.snapshot.staged, StagedState::default());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn commit_of_a_seeded_staged_replaces_the_live_state() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        running(&mut hub, "s2");
+        hub.command(Op::SeedStaged).unwrap();
+        // No preview: desliga a s2 (pelo elemento da cena) e liga a s1
+        hub.command(staged(Op::SetFunctionRunning {
+            id: "s2".into(),
+            running: false,
+        }))
+        .unwrap();
+        hub.command(staged(press("b1"))).unwrap();
+        assert_eq!(hub.snapshot.running, ["s2"]);
+        hub.command(Op::CommitStaged).unwrap();
+        assert_eq!(hub.snapshot.running, ["s1"]);
+        assert_eq!(hub.snapshot.staged, StagedState::default());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn commit_of_an_unseeded_staged_still_adds() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        running(&mut hub, "s2");
+        hub.command(staged(press("b1"))).unwrap();
+        assert!(!hub.snapshot.staged.full);
+        hub.command(Op::CommitStaged).unwrap();
+        assert_eq!(hub.snapshot.running, ["s2", "s1"]);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn only_console_ops_are_staged() {
+        let (mut hub, dir) = hub();
+        let op = staged(Op::SetGrandMaster { value: 10 });
+        assert!(hub.command(op).is_err());
+        assert_eq!(hub.snapshot.master.grand_master, 255);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

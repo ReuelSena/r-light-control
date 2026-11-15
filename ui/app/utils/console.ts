@@ -107,10 +107,11 @@ export function keyCombo(e: KeyboardEvent) {
 
 /**
  * Atalhos padrão do app, que nenhum elemento pode usar: −, + e Enter do teclado numérico (seção master),
- * Ctrl + − / Ctrl + + (zoom), Alt + E (editar o console) e Alt + I (dicas de atalho). As mesmas teclas da
- * fileira de cima continuam livres.
+ * Ctrl + − / Ctrl + + (zoom), Alt + E (editar o console), Alt + I (dicas de atalho) e Ctrl + Enter (modo
+ * Preparar). As mesmas teclas da fileira de cima continuam livres (o Enter só é tomado pelo Executar, no
+ * ConsoleScreen, com o modo ligado e algo preparado; o Backspace, que limpa o preparado, com o modo ligado).
  */
 export function isReservedKey(e: KeyboardEvent) {
   return ['NumpadAdd', 'NumpadSubtract', 'NumpadEnter'].includes(e.code) || (e.ctrlKey && ['-', '+', '='].includes(e.key))
-    || ['Alt+E', 'Alt+I'].includes(keyCombo(e))
+    || ['Alt+E', 'Alt+I', 'Ctrl+Enter'].includes(keyCombo(e))
 }

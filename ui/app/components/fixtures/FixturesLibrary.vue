@@ -78,6 +78,7 @@ function newDef(): FixtureDef {
     id: '', manufacturer: '', model: '', kind: 'colorChanger', channels: [],
     modes: [{ name: t('editor.defaultMode'), channels: [], heads: [] }],
     physical: { widthMm: 0, heightMm: 0, depthMm: 0, weightKg: 0, powerW: 0, lensMinDeg: 25, lensMaxDeg: 25, panMaxDeg: 0, tiltMaxDeg: 0 },
+    beam: null,
   }
 }
 

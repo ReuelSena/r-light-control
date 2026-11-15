@@ -16,10 +16,10 @@ import type { FixtureKind } from '~/types/generated/FixtureKind'
 // aproxima. Os elementos de palco (truss, caixas…) complementam a prévia.
 // O botão esquerdo (ou o toque) só escolhe, e só o que é da aba aberta (`layer`): fixtures ou elementos.
 // Com "Editar posição" (`editing`), arrastar o escolhido o move em qualquer vista (no toque, depois de
-// escolher). O feixe (F15b) segue o zoom, o foco, o shutter, o prisma (leque girando) e o gobo (na mancha do chão).
-const props = defineProps<{ view: 'perspective' | 'top' | 'front' | 'side'; editing: boolean; layer?: 'fixtures' | 'elements'; hidden?: { fixtures: boolean; elements: boolean; ids: string[] } }>()
+// escolher). `source="preview"` desenha o palco com os quadros do modo Preparar (sem edição). O feixe (F15b) segue o zoom, o foco, o shutter, o prisma (leque girando) e o gobo (na mancha do chão).
+const props = defineProps<{ view: 'perspective' | 'top' | 'front' | 'side'; editing: boolean; layer?: 'fixtures' | 'elements'; source?: 'live' | 'preview'; hidden?: { fixtures: boolean; elements: boolean; ids: string[] } }>()
 const selected = defineModel<string[]>('selected', { default: () => [] })
-const { state, output, send } = useEngine()
+const { state, output, previewOutput, send } = useEngine()
 const prefs = usePrefs()
 const project = computed(() => state.value.project)
 const stage = computed(() => project.value.stage)
@@ -395,7 +395,7 @@ const pickable = (layer: 'fixtures' | 'elements') => pickables[layer].filter((o)
 
 let last = performance.now() / 1000
 function onLoop() {
-  const frames = output.value
+  const frames = props.source === 'preview' ? previewOutput.value : output.value
   // As rotações (prisma e gobo) se acumulam com o tempo do quadro
   const now = performance.now() / 1000
   const dt = Math.min(0.1, now - last)
@@ -415,7 +415,7 @@ function onLoop() {
     if (look.tilt) look.tilt.rotation.x = look.mirror ? tilt / 2 : tilt
     // No espelho, o feixe gira o dobro: a outra metade vai no leque (o eixo X da lente é o da cabeça)
     if (look.mirror && look.fan) look.fan.rotation.x = tilt / 2
-    const profile = beamLook(stage.value, f, findDef(project.value, f.defId))
+    const profile = beamLook(findDef(project.value, f.defId))
     if (look.beam && look.fan && look.spotMat && profile) {
       const state = beamState(v, profile, look.shutter, now)
       const read = (c: Channel) => frame?.[f.address - 1 + c.index] ?? 0

@@ -22,6 +22,8 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 
 ## Pendências (2026-11-13)
 
+**Pedido novo (2026-11-15, G4): subgrupos de fixtures e árvore de grupos.** Mini-plano em [docs/fases/subgrupos.md](docs/fases/subgrupos.md), aguardando a aprovação do usuário (recorte do pai e sem limite de níveis já respondidos).
+
 **F15b entregue (2026-11-13):** a [F15b](docs/fases/fase-15b.md) (3D realista) aguarda a validação junto com as demais ([checklist](docs/fases/fase-15b.md#validação-com-você)).
 
 **Entregue (2026-11-13):** a [F11b](docs/fases/fase-11b.md) (coleção com linha do tempo, aguardando a validação, [checklist](docs/fases/fase-11b.md#validação-com-você)) e a [F12b](docs/fases/fase-12b.md) (Gravação: gravar a saída, Update e filtro por tipo; as paletas foram tentadas e removidas no mesmo dia), aguardando a validação do usuário junto com a F9, a F9b, a F10c, a F10d e a F11. Próxima na ordem: F12c (Seleção) ou o que o usuário pedir.
@@ -526,7 +528,7 @@ Validação:
 
 Mini-plano e registro: [docs/fases/fase-15b.md](docs/fases/fase-15b.md). Executada inteira, em 4 rodadas, sem validar cada uma (exceção ao G1). Projeto na versão 18. Exemplos (G8) na pasta "3D realista" do `exemplo.json` (o "Show de exemplo" salvo não foi atualizado).
 
-- **R1, perfil e canais ao vivo:** o feixe tem um perfil por fixture (`stage.looks`: brilho, abertura, borda, núcleo e alcance; padrão por tipo: PAR macio e largo, Beam fechado), editável na edição da fixture (Fixtures). Ajuste de 2026-11-14 (projeto na versão 19): tronco de cone, glow suave, bloom fraco e perfil por fixture no lugar do por tipo. Zoom, foco e shutter agem ao vivo no cone.
+- **R1, perfil e canais ao vivo:** o feixe tem um perfil na definição da fixture (`FixtureDef.beam`: brilho, abertura, borda, núcleo e alcance; padrão por tipo: PAR macio e largo, Beam fechado), editável na Biblioteca (aba "Dados físicos") e válido em qualquer projeto. Ajuste de 2026-11-14 (projeto na versão 20): tronco de cone, glow suave, bloom fraco e o perfil na definição, no lugar do projeto. Zoom, foco e shutter agem ao vivo no cone.
 - **R2, mancha e bloom:** o feixe termina no chão com uma mancha; bloom e tone mapping nas qualidades média e alta.
 - **R3, prisma e gobo:** o prisma abre o feixe em leque e gira; o gobo vira máscara da mancha, com rotação.
 - **R4, modelos:** moving head, PAR, scanner e strobo em glTF derivados dos modelos do QLC+ (`ui/public/models/`, atribuição no `NOTICE`).
@@ -604,6 +606,7 @@ Validação:
 - **VC-2 (2026-10-16): layouts por formato de tela.** O usuário cria e ajusta o console para formatos diferentes (celular, tablet, desktop), e cada aparelho abre o layout configurado para o seu formato. Os elementos são os mesmos em todos os formatos (só a posição muda), e o formato vem da largura da tela, com troca no ⚙ (E11). Protótipo na F2 (rodada 3); implementação na F10.
 - **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3). O fade in e o fade out das cenas foram ligados na F6 (2026-10-18, pedido do usuário); a duração entrou na F7, com os chasers. Na validação da F7 (2026-10-19), o elemento passou a seguir o BPM master ("Seguir o BPM"), com os tempos em batidas e o TAP do master (E11).
 
+- **VC-6 (2026-11-15): modo Preparar.** Com o modo ligado (Ctrl + Enter), o que se toca no console vai para uma saída sombra, vista na 3D View (dividida ou só preview); Enter (ou o botão Executar) o leva à luz real de uma vez, para preparar a próxima música. A seleção preparada fica no servidor e sobrevive a desligar o modo. Entregue em 2026-11-15 sem validar (exceção ao G1); mini-plano e checklist em [docs/fases/fase-preparar.md](docs/fases/fase-preparar.md).
 - **VC-5 (2026-11-06): coleção com linha do tempo.** Itens da coleção com início, duração e camadas, e modo laço, uma vez ou vai e volta; depois, editor visual como o dos editores de vídeo. Vira a fase F11b, depois das Paletas, com mini-plano a aprovar (G1).
 - **VC-4 (2026-10-20): atalhos do teclado na edição.** Com elementos escolhidos: Delete remove, Ctrl + D duplica, Ctrl + C e Ctrl + V copiam e colam, e as setas deslocam (2 células; com Shift, 4; com Ctrl, 1). Ver E12. Pedidos da mesma data, fora do console (E12): grupos de fixtures e de canais reordenáveis por arrasto e duplicáveis; pastas dentro de pastas no Studio.
 

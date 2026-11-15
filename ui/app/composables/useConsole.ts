@@ -1,4 +1,5 @@
 import type { InputControl } from '~/types/generated/InputControl'
+import type { Op } from '~/types/generated/Op'
 import type { StepAction } from '~/types/generated/StepAction'
 import type { VcWidget } from '~/types/generated/VcWidget'
 
@@ -13,10 +14,22 @@ const bpmTaps: number[] = []
 
 export function useConsole() {
   const { state, send } = useEngine()
-  const value = (id: string) => state.value.widgetValues.find((v) => v.widget === id)?.value
-  const setValue = (widget: string, value: number[]) => send({ op: 'setWidgetValue', widget, value })
-  const running = (id: string | null) => !!id && state.value.running.includes(id)
-  const paused = (id: string | null) => !!id && state.value.paused.includes(id)
+  // Modo Preparar (VC-6), por aparelho: as operações dos elementos vão como `staged` e os elementos
+  // mostram o estado preparado (do servidor, o mesmo em todos os aparelhos)
+  const prepare = useState('consolePrepare', () => false)
+  const view = computed(() => (prepare.value ? state.value.staged : state.value))
+  const op = (o: Op) => send(prepare.value ? { op: 'staged', inner: o } : o)
+  /** Algo preparado (ou a cópia do ao vivo, que Executar substitui): o que o Executar leva para a luz. */
+  const hasStaged = computed(() => state.value.staged.full || !!state.value.staged.running.length || !!state.value.staged.widgetValues.length)
+  /** Liga ou desliga o modo; ao ligar com o preparado vazio, o preview já vem com o que roda na luz. */
+  const setPrepare = (on: boolean) => {
+    prepare.value = on
+    if (on && !hasStaged.value) send({ op: 'seedStaged' })
+  }
+  const value = (id: string) => view.value.widgetValues.find((v) => v.widget === id)?.value
+  const setValue = (widget: string, value: number[]) => op({ op: 'setWidgetValue', widget, value })
+  const running = (id: string | null) => !!id && view.value.running.includes(id)
+  const paused = (id: string | null) => !!id && view.value.paused.includes(id)
   const chaserOf = (w: Widget<'cueList'>) => {
     const fn = state.value.project.functions.find((f) => f.id === w.chaser)
     return fn?.type === 'chaser' || fn?.type === 'sequence' ? fn : undefined
@@ -32,26 +45,31 @@ export function useConsole() {
 
   /** Apertou (`down`) ou soltou uma parte do elemento. */
   function press(w: VcWidget, control: InputControl, down: boolean) {
-    send({ op: 'pressWidget', widget: w.id, control, down })
+    // Blackout e Stop All agem sempre na luz real
+    const o: Op = { op: 'pressWidget', widget: w.id, control, down }
+    const real = w.type === 'button' && (w.action === 'blackout' || w.action === 'stopAll')
+    send(prepare.value && !real ? { op: 'staged', inner: o } : o)
   }
 
   /** Passo atual da cue list, vindo do motor; -1 com o chaser parado. */
   function currentStep(w: Widget<'cueList'>) {
     if (!running(w.chaser)) return -1
+    // Preparado: o servidor não publica o passo da sombra; vale o real se já roda, senão o primeiro
+    if (prepare.value && !state.value.running.includes(w.chaser!)) return 0
     return state.value.chaserSteps.find((c) => c.chaser === w.chaser)?.step ?? -1
   }
 
   /** Toque num passo da cue list; o chaser parado passa a rodar. */
   function step(w: Widget<'cueList'>, action: StepAction) {
-    if (w.chaser && chaserOf(w)?.steps.length) send({ op: 'stepChaser', id: w.chaser, action })
+    if (w.chaser && chaserOf(w)?.steps.length) op({ op: 'stepChaser', id: w.chaser, action })
   }
 
   /** Passo carregado para o próximo Go (-1 sem nenhum). */
-  const loadedStep = (w: Widget<'cueList'>) => state.value.loadedSteps.find((l) => l.chaser === w.chaser)?.step ?? -1
+  const loadedStep = (w: Widget<'cueList'>) => view.value.loadedSteps.find((l) => l.chaser === w.chaser)?.step ?? -1
 
   /** Toque longo num passo: carrega (ou, no já carregado, descarrega) o passo do próximo Go. */
   function load(w: Widget<'cueList'>, i: number) {
-    if (w.chaser) send({ op: 'loadStep', id: w.chaser, step: loadedStep(w) === i ? null : i })
+    if (w.chaser) op({ op: 'loadStep', id: w.chaser, step: loadedStep(w) === i ? null : i })
   }
 
   /** TAP do speed dial: seguindo o BPM, é o tap do BPM master; em segundos, o intervalo entre dois
@@ -81,5 +99,12 @@ export function useConsole() {
     else if (down && control === 'tap') tap(w)
   }
 
-  return { value, setValue, running, paused, active, press, chaserOf, currentStep, step, loadedStep, load, tap, tapBpm, input }
+  /** O elemento tem algo preparado (para o destaque no modo Preparar). */
+  function staged(w: VcWidget) {
+    const s = state.value.staged
+    const target = w.type === 'button' ? w.function : w.type === 'cueList' ? w.chaser : w.type === 'animation' ? w.matrix : null
+    return s.widgetValues.some((v) => v.widget === w.id) || (!!target && (s.running.includes(target) || s.paused.includes(target)))
+  }
+
+  return { prepare, setPrepare, hasStaged, op, staged, value, setValue, running, paused, active, press, chaserOf, currentStep, step, loadedStep, load, tap, tapBpm, input }
 }

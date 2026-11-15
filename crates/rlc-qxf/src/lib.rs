@@ -245,6 +245,7 @@ pub fn import(xml: &str) -> Result<(FixtureDef, Vec<String>), String> {
         channels,
         modes,
         physical: physical.unwrap_or_default(),
+        beam: None,
     };
     Ok((def, warnings))
 }

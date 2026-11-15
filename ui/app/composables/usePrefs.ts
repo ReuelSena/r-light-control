@@ -7,6 +7,8 @@ type Prefs = {
   /** 3D View: qualidade do desenho e quanto a fumaça mostra os feixes (0–1). */
   quality: 'low' | 'medium' | 'high'
   smoke: number
+  /** 3D View com o modo Preparar ligado: real e preview lado a lado, ou só o preview. */
+  previewView: 'split' | 'preview'
   /** Zoom geral da interface (app desktop) e zoom da grade do console. */
   uiZoom: number
   consoleZoom: number
@@ -30,7 +32,7 @@ let saving = false
 
 export function usePrefs() {
   const prefs = useState<Prefs>('prefs', () => {
-    const defaults: Prefs = { valueFormat: 'percent', modular: false, consoleFormat: 'auto', quality: 'medium', smoke: 0.6, uiZoom: 1, consoleZoom: 1, keyHints: true, locateOthers: 0.2 }
+    const defaults: Prefs = { valueFormat: 'percent', modular: false, consoleFormat: 'auto', quality: 'medium', smoke: 0.6, previewView: 'split', uiZoom: 1, consoleZoom: 1, keyHints: true, locateOthers: 0.2 }
     try {
       return { ...defaults, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
     } catch {

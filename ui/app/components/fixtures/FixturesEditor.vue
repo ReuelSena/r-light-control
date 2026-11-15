@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, Plus, Trash2, TriangleAlert } from 'lucide-vue-next'
 import type { Attribute } from '~/types/generated/Attribute'
+import type { BeamLook } from '~/types/generated/BeamLook'
 import type { FixtureDef } from '~/types/generated/FixtureDef'
 import type { FixtureKind } from '~/types/generated/FixtureKind'
 import type { Physical } from '~/types/generated/Physical'
@@ -23,6 +24,25 @@ const physicalFields: [keyof Physical, string][] = [
   ['widthMm', 'mm'], ['heightMm', 'mm'], ['depthMm', 'mm'], ['weightKg', 'kg'], ['powerW', 'W'],
   ['lensMinDeg', '°'], ['lensMaxDeg', '°'], ['panMaxDeg', '°'], ['tiltMaxDeg', '°'],
 ]
+
+// Aparência do feixe (só 3D View): o ajuste da definição (`draft.beam`) ou o padrão; sem cone, a seção some
+const lookRows: { key: keyof BeamLook; min: number; max: number; scale: number; unit: string }[] = [
+  { key: 'brightness', min: 0, max: 2, scale: 100, unit: '%' },
+  { key: 'angleMin', min: 1, max: 60, scale: 1, unit: '°' },
+  { key: 'angleMax', min: 1, max: 60, scale: 1, unit: '°' },
+  { key: 'softness', min: 0, max: 1, scale: 100, unit: '%' },
+  { key: 'core', min: 0, max: 4, scale: 100, unit: '%' },
+  { key: 'reach', min: 1, max: 30, scale: 1, unit: ' m' },
+]
+const defaultBeam = computed(() => defaultLook(draft.value))
+const look = computed(() => beamLook(draft.value))
+
+function setLook(key: keyof BeamLook, v: number) {
+  const next = { ...look.value!, [key]: v }
+  // O mínimo nunca passa do máximo: o que foi mexido arrasta o outro
+  if (next.angleMin > next.angleMax) next[key === 'angleMin' ? 'angleMax' : 'angleMin'] = v
+  draft.value.beam = next
+}
 
 // ---------- Canais ----------
 const channelId = ref('0')
@@ -243,6 +263,24 @@ function save() {
             {{ t(`editor.${key}`) }} ({{ unit }})
             <input v-model.number="draft.physical[key]" type="number" min="0" class="field">
           </label>
+        </div>
+        <div v-if="defaultBeam && look" class="field-label divider mt-3">
+          <div class="flex items-center justify-between gap-2">
+            <span class="flex items-center gap-1">{{ t('fixtures.look.title') }} <RlInfo :text="t('fixtures.look.info')" /></span>
+            <RlButton v-if="draft.beam" size="sm" @press="draft.beam = null">{{ t('fixtures.look.reset') }}</RlButton>
+          </div>
+          <div class="grid grid-cols-3 gap-2 @xl:grid-cols-6">
+            <div v-for="row in lookRows" :key="row.key" class="flex flex-col items-center gap-1">
+              <span class="text-xs text-fg-muted">{{ t(`fixtures.look.${row.key}`) }}</span>
+              <RlKnob
+                :size="44"
+                :model-value="(look[row.key] - row.min) / (row.max - row.min)"
+                :default="(defaultBeam[row.key] - row.min) / (row.max - row.min)"
+                @update:model-value="setLook(row.key, row.min + $event * (row.max - row.min))"
+              />
+              <RlLcd>{{ Math.round(look[row.key] * row.scale) }}{{ row.unit }}</RlLcd>
+            </div>
+          </div>
         </div>
       </template>
     </RlTabs>

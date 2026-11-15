@@ -9,6 +9,7 @@ import type { MidiDevice } from "./MidiDevice";
 import type { Project } from "./Project";
 import type { RemoteAccess } from "./RemoteAccess";
 import type { RunFailure } from "./RunFailure";
+import type { StagedState } from "./StagedState";
 import type { Stats } from "./Stats";
 import type { TestPattern } from "./TestPattern";
 import type { TimelinePosition } from "./TimelinePosition";
@@ -83,4 +84,8 @@ preview: string | null,
 /**
  * O "Localizar": as fixtures acesas e quanto as outras ficam.
  */
-highlight: Locate, };
+highlight: Locate, 
+/**
+ * O que o modo Preparar deixou pronto no console, sem tocar a luz (VC-6). Um só para o show.
+ */
+staged: StagedState, };

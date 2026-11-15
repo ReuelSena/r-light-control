@@ -157,6 +157,8 @@ pub fn init_logging() -> anyhow::Result<WorkerGuard> {
 pub(crate) struct AppState {
     hub: Arc<Mutex<hub::Hub>>,
     frames: Published,
+    /// Quadros do motor sombra (o que está preparado, VC-6).
+    shadow_frames: Published,
     allow_lan: watch::Receiver<bool>,
 }
 
@@ -182,6 +184,7 @@ pub async fn start(settings: &Settings) -> anyhow::Result<u16> {
     let hub = hub::Hub::new(settings, port);
     let state = AppState {
         frames: hub.frames(),
+        shadow_frames: hub.shadow_frames(),
         allow_lan: hub.allow_lan.subscribe(),
         hub: Arc::new(Mutex::new(hub)),
     };

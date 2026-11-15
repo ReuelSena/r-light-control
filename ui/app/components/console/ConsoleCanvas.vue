@@ -15,6 +15,7 @@ const selection = defineModel<string[]>('selection', { required: true })
 const { send } = useEngine()
 const { t } = useI18n()
 const prefs = usePrefs()
+const vc = useConsole()
 
 // Teclas do elemento para a etiqueta do canto (setas e espaço viram símbolos); nada com as dicas de atalho desligadas
 const keyNames: Record<string, string> = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: '␣' }
@@ -181,7 +182,7 @@ function itemStyle(w: VcWidget) {
       v-for="w in placed"
       :key="w.id"
       class="item"
-      :class="{ selected: editing && selection.includes(w.id) }"
+      :class="{ selected: editing && selection.includes(w.id), staged: !editing && vc.prepare.value && vc.staged(w) }"
       :style="itemStyle(w)"
       :data-widget="w.id"
       @pointerdown="down($event, w)"
@@ -234,6 +235,12 @@ function itemStyle(w: VcWidget) {
 }
 
 /* Escolhido: o arrasto no toque vale só para ele (o resto continua rolando a página) */
+/* Modo Preparar: o que está preparado, tracejado em ciano */
+.item.staged {
+  outline: 2px dashed var(--color-lcd);
+  outline-offset: -1px;
+}
+
 .item.selected {
   touch-action: none;
   outline: 2px solid var(--color-select);

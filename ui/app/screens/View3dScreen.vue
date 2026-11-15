@@ -8,7 +8,7 @@ import type { StageElementKind } from '~/types/generated/StageElementKind'
 // e os elementos de palco. O toque e o arrasto valem para o que é da aba aberta (fixtures ou elementos).
 // Qualidade e fumaça valem só para este aparelho (o celular pode desenhar mais leve).
 const { t } = useI18n()
-const { state, send } = useEngine()
+const { state, send, subscribePreview } = useEngine()
 const prefs = usePrefs()
 const project = computed(() => state.value.project)
 const stage = computed(() => project.value.stage)
@@ -98,6 +98,12 @@ function onKey(e: KeyboardEvent) {
 }
 onMounted(() => window.addEventListener('keydown', onKey))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+
+// Modo Preparar (por aparelho): o servidor só manda os quadros do preview enquanto esta tela os pede.
+// Na janela externa o estado é próprio, então o botão "Preparar" daqui liga o preview dela.
+const { prepare, setPrepare } = useConsole()
+watch(prepare, (on) => subscribePreview(on), { immediate: true })
+onBeforeUnmount(() => subscribePreview(false))
 </script>
 
 <template>
@@ -106,7 +112,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     :class="only3d ? 'grid-rows-1' : 'grid-rows-[minmax(260px,1fr)_auto] @5xl:grid-cols-[1fr_430px] @5xl:grid-rows-1'"
   >
     <div class="relative min-h-0">
-      <View3dStage :hidden="hide" :selected="selection[tab]" :view="view" :editing="editingPosition" :layer="layer" class="absolute! inset-0" @update:selected="selection[tab] = $event" />
+      <!-- Preparar ligado: o real e o preview lado a lado (empilhados no celular), ou só o preview. O preview não se edita -->
+      <div class="absolute inset-0 flex flex-col gap-2 @3xl:flex-row">
+        <div v-if="!prepare || prefs.previewView === 'split'" class="relative min-h-0 min-w-0 flex-1">
+          <View3dStage :hidden="hide" :selected="selection[tab]" :view="view" :editing="editingPosition" :layer="layer" class="absolute! inset-0" @update:selected="selection[tab] = $event" />
+          <span v-if="prepare" class="tag" style="--tag: var(--color-danger)">{{ t('view3d.live') }}</span>
+        </div>
+        <div v-if="prepare" class="relative min-h-0 min-w-0 flex-1">
+          <View3dStage source="preview" :hidden="hide" :selected="selection[tab]" :view="view" :editing="false" class="absolute! inset-0" />
+          <span class="tag" style="--tag: #00ffff">{{ t('view3d.preview') }}</span>
+        </div>
+      </div>
       <div class="pointer-events-none absolute inset-x-2 top-2 flex flex-wrap items-start gap-2">
         <RlSegmented v-model="view" size="sm" class="sunken pointer-events-auto" :options="views" />
         <div class="pointer-events-auto flex items-center gap-2">
@@ -124,10 +140,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             {{ t('view3d.elementsTab') }}
           </RlButton>
         </div>
-        <RlButton v-model="only3d" mode="toggle" highlight="led" size="sm" class="pointer-events-auto ml-auto" :title="t('view3d.only3d')" :aria-label="t('view3d.only3d')">
-          <component :is="only3d ? Minimize2 : Maximize2" :size="16" />
-          {{ t('view3d.only3d') }}
-        </RlButton>
+        <div class="pointer-events-auto ml-auto flex items-center gap-2">
+          <RlSegmented
+            v-if="prepare"
+            v-model="prefs.previewView"
+            size="sm"
+            class="sunken"
+            :options="(['split', 'preview'] as const).map((value) => ({ value, label: t(`view3d.previewView.${value}`) }))"
+          />
+          <RlButton :model-value="prepare" mode="toggle" highlight="led" size="sm" :title="t('view3d.prepare')" @update:model-value="setPrepare">
+            <Eye :size="16" />
+            {{ t('view3d.prepare') }}
+          </RlButton>
+          <RlButton v-model="only3d" mode="toggle" highlight="led" size="sm" :title="t('view3d.only3d')" :aria-label="t('view3d.only3d')">
+            <component :is="only3d ? Minimize2 : Maximize2" :size="16" />
+            {{ t('view3d.only3d') }}
+          </RlButton>
+        </div>
       </div>
     </div>
 
@@ -270,6 +299,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 .off {
   opacity: 0.45;
+}
+
+/* Etiqueta do viewport (AO VIVO / PREVIEW) */
+.tag {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--tag);
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.6);
+  color: var(--tag);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  pointer-events: none;
 }
 
 .active {

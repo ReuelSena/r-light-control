@@ -46,6 +46,7 @@ pub enum Topic {
     TestPattern,
     Preview,
     Highlight,
+    Staged,
 }
 
 impl Topic {
@@ -83,6 +84,7 @@ impl Topic {
             Topic::TestPattern => "testPattern",
             Topic::Preview => "preview",
             Topic::Highlight => "highlight",
+            Topic::Staged => "staged",
         }
     }
 
@@ -156,6 +158,7 @@ impl Topic {
             Topic::TestPattern => json!(s.test_pattern),
             Topic::Preview => json!(s.preview),
             Topic::Highlight => json!(s.highlight),
+            Topic::Staged => json!(s.staged),
         }
     }
 }
@@ -185,6 +188,10 @@ pub fn is_live(op: &Op) -> bool {
             | Op::SetPreview { .. }
             | Op::SetHighlight { .. }
             | Op::PreviewMatrix { .. }
+            | Op::Staged { .. }
+            | Op::SeedStaged
+            | Op::CommitStaged
+            | Op::ClearStaged
     )
 }
 
@@ -209,6 +216,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             };
             s.preview = None;
             s.highlight.fixtures.clear();
+            s.staged = StagedState::default();
             vec![
                 T::Project,
                 T::ProjectPath,
@@ -219,10 +227,15 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 T::Desk,
                 T::Preview,
                 T::Highlight,
+                T::Staged,
             ]
         }
         // Mexem em arquivos e no histórico: ficam no hub
-        Op::OpenProject { .. } | Op::SaveProject { .. } | Op::Undo | Op::Redo => {
+        Op::OpenProject { .. }
+        | Op::SaveProject { .. }
+        | Op::Undo
+        | Op::Redo
+        | Op::Staged { .. } => {
             return Err("Operação do servidor.".into());
         }
         Op::AddFixtures {
@@ -333,7 +346,6 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             p.stage.fixtures.retain(|x| !gone(&x.fixture));
-            p.stage.looks.retain(|l| !gone(&l.fixture));
             s.highlight.fixtures.retain(|id| !gone(id));
             vec![
                 T::Fixtures,
@@ -708,6 +720,70 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             }
             vec![T::LoadedSteps]
         }
+        // O preparado (VC-6) entra por cima do que está aceso, que continua: as criações dele começam
+        // agora (vencem no LTP), e os valores e passos carregados dos elementos substituem os de antes
+        Op::SeedStaged => {
+            if s.staged != StagedState::default() {
+                return Ok((vec![], Value::Null));
+            }
+            s.staged = StagedState {
+                running: s.running.clone(),
+                paused: s.paused.clone(),
+                widget_values: s.widget_values.clone(),
+                loaded_steps: s.loaded_steps.clone(),
+                full: true,
+            };
+            vec![T::Staged]
+        }
+        Op::CommitStaged => {
+            let staged = std::mem::take(&mut s.staged);
+            // Veio da cópia: é o estado completo, então substitui (o que saiu do preview para na luz)
+            if staged.full {
+                s.running = staged.running;
+                s.paused = staged.paused;
+                s.widget_values = staged.widget_values;
+                s.loaded_steps = staged.loaded_steps;
+                return Ok((
+                    vec![
+                        T::Running,
+                        T::Paused,
+                        T::WidgetValues,
+                        T::LoadedSteps,
+                        T::Staged,
+                    ],
+                    Value::Null,
+                ));
+            }
+            for id in staged.running {
+                if !s.running.contains(&id) {
+                    s.running.push(id);
+                }
+            }
+            for id in staged.paused {
+                if !s.paused.contains(&id) {
+                    s.paused.push(id);
+                }
+            }
+            for v in staged.widget_values {
+                s.widget_values.retain(|x| x.widget != v.widget);
+                s.widget_values.push(v);
+            }
+            for l in staged.loaded_steps {
+                s.loaded_steps.retain(|x| x.chaser != l.chaser);
+                s.loaded_steps.push(l);
+            }
+            vec![
+                T::Running,
+                T::Paused,
+                T::WidgetValues,
+                T::LoadedSteps,
+                T::Staged,
+            ]
+        }
+        Op::ClearStaged => {
+            s.staged = StagedState::default();
+            vec![T::Staged]
+        }
         // Parar também baixa os sliders de playback. O pânico corta as cenas na hora (no hub); com
         // `all`, também zera a Mesa simples e desliga o padrão de teste, a prévia e o "Localizar".
         Op::StopAllFunctions | Op::Panic { .. } => {
@@ -920,24 +996,6 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         }
         Op::SaveStage { stage } => {
             unique(stage.elements.iter().map(|e| &e.id))?;
-            for (i, l) in stage.looks.iter().enumerate() {
-                if !p.fixtures.iter().any(|f| f.id == l.fixture) {
-                    return Err("Aparência do feixe de uma fixture que não existe.".into());
-                }
-                if stage.looks[..i].iter().any(|o| o.fixture == l.fixture) {
-                    return Err("Fixture repetida na aparência do feixe.".into());
-                }
-                if !(0.0..=2.0).contains(&l.brightness)
-                    || !(1.0..=60.0).contains(&l.angle_min)
-                    || !(1.0..=60.0).contains(&l.angle_max)
-                    || l.angle_min > l.angle_max
-                    || !(0.0..=1.0).contains(&l.softness)
-                    || !(0.0..=4.0).contains(&l.core)
-                    || !(1.0..=30.0).contains(&l.reach)
-                {
-                    return Err("Aparência do feixe fora dos limites.".into());
-                }
-            }
             p.stage = stage;
             vec![T::Stage]
         }
@@ -950,6 +1008,17 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
             {
                 return Err(format!("Id de definição inválido: \"{}\".", def.id));
+            }
+            if let Some(l) = &def.beam
+                && (!(0.0..=2.0).contains(&l.brightness)
+                    || !(1.0..=60.0).contains(&l.angle_min)
+                    || !(1.0..=60.0).contains(&l.angle_max)
+                    || l.angle_min > l.angle_max
+                    || !(0.0..=1.0).contains(&l.softness)
+                    || !(0.0..=4.0).contains(&l.core)
+                    || !(1.0..=30.0).contains(&l.reach))
+            {
+                return Err("Aparência do feixe fora dos limites.".into());
             }
             let in_project = p.fixture_defs.iter().any(|d| d.id == def.id);
             upsert(&mut s.library, def.clone(), |d| &d.id)?;
@@ -1360,7 +1429,6 @@ pub fn empty_project() -> Project {
             height: 6.0,
             fixtures: vec![],
             elements: vec![],
-            looks: vec![],
         },
     }
 }
@@ -5244,10 +5312,9 @@ mod tests {
     }
 
     #[test]
-    fn beam_looks_are_per_fixture_validated_and_cleaned_on_removal() {
+    fn beam_look_of_a_definition_is_validated_and_saved_in_the_project_copy() {
         let mut s = example();
-        let look = |fixture: &str| BeamLook {
-            fixture: fixture.into(),
+        let look = || BeamLook {
             brightness: 1.0,
             angle_min: 4.0,
             angle_max: 10.0,
@@ -5255,17 +5322,20 @@ mod tests {
             core: 1.0,
             reach: 12.0,
         };
-        let save = |s: &mut Snapshot, looks: Vec<BeamLook>| {
-            let mut stage = s.project.stage.clone();
-            stage.looks = looks;
-            apply(s, Op::SaveStage { stage })
+        let base = s.project.fixture_defs[0].clone();
+        let save = |s: &mut Snapshot, beam: Option<BeamLook>| {
+            let mut def = base.clone();
+            def.beam = beam;
+            apply(s, Op::SaveFixtureDef { def })
         };
-        assert!(save(&mut s, vec![look("mh1"), look("mh2")]).is_ok());
-        assert!(save(&mut s, vec![look("nao-existe")]).is_err());
-        assert!(save(&mut s, vec![look("mh1"), look("mh1")]).is_err());
-        let mut bad = look("mh1");
-        bad.angle_min = 20.0; // maior que a máxima
-        assert!(save(&mut s, vec![bad]).is_err());
+        assert!(save(&mut s, Some(look())).is_ok());
+        // A cópia embutida no projeto recebe o perfil
+        assert_eq!(s.project.fixture_defs[0].beam, Some(look()));
+        assert!(save(&mut s, None).is_ok());
+        assert_eq!(s.project.fixture_defs[0].beam, None);
+        let mut swapped = look();
+        swapped.angle_min = 20.0; // maior que a máxima
+        assert!(save(&mut s, Some(swapped)).is_err());
         let edits: [fn(&mut BeamLook); 6] = [
             |l| l.brightness = 2.5,
             |l| l.angle_max = 61.0,
@@ -5275,19 +5345,10 @@ mod tests {
             |l| l.reach = 31.0,
         ];
         for edit in edits {
-            let mut bad = look("mh1");
+            let mut bad = look();
             edit(&mut bad);
-            assert!(save(&mut s, vec![bad]).is_err());
+            assert!(save(&mut s, Some(bad)).is_err());
         }
-        assert_eq!(s.project.stage.looks.len(), 2);
-        apply(
-            &mut s,
-            Op::RemoveFixtures {
-                ids: vec!["mh1".into()],
-            },
-        )
-        .unwrap();
-        assert_eq!(s.project.stage.looks, [look("mh2")]);
     }
 
     #[test]
@@ -5315,6 +5376,7 @@ mod tests {
             !Topic::Desk.undoable() && !Topic::Project.undoable() && !Topic::Projects.is_project()
         );
         assert!(is_live(&Op::SetGrandMaster { value: 1 }) && !is_live(&Op::NewProject));
+        assert!(is_live(&Op::CommitStaged) && is_live(&Op::ClearStaged));
     }
 
     #[test]

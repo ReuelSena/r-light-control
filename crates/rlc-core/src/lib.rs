@@ -53,6 +53,22 @@ pub struct Snapshot {
     pub preview: Option<Id>,
     /// O "Localizar": as fixtures acesas e quanto as outras ficam.
     pub highlight: Locate,
+    /// O que o modo Preparar deixou pronto no console, sem tocar a luz (VC-6). Um só para o show.
+    pub staged: StagedState,
+}
+
+/// Estado preparado do console (VC-6): os mesmos campos ao vivo do [`Snapshot`], que só vão para a
+/// luz no `CommitStaged`. Fica fora do projeto e do desfazer.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct StagedState {
+    pub running: Vec<Id>,
+    pub paused: Vec<Id>,
+    pub widget_values: Vec<WidgetValue>,
+    pub loaded_steps: Vec<CurrentStep>,
+    /// Veio da cópia do ao vivo (`SeedStaged`): é o estado desejado completo, e o Executar
+    /// substitui o ao vivo em vez de somar.
+    pub full: bool,
 }
 
 /// Onde está o cursor de uma coleção: na unidade dela (ms ou milésimos de batida), dentro da passada;
@@ -130,6 +146,9 @@ pub struct FixtureDef {
     pub channels: Vec<Channel>,
     pub modes: Vec<Mode>,
     pub physical: Physical,
+    /// Aparência do feixe na 3D View (só prévia); `None` = o padrão por tipo, calculado pela UI.
+    #[serde(default)]
+    pub beam: Option<BeamLook>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
@@ -1156,16 +1175,12 @@ pub struct Stage {
     pub fixtures: Vec<FixturePosition>,
     /// Elementos de palco (truss, caixas, pessoas…), que só complementam a prévia.
     pub elements: Vec<StageElement>,
-    /// Aparência do feixe por fixture; a fixture que não está aqui usa o padrão calculado pela UI.
-    #[serde(default)]
-    pub looks: Vec<BeamLook>,
 }
 
-/// Aparência do feixe de uma fixture na 3D View (F15b). Só a prévia: não muda a luz.
+/// Aparência do feixe de uma definição de fixture na 3D View (F15b). Só a prévia: não muda a luz.
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct BeamLook {
-    pub fixture: Id,
     /// Brilho do feixe (0 a 2, 1 = normal).
     pub brightness: f32,
     /// Abertura do feixe no zoom mínimo, em graus (1 a 60).
@@ -1608,6 +1623,18 @@ pub enum Op {
         fixtures: Vec<Id>,
         others: u8,
     },
+    /// Modo Preparar (VC-6): aplica uma op do console (aperto, valor, passo, rodar ou pausar) só no
+    /// estado preparado, que vai para a saída sombra e não para a luz.
+    /// O campo se chama `inner` porque `op` é a etiqueta do tipo.
+    Staged {
+        inner: Box<Op>,
+    },
+    /// Copia o ao vivo para o preparado (que fica `full`), só se o preparado estiver vazio.
+    SeedStaged,
+    /// Executa o preparado: ele vira o estado ao vivo, e o preparado fica vazio.
+    CommitStaged,
+    /// Descarta o preparado.
+    ClearStaged,
 }
 
 /// Resultado da importação de um `.qxf`: o que foi convertido e o que precisa de atenção.

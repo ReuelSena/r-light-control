@@ -41,7 +41,7 @@ Montado a partir do que as telas da F2 precisam e revisado pelo usuário em 2026
 - **Projeto:** `project` (projeto inteiro, no "Novo projeto" e no "Abrir"), `project.name` (no "Salvar como"), `project.universes`, `project.fixtureDefs`, `project.fixtures`, `project.fixtureGroups`, `project.channelGroups`, `project.functions`, `project.folders`, `project.console`, `project.stage`, `project.scripts`. A captura avisa `project.functions` e `dirty`; o `updateScene`, `project.functions` e `desk`.
 - **Arquivo e biblioteca:** `projectPath`, `dirty`, `recovered`, `projects` (os projetos da pasta, relidos a cada segundo) e `library`. A biblioteca fica gravada no PC, fora do projeto (um arquivo por definição).
 - **Aparelhos e acesso:** `interfaces` e `remote`.
-- **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `timelineClock` (o cursor de cada coleção rodando, quando muda), `paused`, `loadedSteps`, `desk`, `master`, `widgetValues`, `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (o "Localizar": as `fixtures` acesas e a intensidade `others` das outras, de 0 a 255).
+- **Ao vivo:** `running`, `chaserSteps` (o passo de cada chaser rodando, quando muda), `timelineClock` (o cursor de cada coleção rodando, quando muda), `paused`, `loadedSteps`, `desk`, `master`, `widgetValues`, `staged` (o preparado do modo Preparar), `stats`, `testPattern`, `preview` (a cena em prévia) e `highlight` (o "Localizar": as `fixtures` acesas e a intensidade `others` das outras, de 0 a 255).
 
 `stats` e `interfaces` chegam a cada segundo, com os números do Monitoramento.
 
@@ -57,6 +57,8 @@ A 25 Hz, só dos universos que mudaram desde o último envio (todos, logo depois
 | 2+n … 513+n | Os 512 valores, do canal 1 ao 512 |
 
 O id vai no frame, e não a posição na lista, para um universo criado ou removido nunca trocar os valores de lugar. No `useEngine()`, os valores ficam em `output[id]`.
+
+**Preview (VC-6):** o tipo `2` (`PREVIEW_FRAME`) tem o mesmo formato, com os valores do motor sombra (a luz do que está preparado). Só chega a quem mandou `{"t":"previewSub","on":true}` (sem resposta; a assinatura é por conexão, então o cliente a refaz ao reconectar). Ao ligar, o servidor reenvia todos os universos; `"on":false` para o envio. No `useEngine()`: `previewOutput[id]` e `subscribePreview(on)`.
 
 ## Regras (revisão de 2026-10-17)
 
@@ -120,6 +122,12 @@ Todas levam o campo `op` com o nome em camelCase e campos em camelCase.
 | `updateScene` | `function, kinds` | "Update" (F12b): grava na cena os canais de fixtures que a Mesa simples segura (como valores próprios, filtrados por `kinds`, vazio = tudo) e solta esses canais da Mesa (e o nível do grupo de canais quando todos saíram). O fino só entra se a Mesa o segura; canais sem fixture ficam. Sem canais para gravar, recusa. A cena entra no desfazer; a Mesa não. Resposta: `null` |
 | `setTestPattern` | `pattern?` | Padrão de teste da saída (`ramp` ou `chase`; sem ele, desliga). Página `/dev/dmx` |
 | `setInterfaceKind` | `interface, kind?` | Tipo de uma interface USB (`enttecPro` ou `openDmx`) escolhido à mão e guardado no `settings.json`; sem `kind`, volta ao automático. A saída reabre no protocolo novo |
+| `staged` | `inner` | Modo Preparar (VC-6): aplica a operação de console `inner` (a mesma forma, ex.: `{"op":"staged","inner":{"op":"setFunctionRunning",...}}`) só no estado preparado, sem tocar a luz real; o motor sombra a mostra pelo `PREVIEW_FRAME`. O campo é `inner` porque `op` é a etiqueta da operação. Flash, Temp e Macro preparados são ignorados (resposta OK, nada muda); Blackout e Stop All agem na luz real; outras operações dentro de `staged` são recusadas. Não entra no desfazer |
+| `seedStaged` | — | Copia o ao vivo (`running`, `paused`, `widgetValues`, `loadedSteps`) para o preparado e o marca `full`; só se o preparado estiver vazio (senão, não faz nada) |
+| `commitStaged` | — | Executar: o preparado vira real e é limpo. Se é `full` (veio da cópia), substitui o ao vivo (o que saiu do preview para na luz, com os fades de sempre); senão, soma (as criações acesas continuam; valores e passos carregados do preparado substituem os do mesmo elemento ou chaser) |
+| `clearStaged` | — | Descarta o preparado, sem mexer na luz real. O `newProject` e o `openProject` também o limpam |
+
+**Preparado (`Snapshot.staged`, tópico `staged`):** `StagedState` com `running`, `paused`, `widgetValues`, `loadedSteps` e `full` (veio da cópia do ao vivo), os mesmos campos ao vivo do `Snapshot`, mas do que está preparado. Único para o show (vale para todos os aparelhos), fora do projeto.
 
 **Console (`Project.console`):** páginas e elementos (`VcWidget`). Cada elemento tem `id`, `page`, `frame` (moldura ou `null`), `caption`, `color`, `inputs` (controle MIDI e tecla por parte do elemento) e `layouts` com a posição em células em cada formato (`phone`, `tablet`, `desktop`; `null` = não aparece nele). O `type` (`button`, `slider`, `cueList`, `xyPad`, `speedDial`, `frame`, `clock`, `animation`, `label`, `macro`) fica no mesmo nível dos campos do tipo. A macro (E6) tem `icon` e `steps`, executados em ordem: `start` e `stop` (`function`), `go` (`chaser`: parado, começa; rodando, vai ao passo seguinte), `stopAll`, `blackout` (`on`), `bpm` (`bpm`, como o fader do master) e `wait` (`ms`). Um passo recusado vira aviso no log, e a macro continua.
 

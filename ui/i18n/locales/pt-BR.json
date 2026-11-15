@@ -70,15 +70,14 @@
   "fixtures": {
     "look": {
       "title": "Aparência do feixe",
-      "info": "Vale só para a 3D View e não muda a luz.",
+      "info": "Vale só para a 3D View, em qualquer projeto que use esta fixture, e não muda a luz.",
       "brightness": "Brilho",
       "angleMin": "Abertura mín.",
       "angleMax": "Abertura máx.",
       "softness": "Borda",
       "core": "Núcleo",
       "reach": "Alcance",
-      "reset": "Padrão",
-      "sameModel": "Aplicar ao mesmo modelo"
+      "reset": "Padrão"
     },
     "project": "No projeto",
     "library": "Biblioteca",
@@ -654,6 +653,9 @@
   },
   "vc": {
     "edit": "Editar",
+    "prepare": "Preparar",
+    "execute": "Executar",
+    "discard": "Descartar o preparado",
     "master": "Master",
     "blackout": "Blackout",
     "stopAll": "Parar",
@@ -868,6 +870,10 @@
     "deviceInfo": "Qualidade e fumaça valem só para este aparelho: no celular, a qualidade baixa deixa o desenho mais leve.",
     "editPosition": "Editar posição",
     "only3d": "Só o 3D",
+    "prepare": "Preparar",
+    "live": "AO VIVO",
+    "preview": "PREVIEW",
+    "previewView": { "split": "Dividido", "preview": "Só preview" },
     "elementsTab": "Elementos",
     "addElement": "Adicionar elemento",
     "noElements": "Nenhum elemento no palco.",

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { LocateFixed, Plus, Trash2, TriangleAlert } from 'lucide-vue-next'
-import type { BeamLook } from '~/types/generated/BeamLook'
 import type { Fixture } from '~/types/generated/Fixture'
 
 // Fixtures do projeto: lista e edição (nome, cor, modo, universo e endereço).
@@ -23,36 +22,6 @@ const value = (e: Event) => (e.target as HTMLInputElement | HTMLSelectElement).v
 
 function update(changes: Partial<Fixture>) {
   if (selected.value) send({ op: 'updateFixture', fixture: { ...selected.value, ...changes } })
-}
-
-// Aparência do feixe (só 3D View): o ajuste da fixture ou o padrão; `stage.looks` guarda só os ajustes
-type LookKey = Exclude<keyof BeamLook, 'fixture'>
-const lookRows: { key: LookKey; min: number; max: number; scale: number; unit: string }[] = [
-  { key: 'brightness', min: 0, max: 2, scale: 100, unit: '%' },
-  { key: 'angleMin', min: 1, max: 60, scale: 1, unit: '°' },
-  { key: 'angleMax', min: 1, max: 60, scale: 1, unit: '°' },
-  { key: 'softness', min: 0, max: 1, scale: 100, unit: '%' },
-  { key: 'core', min: 0, max: 4, scale: 100, unit: '%' },
-  { key: 'reach', min: 1, max: 30, scale: 1, unit: ' m' },
-]
-const stage = computed(() => project.value.stage)
-const defaultBeam = computed(() => selected.value && def.value && defaultLook(def.value, selected.value.id))
-const look = computed(() => selected.value && beamLook(stage.value, selected.value, def.value))
-const adjusted = computed(() => stage.value.looks.some((l) => l.fixture === selectedId.value))
-
-const saveLooks = (looks: BeamLook[]) => send({ op: 'saveStage', stage: { ...stage.value, looks } })
-
-function setLook(key: LookKey, v: number) {
-  const next = { ...look.value!, [key]: v }
-  // O mínimo nunca passa do máximo: o que foi mexido arrasta o outro
-  if (next.angleMin > next.angleMax) next[key === 'angleMin' ? 'angleMax' : 'angleMin'] = v
-  saveLooks([...stage.value.looks.filter((l) => l.fixture !== next.fixture), next])
-}
-
-function sameModel() {
-  const same = project.value.fixtures.filter((f) => f.defId === selected.value!.defId && f.mode === selected.value!.mode)
-  const others = stage.value.looks.filter((l) => !same.some((f) => f.id === l.fixture))
-  saveLooks([...others, ...same.map((f) => ({ ...look.value!, fixture: f.id }))])
 }
 
 function remove() {
@@ -128,27 +97,6 @@ function remove() {
         <TriangleAlert :size="16" />
         {{ t('patch.conflictHint') }}
       </p>
-      <div v-if="defaultBeam && look" class="field-label divider">
-        <div class="flex items-center justify-between gap-2">
-          <span class="flex items-center gap-1">{{ t('fixtures.look.title') }} <RlInfo :text="t('fixtures.look.info')" /></span>
-          <div class="flex gap-1.5">
-            <RlButton v-if="adjusted" size="sm" @press="saveLooks(stage.looks.filter((l) => l.fixture !== selectedId))">{{ t('fixtures.look.reset') }}</RlButton>
-            <RlButton size="sm" @press="sameModel">{{ t('fixtures.look.sameModel') }}</RlButton>
-          </div>
-        </div>
-        <div class="grid grid-cols-3 gap-2">
-          <div v-for="row in lookRows" :key="row.key" class="flex flex-col items-center gap-1">
-            <span class="text-xs text-fg-muted">{{ t(`fixtures.look.${row.key}`) }}</span>
-            <RlKnob
-              :size="44"
-              :model-value="(look[row.key] - row.min) / (row.max - row.min)"
-              :default="(defaultBeam[row.key] - row.min) / (row.max - row.min)"
-              @update:model-value="setLook(row.key, row.min + $event * (row.max - row.min))"
-            />
-            <RlLcd>{{ Math.round(look[row.key] * row.scale) }}{{ row.unit }}</RlLcd>
-          </div>
-        </div>
-      </div>
       <RlButton class="mt-auto" :model-value="confirmRemove" color="var(--color-danger)" @press="remove">
         <Trash2 :size="16" />
         {{ confirmRemove ? t('common.confirmRemove') : t('common.remove') }}

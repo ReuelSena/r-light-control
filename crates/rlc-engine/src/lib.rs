@@ -273,6 +273,8 @@ pub enum Command {
     Test(Option<TestPattern>),
     /// Pede o que está saindo para gravar numa cena (P5); a resposta vem no próximo tick.
     Capture(Sender<Vec<Capture>>),
+    /// Vai ao motor sombra (modo Preparar): o mesmo mix, sem saída DMX, para a pré-visualização.
+    Shadow(Box<Command>),
 }
 
 /// A saída de um universo antes do Localizar, do Grand Master e do blackout, com os canais que alguma
@@ -291,22 +293,28 @@ pub type Published = Arc<ArcSwap<Frames>>;
 pub struct Engine {
     commands: Sender<Command>,
     pub frames: Published,
+    /// Quadros do motor sombra (a pré-visualização do modo Preparar).
+    pub shadow_frames: Published,
 }
 
 impl Engine {
     pub fn spawn() -> Self {
         let (commands, inbox) = mpsc::channel();
         let frames: Published = Default::default();
+        let shadow_frames: Published = Default::default();
         let publish = frames.clone();
+        let publish_shadow = shadow_frames.clone();
         thread::Builder::new()
             .name("motor".into())
             .spawn(move || {
                 let mut state = State::default();
+                let mut shadow = State::default();
                 let mut deadline = Instant::now();
                 loop {
                     let now = Instant::now();
                     loop {
                         match inbox.try_recv() {
+                            Ok(Command::Shadow(command)) => shadow.apply(*command, now),
                             Ok(command) => state.apply(command, now),
                             Err(TryRecvError::Empty) => break,
                             // O servidor foi embora: o motor para junto.
@@ -323,12 +331,20 @@ impl Engine {
                         failed: state.failed(),
                     });
                     publish.store(frames);
+                    publish_shadow.store(Arc::new(Frames {
+                        universes: shadow.render(now),
+                        ..Default::default()
+                    }));
                     deadline = next_deadline(deadline, Instant::now());
                     thread::sleep(deadline.saturating_duration_since(Instant::now()));
                 }
             })
             .expect("não foi possível iniciar a thread do motor");
-        Self { commands, frames }
+        Self {
+            commands,
+            frames,
+            shadow_frames,
+        }
     }
 
     pub fn send(&self, command: Command) {
@@ -832,6 +848,8 @@ impl State {
             // Trocar de padrão recomeça a rampa do zero
             Command::Test(pattern) => self.test = pattern.map(|p| (p, now)),
             Command::Capture(reply) => self.captures.push(reply),
+            // Roteado para o motor sombra antes de chegar aqui
+            Command::Shadow(_) => {}
         }
     }
 
@@ -1358,6 +1376,31 @@ mod tests {
 
     fn frame(s: &mut State) -> Frame {
         s.render(Instant::now())[0].1
+    }
+
+    #[test]
+    fn shadow_publishes_its_own_frame_without_touching_the_output() {
+        let engine = Engine::spawn();
+        let patch = || {
+            let mut s = patched();
+            s.universes.remove(0)
+        };
+        engine.send(Command::Patch(vec![patch()]));
+        engine.send(Command::Shadow(Box::new(Command::Patch(vec![patch()]))));
+        let a = run("a", scene(&[(5, 77)], 0));
+        engine.send(Command::Shadow(Box::new(Command::Running(vec![a]))));
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while engine
+            .shadow_frames
+            .load()
+            .get("u1")
+            .is_none_or(|f| f[4] != 77)
+        {
+            assert!(Instant::now() < deadline, "o sombra não publicou a cena");
+            thread::sleep(Duration::from_millis(10));
+        }
+        // A saída de verdade continua sem a cena
+        assert_eq!(engine.frames.load().get("u1").expect("universo")[4], 0);
     }
 
     #[test]

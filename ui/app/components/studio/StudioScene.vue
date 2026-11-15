@@ -229,7 +229,7 @@ function setKind(kind: AttributeKind, changes: Partial<AttributeTiming>) {
       </div>
       <!-- Abaixo das ações, num painel afundado, o que recebe os valores: os grupos da cena e as fixtures,
            acesos quando escolhidos -->
-      <div v-if="sceneGroups.length || fixtures.length" class="sunken flex flex-wrap gap-1.5 rounded-md p-2">
+      <div v-if="sceneGroups.length || fixtures.length" class="sunken flex gap-1.5 overflow-x-auto rounded-md p-2 *:shrink-0">
         <RlButton
           v-for="g in sceneGroups"
           :key="g.id"
@@ -286,7 +286,7 @@ function setKind(kind: AttributeKind, changes: Partial<AttributeTiming>) {
         {{ t('groups.channelGroups') }}
         <RlInfo :text="t('scene.groupsHint')" />
       </h3>
-      <div class="flex flex-wrap gap-1.5">
+      <div class="flex gap-1.5 overflow-x-auto pb-1 *:shrink-0">
         <RlButton
           v-for="g in project.channelGroups"
           :key="g.id"

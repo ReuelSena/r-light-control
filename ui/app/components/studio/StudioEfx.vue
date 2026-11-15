@@ -108,7 +108,7 @@ function draw(points: [number, number][]) {
 
       <div class="flex flex-col gap-3">
         <!-- Com itens de desenho próprio: qual desenho os controles mostram -->
-        <div v-if="ownItems.length" class="flex flex-wrap items-center gap-1.5">
+        <div v-if="ownItems.length" class="flex items-center gap-1.5 overflow-x-auto pb-1 *:shrink-0">
           <span class="field-label">{{ t('efx.editing') }}</span>
           <RlButton size="sm" :model-value="editingIndex < 0" @press="editing = null">{{ t('efx.general') }}</RlButton>
           <RlButton v-for="x in ownItems" :key="keyOf(x)" size="sm" :model-value="editing === keyOf(x)" @press="editing = keyOf(x)">

@@ -133,11 +133,11 @@ onBeforeUnmount(() => subscribePreview(false))
           <RlInfo :text="t('view3d.info')" />
           <RlButton :model-value="!hide.fixtures" mode="toggle" highlight="led" size="sm" :title="t('view3d.showFixtures')" @update:model-value="hide.fixtures = !$event">
             <Lightbulb :size="16" />
-            {{ t('screens.fixtures') }}
+            <!-- {{ t('screens.fixtures') }} -->
           </RlButton>
           <RlButton :model-value="!hide.elements" mode="toggle" highlight="led" size="sm" :title="t('view3d.showElements')" @update:model-value="hide.elements = !$event">
             <Box :size="16" />
-            {{ t('view3d.elementsTab') }}
+            <!-- {{ t('view3d.elementsTab') }} -->
           </RlButton>
         </div>
         <div class="pointer-events-auto ml-auto flex items-center gap-2">
@@ -150,11 +150,10 @@ onBeforeUnmount(() => subscribePreview(false))
           />
           <RlButton :model-value="prepare" mode="toggle" highlight="led" size="sm" :title="t('view3d.prepare')" @update:model-value="setPrepare">
             <Eye :size="16" />
-            {{ t('view3d.prepare') }}
+            <!-- {{ t('view3d.prepare') }} -->
           </RlButton>
-          <RlButton v-model="only3d" mode="toggle" highlight="led" size="sm" :title="t('view3d.only3d')" :aria-label="t('view3d.only3d')">
+          <RlButton v-model="only3d" mode="toggle" size="sm" :title="t('view3d.only3d')" :aria-label="t('view3d.only3d')">
             <component :is="only3d ? Minimize2 : Maximize2" :size="16" />
-            {{ t('view3d.only3d') }}
           </RlButton>
         </div>
       </div>

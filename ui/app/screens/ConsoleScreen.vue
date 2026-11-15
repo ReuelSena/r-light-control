@@ -294,12 +294,12 @@ onBeforeUnmount(() => {
             >
               <Keyboard :size="16" />
             </RlButton>
-            <RlButton v-model="editing" mode="toggle" highlight="led" size="sm" :title="`${t('vc.edit')} (Alt+E)`">
+            <RlButton v-model="editing" mode="toggle" size="sm" :title="`${t('vc.edit')} (Alt+E)`">
               <Pencil :size="16" />
               {{ t('vc.edit') }}
               <span v-if="prefs.keyHints" class="rl-key">Alt+E</span>
             </RlButton>
-            <RlButton :model-value="vc.prepare.value" mode="toggle" highlight="led" color="var(--color-lcd)" size="sm" :title="`${t('vc.prepare')} (Ctrl+Enter)`" @update:model-value="vc.setPrepare">
+            <RlButton :model-value="vc.prepare.value" mode="toggle" color="var(--color-lcd)" size="sm" :title="`${t('vc.prepare')} (Ctrl+Enter)`" @update:model-value="vc.setPrepare">
               <ClipboardList :size="16" />
               {{ t('vc.prepare') }}
               <span v-if="prefs.keyHints" class="rl-key">Ctrl+Enter</span>

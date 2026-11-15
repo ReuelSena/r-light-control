@@ -102,7 +102,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 // Modo Preparar (por aparelho): o servidor só manda os quadros do preview enquanto esta tela os pede.
 // Na janela externa o estado é próprio, então o botão "Preparar" daqui liga o preview dela.
 const { prepare, setPrepare } = useConsole()
-watch(prepare, (on) => subscribePreview(on), { immediate: true })
+// A Prévia do Studio (só no 3D) troca o ao vivo pela cena em edição, em qualquer aparelho
+const previewing = computed(() => !!state.value.preview)
+watch(() => prepare.value || previewing.value, (on) => subscribePreview(on), { immediate: true })
 onBeforeUnmount(() => subscribePreview(false))
 </script>
 
@@ -114,11 +116,11 @@ onBeforeUnmount(() => subscribePreview(false))
     <div class="relative min-h-0">
       <!-- Preparar ligado: o real e o preview lado a lado (empilhados no celular), ou só o preview. O preview não se edita -->
       <div class="absolute inset-0 flex flex-col gap-2 @3xl:flex-row">
-        <div v-if="!prepare || prefs.previewView === 'split'" class="relative min-h-0 min-w-0 flex-1">
+        <div v-if="!previewing && (!prepare || prefs.previewView === 'split')" class="relative min-h-0 min-w-0 flex-1">
           <View3dStage :hidden="hide" :selected="selection[tab]" :view="view" :editing="editingPosition" :layer="layer" class="absolute! inset-0" @update:selected="selection[tab] = $event" />
           <span v-if="prepare" class="tag" style="--tag: var(--color-danger)">{{ t('view3d.live') }}</span>
         </div>
-        <div v-if="prepare" class="relative min-h-0 min-w-0 flex-1">
+        <div v-if="prepare || previewing" class="relative min-h-0 min-w-0 flex-1">
           <View3dStage source="preview" :hidden="hide" :selected="selection[tab]" :view="view" :editing="false" class="absolute! inset-0" />
           <span class="tag" style="--tag: #00ffff">{{ t('view3d.preview') }}</span>
         </div>

@@ -42,7 +42,7 @@
     "test": "TESTE",
     "testPattern": "Padrão de teste da saída ligado (/dev/dmx). O pânico desliga.",
     "preview": "PRÉVIA",
-    "previewOf": "Cena em prévia na luz: {name}. O pânico desliga."
+    "previewOf": "Cena em prévia no 3D (a luz não muda): {name}."
   },
   "dock": {
     "popout": "Abrir em janela externa",

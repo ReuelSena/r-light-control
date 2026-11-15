@@ -880,12 +880,18 @@ impl Hub {
                 .send(Command::Running(running_programs(&self.snapshot)));
         }
         // O motor sombra roda o preparado (VC-6), com as mesmas edições
+        // Com a prévia do Studio ligada, ele mostra só a cena em edição (sem o preparado)
         let idle = self.snapshot.staged == StagedState::default();
-        if (any(&running) && !idle) || any(&[Topic::Staged]) {
+        if (any(&running) && !idle) || any(&[Topic::Staged, Topic::Preview]) {
             let s = &mut self.snapshot;
-            swap_staged(s);
-            let programs = running_programs(s);
-            swap_staged(s);
+            let programs = if s.preview.is_some() {
+                vec![]
+            } else {
+                swap_staged(s);
+                let programs = running_programs(s);
+                swap_staged(s);
+                programs
+            };
             self.engine
                 .send(Command::Shadow(Box::new(Command::Running(programs))));
         }
@@ -902,7 +908,7 @@ impl Hub {
         if any(&[Topic::TestPattern]) {
             self.engine.send(Command::Test(self.snapshot.test_pattern));
         }
-        // A prévia acompanha cada mudança da cena em edição e dos grupos dela
+        // A prévia (só no 3D, pelo motor sombra) acompanha cada mudança da cena em edição e dos grupos dela
         if any(&[
             Topic::Project,
             Topic::Universes,
@@ -911,10 +917,19 @@ impl Hub {
             Topic::FixtureGroups,
             Topic::Functions,
             Topic::Preview,
+        ]) {
+            let preview = Command::Preview(preview_levels(&self.snapshot));
+            self.engine.send(Command::Shadow(Box::new(preview)));
+        }
+        if any(&[
+            Topic::Project,
+            Topic::Universes,
+            Topic::Fixtures,
+            Topic::FixtureDefs,
+            Topic::FixtureGroups,
+            Topic::Functions,
             Topic::Highlight,
         ]) {
-            self.engine
-                .send(Command::Preview(preview_levels(&self.snapshot)));
             self.engine
                 .send(Command::Highlight(highlight(&self.snapshot)));
         }

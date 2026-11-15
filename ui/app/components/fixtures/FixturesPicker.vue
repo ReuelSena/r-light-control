@@ -78,7 +78,7 @@ const rows = computed(() =>
           v-for="{ group: g, depth } in groups"
           :key="g.id"
           highlight="led"
-          class="justify-start pl-9"
+          class="justify-start"
           :style="{ marginLeft: `${depth * 16}px` }"
           :model-value="isGroupOn?.(g.id) ?? false"
           @press="emit('group', g.id)"

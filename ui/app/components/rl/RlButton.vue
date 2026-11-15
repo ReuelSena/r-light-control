@@ -2,7 +2,7 @@
 // Botão físico. Modos: `action` (clique), `toggle` (liga/desliga) e `flash`
 // (ligado só enquanto pressionado; solta ao levantar o dedo, cancelar o toque ou perder a captura).
 // Destaque quando ativo: `face` (o botão inteiro acende) ou `led` (só o filete acende e o botão fica afundado).
-// O LED vira um círculo à esquerda quando o botão é bem mais largo que alto (`dot`, razão ≥ 4).
+// O LED é um círculo antes do conteúdo; num botão bem mais largo que alto (`wide`, razão ≥ 4) fica à esquerda.
 // `press` traz o evento (ex.: `ctrlKey`). Com `@longpress`, segurar 500 ms dispara `longpress` no lugar de `press`.
 const props = withDefaults(defineProps<{
   mode?: 'action' | 'toggle' | 'flash'
@@ -16,9 +16,9 @@ const props = withDefaults(defineProps<{
 
 const active = defineModel<boolean>({ default: false })
 const el = ref<HTMLElement>()
-const dot = ref(false)
+const wide = ref(false)
 onMounted(() => {
-  const observer = new ResizeObserver(([e]) => (dot.value = e!.target.clientWidth >= 4 * e!.target.clientHeight))
+  const observer = new ResizeObserver(([e]) => (wide.value = (e!.target as HTMLElement).offsetWidth >= 4 * (e!.target as HTMLElement).offsetHeight))
   observer.observe(el.value!)
   onBeforeUnmount(() => observer.disconnect())
 })
@@ -85,7 +85,7 @@ function key(e: KeyboardEvent, pressed: boolean) {
     ref="el"
     type="button"
     class="rl-button raised"
-    :class="[mode, size, highlight, { lit: active, dot }]"
+    :class="[mode, size, highlight, { lit: active, wide }]"
     :style="{ '--lit': color }"
     @pointerdown="down"
     @pointerup="up"
@@ -140,38 +140,36 @@ function key(e: KeyboardEvent, pressed: boolean) {
   outline-offset: 2px;
 }
 
-/* Filete de LED: mostra a cor do botão mesmo apagado */
+/* LED: círculo antes do conteúdo, que mostra a cor do botão mesmo apagado */
 .toggle::after,
 .flash::after,
 .led::after {
   content: '';
-  position: absolute;
-  left: 25%;
-  right: 25%;
-  bottom: 4px;
-  height: 2px;
-  border-radius: 1px;
+  order: -1;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   background: var(--lit);
   /* Apagado bem fraco, para o aceso se destacar */
   opacity: 0.3;
 }
 
-/* Botão retangular: o LED é um círculo à esquerda, como nas listas */
-.dot.toggle::after,
-.dot.flash::after,
-.dot.led::after {
-  left: 14px;
-  right: auto;
-  top: 50%;
-  bottom: auto;
-  width: 8px;
-  height: 8px;
-  translate: 0 -50%;
-  border-radius: 50%;
+/* Botão retangular: o círculo fica à esquerda. A borda transparente de 14 px (círculo + espaço) mantém a
+   largura igual à do círculo no fluxo; sem isso, a medida mudaria ao trocar de modo e oscilaria. */
+.wide.toggle:not(.face),
+.wide.flash:not(.face),
+.wide.led {
+  border-left: 14px solid transparent;
 }
 
-.dot.led.lit::after {
-  height: 8px;
+.wide.toggle::after,
+.wide.flash::after,
+.wide.led::after {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
 }
 
 /* Destaque "face": o botão inteiro acende */
@@ -181,8 +179,9 @@ function key(e: KeyboardEvent, pressed: boolean) {
   box-shadow: 0 0 14px color-mix(in srgb, var(--lit) 55%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.4);
 }
 
-.face.lit::after {
-  opacity: 0;
+/* No "face" o próprio botão é o indicador: sem LED */
+.face::after {
+  display: none;
 }
 
 /* Destaque "led": o botão fica afundado e só o filete acende */
@@ -192,7 +191,6 @@ function key(e: KeyboardEvent, pressed: boolean) {
 }
 
 .led.lit::after {
-  height: 3px;
   opacity: 1;
   box-shadow: 0 0 4px var(--lit), 0 0 10px var(--lit), 0 0 18px color-mix(in srgb, var(--lit) 50%, transparent);
 }

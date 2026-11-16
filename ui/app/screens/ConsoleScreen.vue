@@ -208,7 +208,7 @@ const commit = () => {
 const discard = () => vc.hasStaged.value && send({ op: 'clearStaged' })
 
 // Na edição, atalhos dos elementos escolhidos: Delete remove; Ctrl + D duplica; Ctrl + C e Ctrl + V copiam
-// e colam; as setas deslocam 4 células (com Shift, 8; com Ctrl, 1, o menor passo da grade)
+// e colam; as setas deslocam 1 célula (o quadradinho da grade; com Shift, 4, o quadrado maior)
 const arrows: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
 const editShortcuts: Record<string, () => unknown> = {
   Delete: () => selection.value.length && removeNow(),
@@ -220,7 +220,7 @@ const editShortcuts: Record<string, () => unknown> = {
 function editKey(e: KeyboardEvent) {
   const arrow = arrows[e.key]
   if (e.altKey || (arrow && !selection.value.length)) return false
-  const step = e.ctrlKey ? 1 : e.shiftKey ? 8 : 4
+  const step = e.shiftKey ? 4 : 1
   const action = arrow ? () => canvas.value?.nudge(arrow[0] * step, arrow[1] * step) : editShortcuts[keyCombo(e)]
   if (!action) return false
   e.preventDefault()
@@ -229,6 +229,8 @@ function editKey(e: KeyboardEvent) {
   return true
 }
 
+const typed: { combo: string; at: number }[] = []
+const held = new Set<string>() // sequências apertadas, esperando a tecla soltar
 function onKey(e: KeyboardEvent, down: boolean) {
   const target = e.target as HTMLElement
   // Digitando num campo, só valem as combinações com Alt e o Ctrl + Enter (que não escrevem nada)
@@ -259,16 +261,38 @@ function onKey(e: KeyboardEvent, down: boolean) {
   }
   if (editing.value) return
   const combo = keyCombo(e)
+  // Sequências ("Ctrl+1 1"): as últimas teclas apertadas, cada uma até KEY_SEQUENCE_MS depois da anterior
+  if (down && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+    if (typed.length && Date.now() - typed.at(-1)!.at > KEY_SEQUENCE_MS) typed.length = 0
+    typed.push({ combo, at: Date.now() })
+  }
+  let sequenced = false
+  // Uma tecla de um passo vale na hora; uma sequência, quando o fim dela acaba de ser digitado
+  const hit = (key: string) => {
+    const steps = key.split(' ')
+    if (steps.length === 1) return key === combo
+    const ok = down && steps.every((s, i) => typed.at(i - steps.length)?.combo === s)
+    sequenced ||= ok
+    return ok
+  }
   for (const w of widgets.value) {
     for (const input of w.inputs) {
-      if (input.key !== combo) continue
+      const steps = input.key?.split(' ') ?? []
+      const id = `${w.id}:${input.control}`
+      // A sequência aperta ao completar e solta com a última tecla (o flash dura o que ela durar)
+      if (steps.length > 1 && !down) {
+        if (steps.at(-1) === combo && held.delete(id)) vc.input(w, input.control, false)
+        continue
+      }
+      if (!input.key || !hit(input.key)) continue
       e.preventDefault()
+      if (steps.length > 1) held.add(id)
       vc.input(w, input.control, down)
     }
     // Teclas do Seletor: um grupo, uma seleção salva, Todos ou Limpar
     if (w.type !== 'selector' || !down) continue
     for (const { item, key } of w.keys) {
-      if (key !== combo) continue
+      if (!hit(key)) continue
       e.preventDefault()
       if (item === 'all') {
         if (w.all) picker.all()
@@ -282,6 +306,7 @@ function onKey(e: KeyboardEvent, down: boolean) {
       } else if (w.groups.includes(item) || w.selections.includes(item)) picker.toggle(item)
     }
   }
+  if (sequenced) typed.length = 0
 }
 const keydown = (e: KeyboardEvent) => onKey(e, true)
 const keyup = (e: KeyboardEvent) => onKey(e, false)
@@ -357,7 +382,7 @@ onBeforeUnmount(() => {
                 <Settings2 :size="16" />
                 {{ t('vc.properties') }}
               </RlButton>
-              <template v-if="selection.length > 1">
+              <template v-if="selection.length > 1 && selected.every((w) => w.frame === selected[0]!.frame)">
                 <RlButton size="sm" :aria-label="t('vc.align.left')" :title="t('vc.align.left')" @press="align('left')"><AlignStartVertical :size="16" /></RlButton>
                 <RlButton size="sm" :aria-label="t('vc.align.right')" :title="t('vc.align.right')" @press="align('right')"><AlignEndVertical :size="16" /></RlButton>
                 <RlButton size="sm" :aria-label="t('vc.align.top')" :title="t('vc.align.top')" @press="align('top')"><AlignStartHorizontal :size="16" /></RlButton>

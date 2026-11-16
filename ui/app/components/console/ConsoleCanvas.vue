@@ -18,9 +18,7 @@ const prefs = usePrefs()
 const vc = useConsole()
 
 // Teclas do elemento para a etiqueta do canto (setas e espaço viram símbolos); nada com as dicas de atalho desligadas
-const keyNames: Record<string, string> = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: '␣' }
-const keysOf = (w: VcWidget) =>
-  !prefs.value.keyHints ? '' : w.inputs.flatMap((i) => (i.key ? [i.key.split('+').map((k) => keyNames[k] ?? k).join('+')] : [])).join(' ')
+const keysOf = (w: VcWidget) => (!prefs.value.keyHints ? '' : w.inputs.flatMap((i) => (i.key ? [keyLabel(i.key)] : [])).join(' · '))
 
 // A célula tem tamanho fixo em cada formato: o tamanho da janela (ou do painel de propriedades) não mexe nos
 // elementos, ancorados no canto superior esquerdo. Só o zoom do console (ao lado do Editar) aumenta ou diminui
@@ -60,10 +58,9 @@ let pending: string | undefined // toque num elemento ainda não escolhido: esco
 
 const inside = (r: Rect, f: Rect, head: number) => r.x >= f.x && r.x + r.w <= f.x + f.w && r.y >= f.y + head && r.y + r.h <= f.y + f.h
 
-// Ctrl + clique e toque longo somam ou tiram; só elementos do mesmo nível (mesma moldura) andam juntos
+// Ctrl + clique e toque longo somam ou tiram, de qualquer nível (dentro ou fora de molduras)
 function toggle(w: VcWidget) {
-  const same = selection.value.filter((id) => byId.value.get(id)?.frame === w.frame)
-  selection.value = same.includes(w.id) ? same.filter((id) => id !== w.id) : [...same, w.id]
+  selection.value = selection.value.includes(w.id) ? selection.value.filter((id) => id !== w.id) : [...selection.value, w.id]
 }
 
 function down(e: PointerEvent, w: VcWidget, resize = false) {

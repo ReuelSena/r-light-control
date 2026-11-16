@@ -719,7 +719,7 @@
     "noMidi": "Sem controle MIDI",
     "feedback": "Devolver estado ao controlador",
     "key": "Tecla",
-    "pressKey": "Aperte a tecla… (Esc cancela)",
+    "pressKey": "Aperte as teclas… (Esc cancela)",
     "noKey": "Sem tecla",
     "formats": {
       "phone": "Celular",
@@ -856,7 +856,7 @@
       "selectorKeys": "Uma tecla por grupo, subgrupo e seleção salva (tocar de novo tira); também para Todos e Limpar. Desligar o botão Todos ou Limpar tira o botão e a tecla dele.",
       "solo": "Só uma criação da moldura roda por vez: ligar um botão para os outros.",
       "macro": "Um toque executa os passos em ordem; o \"Esperar\" segura o próximo pelo tempo dado. A macro fica acesa enquanto roda, e um toque nela a interrompe.\nGo: começa o chaser parado; rodando, vai ao passo seguinte.\nO pânico, o Parar tudo e abrir outro projeto interrompem as macros.",
-      "inputs": "O controle MIDI ou a tecla que aciona este elemento. \"Aprender\" espera você mexer no controlador. As teclas valem com o console fora da edição.",
+      "inputs": "O controle MIDI ou a tecla que aciona este elemento. \"Aprender\" espera você mexer no controlador. As teclas valem com o console fora da edição.\nSequência: aperte várias teclas em seguida (ex.: Ctrl + 1 e depois 1); o atalho é gravado quando você para de digitar. Uma tecla que já é atalho sozinha não serve de início de sequência.",
       "icons": "A biblioteca tem cerca de 1.700 ícones. Os nomes estão em inglês: busque por sun, star, music, heart, fire…\nA busca mostra até 150 resultados.",
       "master": "Atalhos do teclado numérico:\n− blackout · + parar tudo · Enter tap do BPM.\nCtrl + − e Ctrl + + mudam o zoom do console.\nEssas teclas ficam reservadas; as da fileira de cima continuam livres para os elementos."
     },

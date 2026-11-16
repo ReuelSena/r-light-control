@@ -104,23 +104,38 @@ const keyRows = computed(() => {
   ]
 })
 
-// A próxima tecla apertada vira a entrada; Esc cancela
+// As teclas apertadas viram a entrada: uma só, ou uma sequência (cada tecla até KEY_SEQUENCE_MS depois da
+// anterior; passado esse tempo sem teclas, vale o que foi digitado). Esc cancela.
 // Teclas reservadas (seção master e zoom) não podem ser usadas: avisa e continua esperando outra
 const reserved = ref('')
-watch([capturing, capturingItem], () => (reserved.value = ''))
+const typed = ref<string[]>([])
+let finish: ReturnType<typeof setTimeout> | undefined
+const typedText = computed(() => (typed.value.length ? `${keyLabel(typed.value.join(' '))} …` : t('vc.pressKey')))
+watch([capturing, capturingItem], () => {
+  reserved.value = ''
+  typed.value = []
+  clearTimeout(finish)
+})
 function onKey(e: KeyboardEvent) {
   if ((!capturing.value && !capturingItem.value) || ['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
   e.preventDefault()
   e.stopPropagation()
   if (isReservedKey(e)) return (reserved.value = keyCombo(e))
-  if (e.key !== 'Escape') {
-    if (capturingItem.value) setItemKey(capturingItem.value, keyCombo(e))
-    else setInput({ ...inputOf(capturing.value!), key: keyCombo(e) })
-  }
-  capturing.value = capturingItem.value = undefined
+  clearTimeout(finish)
+  if (e.key === 'Escape') return (capturing.value = capturingItem.value = undefined)
+  typed.value.push(keyCombo(e))
+  finish = setTimeout(() => {
+    const key = typed.value.join(' ')
+    if (capturingItem.value) setItemKey(capturingItem.value, key)
+    else if (capturing.value) setInput({ ...inputOf(capturing.value), key })
+    capturing.value = capturingItem.value = undefined
+  }, KEY_SEQUENCE_MS)
 }
 onMounted(() => window.addEventListener('keydown', onKey, true))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey, true)
+  clearTimeout(finish)
+})
 </script>
 
 <template>
@@ -333,7 +348,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
         <div v-for="row in keyRows" :key="row.id" class="flex items-center gap-2">
           <span class="w-24 shrink-0 truncate text-xs">{{ row.name }}</span>
           <span class="min-w-0 flex-1 truncate font-lcd text-sm" :class="{ 'text-fg-dim': !itemKey(row.id) }">
-            {{ capturingItem === row.id ? t('vc.pressKey') : itemKey(row.id) ?? t('vc.noKey') }}
+            {{ capturingItem === row.id ? typedText : itemKey(row.id) ?? t('vc.noKey') }}
           </span>
           <RlButton size="sm" highlight="led" color="var(--color-flash)" :model-value="capturingItem === row.id" :aria-label="t('vc.key')" @press="capturingItem = capturingItem === row.id ? undefined : row.id">
             <Keyboard :size="14" />
@@ -449,7 +464,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
         </RlSwitch>
         <div v-if="kind.keys" class="flex items-center gap-2">
           <span class="min-w-0 flex-1 truncate font-lcd text-sm" :class="{ 'text-fg-dim': !inputOf(control).key }">
-            {{ capturing === control ? t('vc.pressKey') : inputOf(control).key ?? t('vc.noKey') }}
+            {{ capturing === control ? typedText : inputOf(control).key ?? t('vc.noKey') }}
           </span>
           <RlButton size="sm" highlight="led" color="var(--color-flash)" :model-value="capturing === control" @press="capturing = capturing === control ? undefined : control">
             <Keyboard :size="14" />

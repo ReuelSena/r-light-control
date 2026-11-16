@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import { Clock, ListOrdered, Move, RectangleHorizontal, SlidersVertical, Sparkles, SquareDashed, Timer, Type, Workflow } from 'lucide-vue-next'
+import { Clock, ListChecks, ListOrdered, Move, RectangleHorizontal, SlidersVertical, Sparkles, SquareDashed, Timer, Type, Workflow } from 'lucide-vue-next'
 import type { InputControl } from '~/types/generated/InputControl'
 import type { Rect } from '~/types/generated/Rect'
 import type { VcLayouts } from '~/types/generated/VcLayouts'
@@ -36,6 +36,7 @@ export const widgetKinds: Record<WidgetType, { icon: Component; size: [number, n
   animation: { icon: Sparkles, size: [48, 48], inputs: ['main'], keys: false },
   label: { icon: Type, size: [32, 8], inputs: [], keys: false },
   macro: { icon: Workflow, size: [16, 16], inputs: ['main'], keys: true },
+  selector: { icon: ListChecks, size: [32, 48], inputs: [], keys: false },
 }
 export const widgetTypes = Object.keys(widgetKinds) as WidgetType[]
 
@@ -94,6 +95,10 @@ export function copyLayout(widgets: VcWidget[], from: ConsoleFormat, to: Console
     top.push(w.layouts[to]!)
   }
 }
+
+/** A tecla guardada como aparece nas etiquetas: setas e espaço viram símbolos. */
+const keyNames: Record<string, string> = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: '␣' }
+export const keyLabel = (key: string) => key.split('+').map((k) => keyNames[k] ?? k).join('+')
 
 /**
  * Combinação de teclas no formato guardado nas entradas (ex.: "Shift+A", "F1", "Space"). As teclas do

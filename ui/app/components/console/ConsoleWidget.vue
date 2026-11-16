@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, Pause, Play, RotateCcw, Square } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Square } from 'lucide-vue-next'
 import type { StepTiming } from '~/types/generated/StepTiming'
 import type { VcWidget } from '~/types/generated/VcWidget'
 
@@ -15,7 +15,29 @@ const fn = (id: string | null) => project.value.functions.find((f) => f.id === i
 const now = props.widget.type === 'clock' ? useClock(200) : ref(0)
 
 // Flash e Temp valem enquanto o dedo está no botão; o resto (e as ações de um toque) age no toque
-const momentary = computed(() => props.widget.type === 'button' && props.widget.mode !== 'toggle' && !['stopAll', 'previous', 'pause'].includes(props.widget.action))
+const momentary = computed(() => props.widget.type === 'button' && !vc.isTarget(props.widget) && props.widget.mode !== 'toggle' && !['stopAll', 'previous', 'pause'].includes(props.widget.action))
+// Botão de alvo: aceso (cor do botão) na seleção toda, amarelo em parte dela
+const buttonColor = computed(() => (props.widget.type === 'button' && vc.isTarget(props.widget) && vc.targetState(props.widget) === 'part' ? 'var(--color-flash)' : props.widget.color))
+
+// Seletor (VC-7): grupos de fixtures e seleções salvas; tocar soma ou tira da seleção do aparelho
+const sel = useSelection()
+const prefs = usePrefs()
+// Grupo pai (com subgrupos): LED de outra cor, para não confundir com os filhos
+const selectorItems = computed(() => {
+  const w = props.widget
+  if (w.type !== 'selector') return []
+  const groups = w.groups.flatMap((id) => project.value.fixtureGroups.filter((g) => g.id === id).map((g) => ({ id, name: g.name, parent: project.value.fixtureGroups.some((c) => c.parent === id) })))
+  const saved = w.selections.flatMap((id) => project.value.selections.filter((s) => s.id === id).map((s) => ({ id, name: s.name, parent: false })))
+  return [...groups, ...saved]
+})
+// A tecla de um item (ou de `all` e `clear`) para a etiqueta, com as dicas de atalho ligadas
+const keyOf = (item: string) => (props.widget.type === 'selector' && prefs.value.keyHints ? props.widget.keys.find((k) => k.item === item)?.key : undefined)
+const splitModes = ['first', 'second', 'odd', 'even', 'wings', 'one'] as const
+const blink = ref(false)
+watch(sel.flash, () => {
+  blink.value = true
+  setTimeout(() => (blink.value = false), 300)
+})
 // O botão (e a macro) só mostra ícone quando o usuário liga a opção (VC-1)
 const { icon } = useIconLibrary()
 const buttonIcon = computed(() => (props.widget.type === 'button' || props.widget.type === 'macro' ? icon(props.widget.icon) : undefined))
@@ -140,7 +162,7 @@ function setColor(i: number, color: string) {
     class="h-full w-full flex-col gap-1! px-1! text-[11px]!"
     :mode="momentary ? 'flash' : 'action'"
     :highlight="widget.highlight"
-    :color="widget.color"
+    :color="buttonColor"
     :model-value="vc.active(widget)"
     @update:model-value="(down: boolean) => momentary && vc.press(widget, 'main', down)"
     @press="!momentary && vc.press(widget, 'main', true)"
@@ -169,7 +191,7 @@ function setColor(i: number, color: string) {
     {{ widget.caption }}
   </div>
 
-  <div v-else class="box">
+  <div v-else class="box" :class="{ blink }">
     <header class="caption">
       <i :style="{ background: widget.color }" />
       <span class="truncate">{{ widget.caption }}</span>
@@ -189,6 +211,40 @@ function setColor(i: number, color: string) {
     </template>
 
     <RlXYPad v-else-if="widget.type === 'xyPad'" v-model="xy" />
+
+    <template v-else-if="widget.type === 'selector'">
+      <div class="sunken flex min-h-0 flex-1 flex-wrap content-start gap-1 overflow-y-auto rounded-md p-1">
+        <RlButton
+          v-for="item in selectorItems"
+          :key="item.id"
+          size="sm"
+          highlight="led"
+          :color="item.parent ? 'var(--color-lcd)' : widget.color"
+          :model-value="sel.isOn(item.id)"
+          @press="sel.toggle(item.id)"
+        >
+          {{ item.name }}
+          <span v-if="keyOf(item.id)" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf(item.id)!) }}</span>
+        </RlButton>
+        <p v-if="!selectorItems.length" class="p-1 text-xs text-fg-muted">{{ t('vc.noSelectorItems') }}</p>
+      </div>
+      <div v-if="widget.all || widget.clear" class="flex gap-1">
+        <RlButton v-if="widget.all" class="flex-1" size="sm" @press="sel.all()">
+          {{ t('vc.selectAll') }}<span v-if="keyOf('all')" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf('all')!) }}</span>
+        </RlButton>
+        <RlButton v-if="widget.clear" class="flex-1" size="sm" @press="sel.clear()">
+          {{ t('vc.selectNone') }}<span v-if="keyOf('clear')" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf('clear')!) }}</span>
+        </RlButton>
+      </div>
+      <!-- Divisões (P3): pedaços da seleção na ordem das fixtures; "Tudo" volta à seleção inteira -->
+      <div v-if="widget.splits" class="flex flex-wrap gap-1">
+        <RlButton v-for="m in splitModes" :key="m" size="sm" highlight="led" :model-value="sel.mode.value === m" @press="sel.split(m)">{{ t(`vc.split.${m}`) }}</RlButton>
+        <RlButton size="sm" :aria-label="t('vc.split.previous')" @press="sel.walk(-1)"><ChevronLeft :size="16" /></RlButton>
+        <RlButton size="sm" :aria-label="t('vc.split.next')" @press="sel.walk(1)"><ChevronRight :size="16" /></RlButton>
+        <RlButton size="sm" :model-value="false" @press="sel.restore()">{{ t('vc.split.all') }}</RlButton>
+      </div>
+      <RlLcd class="text-center text-xs">{{ t('vc.selected', { n: sel.selected.value.length }) }}</RlLcd>
+    </template>
 
     <template v-else-if="widget.type === 'cueList'">
       <div class="sunken min-h-0 flex-1 overflow-y-auto rounded-md">
@@ -312,6 +368,12 @@ function setColor(i: number, color: string) {
   border-radius: 8px;
   background: linear-gradient(#1b1d21, #15171a);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+/* O Seletor pisca quando um botão de alvo é tocado sem seleção */
+.blink {
+  border-color: var(--color-flash);
+  box-shadow: 0 0 10px var(--color-flash);
 }
 
 .caption {

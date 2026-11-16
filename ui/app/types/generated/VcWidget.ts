@@ -7,6 +7,7 @@ import type { VcFrame } from "./VcFrame";
 import type { VcLabel } from "./VcLabel";
 import type { VcLayouts } from "./VcLayouts";
 import type { VcMacro } from "./VcMacro";
+import type { VcSelector } from "./VcSelector";
 import type { VcSlider } from "./VcSlider";
 import type { VcSpeedDial } from "./VcSpeedDial";
 import type { VcXyPad } from "./VcXyPad";
@@ -28,4 +29,4 @@ color: string, layouts: VcLayouts,
 /**
  * Controles MIDI e teclas que acionam o elemento (VC-1).
  */
-inputs: Array<WidgetInput>, } & ({ "type": "button" } & VcButton | { "type": "slider" } & VcSlider | { "type": "cueList" } & VcCueList | { "type": "xyPad" } & VcXyPad | { "type": "speedDial" } & VcSpeedDial | { "type": "frame" } & VcFrame | { "type": "clock" } & VcClock | { "type": "animation" } & VcAnimation | { "type": "label" } & VcLabel | { "type": "macro" } & VcMacro);
+inputs: Array<WidgetInput>, } & ({ "type": "button" } & VcButton | { "type": "slider" } & VcSlider | { "type": "cueList" } & VcCueList | { "type": "xyPad" } & VcXyPad | { "type": "speedDial" } & VcSpeedDial | { "type": "frame" } & VcFrame | { "type": "clock" } & VcClock | { "type": "animation" } & VcAnimation | { "type": "label" } & VcLabel | { "type": "macro" } & VcMacro | { "type": "selector" } & VcSelector);

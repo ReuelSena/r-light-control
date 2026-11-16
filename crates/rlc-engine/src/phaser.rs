@@ -23,7 +23,8 @@ pub struct PhaserProgram {
 }
 
 /// Uma camada e o canal do atributo dela em cada fixture do grupo, na ordem da grade (o valor não
-/// conta). A posição na lista é a da fixture na onda.
+/// conta). A posição na lista é a da fixture na onda; um canal fora do universo (o 0) não acende, mas
+/// guarda o lugar da fixture (a que está fora da máscara de uma execução alvo).
 #[derive(Clone, PartialEq, Debug)]
 pub struct PhaserTrack {
     pub layer: PhaserLayer,

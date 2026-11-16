@@ -13,6 +13,7 @@ const { t } = useI18n()
 const { state, send } = useEngine()
 const prefs = usePrefs()
 const vc = useConsole()
+const picker = useSelection()
 const project = computed(() => state.value.project)
 const phone = useMediaQuery('(max-width: 639px)')
 const tablet = useMediaQuery('(max-width: 1023px)')
@@ -66,7 +67,7 @@ function spot(frame: string | null, w: number, h: number, reserved: Rect[] = [])
 function blank(type: WidgetType): VcWidget {
   const firstOf = (kind: string) => project.value.functions.find((f) => f.type === kind)?.id ?? null
   const kinds = {
-    button: { type, action: 'function', function: null, fixtures: [], groups: [], mode: 'toggle', highlight: 'face', icon: null },
+    button: { type, action: 'function', function: null, fixtures: [], groups: [], mode: 'toggle', highlight: 'face', icon: null, target: false, category: null },
     slider: { type, mode: 'level', channelGroups: [], function: null, functions: [], knob: false },
     cueList: { type, chaser: firstOf('chaser') },
     xyPad: { type, fixtures: [], groups: [] },
@@ -76,6 +77,7 @@ function blank(type: WidgetType): VcWidget {
     animation: { type, matrix: firstOf('rgbMatrix') },
     label: { type, background: null, border: null },
     macro: { type, steps: [], icon: null },
+    selector: { type, groups: [], selections: [], splits: true, all: true, clear: true, keys: [] },
   }
   const [w, h] = widgetKinds[type].size
   const layouts = { phone: null, tablet: null, desktop: null, [format.value]: spot(null, w, h) }
@@ -260,6 +262,17 @@ function onKey(e: KeyboardEvent, down: boolean) {
       if (input.key !== combo) continue
       e.preventDefault()
       vc.input(w, input.control, down)
+    }
+    // Teclas do Seletor: um grupo, uma seleção salva, Todos ou Limpar
+    if (w.type !== 'selector' || !down) continue
+    for (const { item, key } of w.keys) {
+      if (key !== combo) continue
+      e.preventDefault()
+      if (item === 'all') {
+        if (w.all) picker.all()
+      } else if (item === 'clear') {
+        if (w.clear) picker.clear()
+      } else if (w.groups.includes(item) || w.selections.includes(item)) picker.toggle(item)
     }
   }
 }

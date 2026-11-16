@@ -11,6 +11,7 @@ import type { RemoteAccess } from "./RemoteAccess";
 import type { RunFailure } from "./RunFailure";
 import type { StagedState } from "./StagedState";
 import type { Stats } from "./Stats";
+import type { TargetedRun } from "./TargetedRun";
 import type { TestPattern } from "./TestPattern";
 import type { TimelinePosition } from "./TimelinePosition";
 import type { WidgetValue } from "./WidgetValue";
@@ -88,4 +89,9 @@ highlight: Locate,
 /**
  * O que o modo Preparar deixou pronto no console, sem tocar a luz (VC-6). Um só para o show.
  */
-staged: StagedState, };
+staged: StagedState, 
+/**
+ * Criações ligadas só nas fixtures da seleção de um aparelho (VC-7), fora do projeto e do
+ * desfazer. Ficam fora de `running`: a mesma criação pode rodar inteira e com alvo.
+ */
+targeted: Array<TargetedRun>, };

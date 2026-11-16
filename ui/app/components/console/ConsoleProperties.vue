@@ -83,17 +83,40 @@ function learn(control: InputControl) {
 const midiText = (m: MidiControl) =>
   `${state.value.midiDevices.find((d) => d.id === m.device)?.name ?? '?'} · ${t(`vc.midi.${m.message}`, { n: m.number })} · ${t('vc.midi.channel', { n: m.channel })}`
 
+// Teclas do Seletor: o item (id do grupo ou da seleção, `all` ou `clear`) que espera a próxima tecla
+const capturingItem = ref<string>()
+watch(() => props.widget.id, () => (capturingItem.value = undefined))
+const itemKey = (item: string) => (props.widget.type === 'selector' ? props.widget.keys.find((k) => k.item === item)?.key : undefined)
+function setItemKey(item: string, key: string | null) {
+  if (props.widget.type !== 'selector') return
+  save({ keys: [...props.widget.keys.filter((k) => k.item !== item), ...(key ? [{ item, key }] : [])] })
+}
+// As linhas das teclas: os grupos e as seleções do Seletor, e Todos e Limpar quando o botão existe
+const keyRows = computed(() => {
+  const w = props.widget
+  if (w.type !== 'selector') return []
+  return [
+    ...w.groups.flatMap((id) => project.value.fixtureGroups.filter((g) => g.id === id).map((g) => ({ id, name: g.name }))),
+    ...w.selections.flatMap((id) => project.value.selections.filter((s) => s.id === id).map((s) => ({ id, name: s.name }))),
+    ...(w.all ? [{ id: 'all', name: t('vc.selectAll') }] : []),
+    ...(w.clear ? [{ id: 'clear', name: t('vc.selectNone') }] : []),
+  ]
+})
+
 // A próxima tecla apertada vira a entrada; Esc cancela
 // Teclas reservadas (seção master e zoom) não podem ser usadas: avisa e continua esperando outra
 const reserved = ref('')
-watch(capturing, () => (reserved.value = ''))
+watch([capturing, capturingItem], () => (reserved.value = ''))
 function onKey(e: KeyboardEvent) {
-  if (!capturing.value || ['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
+  if ((!capturing.value && !capturingItem.value) || ['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return
   e.preventDefault()
   e.stopPropagation()
   if (isReservedKey(e)) return (reserved.value = keyCombo(e))
-  if (e.key !== 'Escape') setInput({ ...inputOf(capturing.value), key: keyCombo(e) })
-  capturing.value = undefined
+  if (e.key !== 'Escape') {
+    if (capturingItem.value) setItemKey(capturingItem.value, keyCombo(e))
+    else setInput({ ...inputOf(capturing.value!), key: keyCombo(e) })
+  }
+  capturing.value = capturingItem.value = undefined
 }
 onMounted(() => window.addEventListener('keydown', onKey, true))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
@@ -135,7 +158,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
         <RlButton size="sm" @press="picking = true">{{ t('vc.pickTargets', { n: widget.groups.length + widget.fixtures.length }) }}</RlButton>
       </div>
       <!-- As ações de um toque não têm modo; o Pausar acende enquanto a criação está pausada -->
-      <div v-if="!['stopAll', 'previous', 'pause'].includes(widget.action)" class="field-label">
+      <!-- Alvo (VC-7): liga a criação só nas fixtures da seleção do Seletor -->
+      <template v-if="widget.action === 'function'">
+        <RlSwitch :model-value="widget.target" @update:model-value="(target: boolean) => save({ target })">
+          <span class="flex items-center gap-1">{{ t('vc.target') }} <RlInfo :text="t('vc.info.target')" /></span>
+        </RlSwitch>
+        <div v-if="widget.target" class="field-label">
+          {{ t('vc.category') }}
+          <RlSegmented
+            :model-value="widget.category ?? 'none'"
+            :options="(['none', 'color', 'effect', 'animation'] as const).map((value) => ({ value, label: t(`vc.categories.${value}`) }))"
+            @update:model-value="(c) => save({ category: c === 'none' ? null : c })"
+          />
+        </div>
+      </template>
+      <div v-if="!['stopAll', 'previous', 'pause'].includes(widget.action) && !(widget.action === 'function' && widget.target)" class="field-label">
         <span class="flex items-center gap-1">{{ t('vc.mode') }} <RlInfo :text="t('vc.info.buttonMode')" /></span>
         <RlSegmented :model-value="widget.mode" :options="(['toggle', 'flash', 'temp'] as const).map((value) => ({ value, label: t(`vc.modes.${value}`) }))" @update:model-value="(mode) => save({ mode })" />
       </div>
@@ -249,6 +286,61 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
         <option v-for="f in functionsOf('chaser', 'sequence')" :key="f.id" :value="f.id">{{ f.name }}</option>
       </select>
     </label>
+
+    <!-- Seletor (VC-7): o que o aparelho pode escolher -->
+    <template v-else-if="widget.type === 'selector'">
+      <div class="field-label">
+        <span class="flex items-center gap-1">{{ t('groups.fixtureGroups') }} <RlInfo :text="t('vc.info.selector')" /></span>
+        <div class="flex flex-wrap gap-1.5">
+          <RlButton
+            v-for="{ group: g } in groupTree(project)"
+            :key="g.id"
+            size="sm"
+            highlight="led"
+            :model-value="widget.groups.includes(g.id)"
+            @press="save({ groups: toggled(widget.groups, g.id) })"
+          >
+            {{ g.name }}
+          </RlButton>
+        </div>
+      </div>
+      <div v-if="project.selections.length" class="field-label">
+        {{ t('vc.selections') }}
+        <div class="flex flex-wrap gap-1.5">
+          <RlButton
+            v-for="s in project.selections"
+            :key="s.id"
+            size="sm"
+            highlight="led"
+            :model-value="widget.selections.includes(s.id)"
+            @press="save({ selections: toggled(widget.selections, s.id) })"
+          >
+            {{ s.name }}
+          </RlButton>
+        </div>
+      </div>
+      <div class="field-label">
+        <span class="flex items-center gap-1">{{ t('vc.split.title') }} <RlInfo :text="t('vc.info.split')" /></span>
+        <RlButton size="sm" highlight="led" :model-value="widget.splits" @press="save({ splits: !widget.splits })">{{ t('vc.split.bar') }}</RlButton>
+        <RlButton size="sm" highlight="led" :model-value="widget.all" @press="save({ all: !widget.all })">{{ t('vc.showAll') }}</RlButton>
+        <RlButton size="sm" highlight="led" :model-value="widget.clear" @press="save({ clear: !widget.clear })">{{ t('vc.showClear') }}</RlButton>
+      </div>
+      <!-- Uma tecla por item; Todos e Limpar só aparecem com o botão ligado -->
+      <div class="field-label">
+        <span class="flex items-center gap-1">{{ t('vc.selectorKeys') }} <RlInfo :text="t('vc.info.selectorKeys')" /></span>
+        <div v-for="row in keyRows" :key="row.id" class="flex items-center gap-2">
+          <span class="w-24 shrink-0 truncate text-xs">{{ row.name }}</span>
+          <span class="min-w-0 flex-1 truncate font-lcd text-sm" :class="{ 'text-fg-dim': !itemKey(row.id) }">
+            {{ capturingItem === row.id ? t('vc.pressKey') : itemKey(row.id) ?? t('vc.noKey') }}
+          </span>
+          <RlButton size="sm" highlight="led" color="var(--color-flash)" :model-value="capturingItem === row.id" :aria-label="t('vc.key')" @press="capturingItem = capturingItem === row.id ? undefined : row.id">
+            <Keyboard :size="14" />
+          </RlButton>
+          <RlButton v-if="itemKey(row.id)" size="sm" :aria-label="t('common.remove')" @press="setItemKey(row.id, null)"><X :size="14" /></RlButton>
+        </div>
+        <p v-if="capturingItem && reserved" class="text-xs text-flash">{{ t('vc.reservedKey', { key: reserved }) }}</p>
+      </div>
+    </template>
 
     <div v-else-if="widget.type === 'xyPad'" class="field-label">
       {{ t('vc.movers') }}

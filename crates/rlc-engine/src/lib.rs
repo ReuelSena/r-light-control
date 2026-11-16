@@ -630,14 +630,41 @@ impl Ctx<'_> {
     }
 
     /// Edição com a criação rodando: vale na hora, sem recomeçar. Na cena, o valor mudado vai direto e
-    /// o resto continua o fade; o que mudou de tipo recomeça.
+    /// o resto continua o fade; o canal que saiu dela (a fixture tirada de uma execução alvo, VC-7)
+    /// passa a um fader parado logo acima, que faz o fade out da cena; o que mudou de tipo recomeça.
     fn update(&mut self, node: &mut Node, program: Program, imposed: Imposed) {
         match (node, program) {
             (Node::Scene(serial), Program::Scene(scene)) => {
-                let Some(fader) = self.faders.iter_mut().find(|f| f.serial == *serial) else {
+                let Some(at) = self.faders.iter().position(|f| f.serial == *serial) else {
                     return;
                 };
-                let old = std::mem::take(&mut fader.channels);
+                let fader = &mut self.faders[at];
+                let (gone, old): (Vec<Fade>, Vec<Fade>) = std::mem::take(&mut fader.channels)
+                    .into_iter()
+                    .partition(|f| {
+                        !scene
+                            .levels
+                            .iter()
+                            .any(|l| l.universe == f.level.universe && l.channel == f.level.channel)
+                    });
+                if !gone.is_empty() {
+                    *self.serial += 1;
+                    let mut leaving = Fader {
+                        serial: *self.serial,
+                        owner: fader.owner.clone(),
+                        priority: fader.priority,
+                        times: fader.times,
+                        waiting: fader.waiting,
+                        stopped: fader.stopped,
+                        channels: gone,
+                        relative: fader.relative,
+                        intensity: fader.intensity,
+                        pinned: fader.pinned,
+                    };
+                    leaving.stop(self.universes, self.now, self.beat);
+                    self.faders.insert(at + 1, leaving);
+                }
+                let fader = &mut self.faders[at];
                 fader.channels = valid(scene.levels)
                     .map(|level| match old.iter().find(|f| f.level == level) {
                         Some(f) => f.clone(),
@@ -1741,6 +1768,33 @@ mod tests {
         s.apply(Command::Running(vec![]), t0 + TICK * 5);
         assert_eq!([5, 6].map(|t| at(&mut s, t)), [(90, 50), (0, 0)]);
         assert!(s.faders.is_empty());
+    }
+
+    #[test]
+    fn a_channel_that_leaves_a_running_scene_fades_out_under_the_new_one() {
+        // A cor de uma execução alvo (VC-7) que perde uma fixture para outra: o canal que saiu não
+        // corta, faz o fade out da cena; a nova entra por cima partindo do que está saindo
+        let mut s = patched();
+        let t0 = Instant::now();
+        let at = |s: &mut State, tick: u32| {
+            let f = s.render(t0 + TICK * tick)[0].1;
+            (f[0], f[1], f[2])
+        };
+        let a = |levels: &[(u16, u16)]| run("a", scene(levels, 40));
+        s.apply(
+            Command::Running(vec![a(&[(1, 200), (2, 200), (3, 200)])]),
+            t0,
+        );
+        assert_eq!(at(&mut s, 1), (200, 200, 200));
+        // O 2 (cor, HTP) e o 3 (pan, LTP) saem da "a"; a "b" acende o 3 em 100
+        let b = run("b", scene(&[(3, 100)], 40));
+        s.apply(Command::Running(vec![a(&[(1, 200)]), b]), t0 + TICK * 2);
+        assert_eq!(
+            [2, 3, 4].map(|t| at(&mut s, t)),
+            [(200, 100, 150), (200, 0, 100), (200, 0, 100)]
+        );
+        // O fader que saiu já terminou
+        assert_eq!(s.faders.len(), 2);
     }
 
     #[test]

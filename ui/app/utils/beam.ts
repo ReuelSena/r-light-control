@@ -12,6 +12,8 @@ export function defaultLook(def: FixtureDef): BeamLook | undefined {
   if (def.kind === 'colorChanger' || def.kind === 'dimmer') {
     return { brightness: 1, angleMin: Math.max(min || 25, 25), angleMax: Math.max(max || 40, 40), softness: 0.9, core: 0.4, reach: 6 }
   }
+  // O strobo é um holofote largo
+  if (def.kind === 'strobe') return { brightness: 1, angleMin: 50, angleMax: 70, softness: 0.9, core: 0.4, reach: 6 }
   if (def.kind !== 'movingHead' && def.kind !== 'scanner') return undefined
   // A definição do QLC+ nem sempre é fiel: o raio não passa de 4° a 10°
   const angleMin = Math.max(1, Math.min(min || 4, 4))
@@ -25,18 +27,19 @@ const clamp = (v: number, min = 0, max = 1) => Math.min(max, Math.max(min, v))
 
 /**
  * Convenção do shutter: só pisca se o canal tem uma faixa de strobe (pelo nome da capability) e o valor está nela;
- * a frequência vai de 1 a 20 Hz ao longo da faixa. Sem faixa de strobe ou fora dela, o shutter está aberto.
+ * a frequência vai de 1 a 20 Hz ao longo da faixa. Sem faixa de strobe, fora dela ou com o valor 0, o shutter está aberto.
  * `now` é o relógio em segundos.
  */
-const strobeName = /strobe|estrobo|pulse|flash|pisca/i
+const strobeName = /strobe|strobo|estrobo|pulse|flash|pisca/i
 
 /** Ângulo (graus), suavidade da borda (0–1) e brilho do pisca (0 ou 1) do feixe, a partir dos valores dos canais. */
 export function beamState(values: Partial<Record<string, number>>, look: BeamLook, shutter: Capability[] = [], now = 0) {
   // Sem canal de zoom, a média dos dois ângulos
   const angle = values.zoom === undefined ? (look.angleMin + look.angleMax) / 2 : look.angleMin + (look.angleMax - look.angleMin) * (values.zoom / 255)
   const softness = values.focus === undefined ? look.softness : clamp(look.softness + (values.focus / 255 - 0.5) * 0.6)
-  const strobe = values.shutter === undefined ? undefined : shutter.find((c) => strobeName.test(c.name) && values.shutter! >= c.min && values.shutter! <= c.max)
-  const hz = strobe ? 1 + (19 * (values.shutter! - strobe.min)) / Math.max(1, strobe.max - strobe.min) : 0
+  // O valor 0 é o shutter aberto, mesmo quando a faixa de strobe da definição começa nele (ParLed: "Strobo 0–255")
+  const strobe = !values.shutter ? undefined : shutter.find((c) => strobeName.test(c.name) && values.shutter! >= c.min && values.shutter! <= c.max)
+  const hz = strobe ? 1 + (19 * (values.shutter! - Math.max(1, strobe.min))) / Math.max(1, strobe.max - Math.max(1, strobe.min)) : 0
   const flicker = hz && (now * hz) % 1 > 0.5 ? 0 : 1
   return { angle: Math.max(1, angle), softness, flicker }
 }

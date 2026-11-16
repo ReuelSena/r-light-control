@@ -7,6 +7,7 @@ import type { FixtureGroup } from "./FixtureGroup";
 import type { Folder } from "./Folder";
 import type { Function } from "./Function";
 import type { RgbScript } from "./RgbScript";
+import type { SelectionGroup } from "./SelectionGroup";
 import type { Stage } from "./Stage";
 import type { Universe } from "./Universe";
 
@@ -18,4 +19,8 @@ fixtureDefs: Array<FixtureDef>, fixtures: Array<Fixture>, fixtureGroups: Array<F
 /**
  * Scripts do QLC+ importados para os RGB Matrix, dentro do projeto (como as fixtures, A4).
  */
-scripts: Array<RgbScript>, };
+scripts: Array<RgbScript>, 
+/**
+ * Seleções salvas do Seletor (VC-7), ausentes nos arquivos de antes.
+ */
+selections: Array<SelectionGroup>, };

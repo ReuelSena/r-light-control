@@ -55,6 +55,30 @@ pub struct Snapshot {
     pub highlight: Locate,
     /// O que o modo Preparar deixou pronto no console, sem tocar a luz (VC-6). Um só para o show.
     pub staged: StagedState,
+    /// Criações ligadas só nas fixtures da seleção de um aparelho (VC-7), fora do projeto e do
+    /// desfazer. Ficam fora de `running`: a mesma criação pode rodar inteira e com alvo.
+    pub targeted: Vec<TargetedRun>,
+}
+
+/// Uma criação ligada com alvo (VC-7): só nas `fixtures` (a máscara). `id` é dado pelo servidor e é o
+/// da execução no motor.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TargetedRun {
+    pub id: Id,
+    pub function: Id,
+    pub fixtures: Vec<Id>,
+    /// Com categoria, ligar outra da mesma categoria nas mesmas fixtures tira estas dela; sem, soma.
+    pub category: Option<Category>,
+}
+
+/// Categoria do botão de alvo (VC-7): uma criação por categoria em cada fixture.
+#[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Category {
+    Color,
+    Effect,
+    Animation,
 }
 
 /// Estado preparado do console (VC-6): os mesmos campos ao vivo do [`Snapshot`], que só vão para a
@@ -66,6 +90,8 @@ pub struct StagedState {
     pub paused: Vec<Id>,
     pub widget_values: Vec<WidgetValue>,
     pub loaded_steps: Vec<CurrentStep>,
+    /// As criações com alvo preparadas (VC-7).
+    pub targeted: Vec<TargetedRun>,
     /// Veio da cópia do ao vivo (`SeedStaged`): é o estado desejado completo, e o Executar
     /// substitui o ao vivo em vez de somar.
     pub full: bool,
@@ -123,6 +149,9 @@ pub struct Project {
     pub stage: Stage,
     /// Scripts do QLC+ importados para os RGB Matrix, dentro do projeto (como as fixtures, A4).
     pub scripts: Vec<RgbScript>,
+    /// Seleções salvas do Seletor (VC-7), ausentes nos arquivos de antes.
+    #[serde(default)]
+    pub selections: Vec<SelectionGroup>,
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -287,6 +316,23 @@ pub struct GroupCell {
     pub y: u16,
     pub fixture: Id,
     pub head: u16,
+}
+
+/// Seleção salva do Seletor (VC-7): fixtures e grupos de fixtures, sem grade. Pode repetir fixtures
+/// de outras seleções e grupos; resolve na hora de tocar (os grupos com quem está neles agora, N1).
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectionGroup {
+    pub id: Id,
+    pub name: String,
+    pub members: Vec<Member>,
+}
+
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum Member {
+    Fixture(Id),
+    Group(Id),
 }
 
 /// Grupo de canais, como os "Channel Groups" do QLC+: canais de quaisquer fixtures, do mesmo
@@ -992,6 +1038,8 @@ pub enum VcWidgetKind {
     Label(VcLabel),
     /// Lista de ações executadas em ordem, com esperas entre elas (E6).
     Macro(VcMacro),
+    /// Seletor (VC-7): escolhe, no aparelho, as fixtures que os botões de alvo usam.
+    Selector(VcSelector),
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
@@ -1007,6 +1055,44 @@ pub struct VcButton {
     pub highlight: Highlight,
     /// Ícone da biblioteca (lucide, ex.: "Camera"); `None` = só o texto.
     pub icon: Option<String>,
+    /// "Alvo: seleção" (VC-7): a criação liga só nas fixtures escolhidas no Seletor do aparelho
+    /// (`targetOn`), na `category` (sem ela, soma). Ausentes nos arquivos de antes.
+    #[serde(default)]
+    pub target: bool,
+    #[serde(default)]
+    pub category: Option<Category>,
+}
+
+/// Itens do Seletor: grupos de fixtures (e subgrupos) e seleções salvas.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VcSelector {
+    pub groups: Vec<Id>,
+    pub selections: Vec<Id>,
+    /// Barra "Dividir" (metades, asas, pares e ímpares, uma por vez); ligada nos arquivos de antes.
+    #[serde(default = "splits_on")]
+    pub splits: bool,
+    /// Botões "Todos" e "Limpar" (e as teclas deles); ligados nos arquivos de antes.
+    #[serde(default = "splits_on")]
+    pub all: bool,
+    #[serde(default = "splits_on")]
+    pub clear: bool,
+    /// Teclas dos itens, de "Todos" (`all`) e de "Limpar" (`clear`).
+    #[serde(default)]
+    pub keys: Vec<SelectorKey>,
+}
+
+/// Tecla de um item do Seletor: o id do grupo ou da seleção salva, ou `all` e `clear`.
+#[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectorKey {
+    pub item: String,
+    /// Tecla ou combinação (ex.: "F1", "Shift+A").
+    pub key: String,
+}
+
+fn splits_on() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize, TS, Clone, Copy, Debug, PartialEq)]
@@ -1437,6 +1523,18 @@ pub enum Op {
         to: usize,
         parent: Option<Id>,
     },
+    /// Cria ou substitui uma seleção salva do Seletor (VC-7).
+    SaveSelection {
+        selection: SelectionGroup,
+    },
+    RemoveSelection {
+        id: Id,
+    },
+    /// Leva a seleção para a posição `to` da lista (a partir de 0).
+    MoveSelection {
+        id: Id,
+        to: usize,
+    },
     SaveChannelGroup {
         group: ChannelGroup,
     },
@@ -1639,6 +1737,18 @@ pub enum Op {
     CommitStaged,
     /// Descarta o preparado.
     ClearStaged,
+    /// Liga a criação só nas `fixtures` (a seleção do aparelho, já resolvida; VC-7). Com `category`,
+    /// tira essas fixtures das outras execuções alvo da mesma categoria.
+    TargetOn {
+        function: Id,
+        fixtures: Vec<Id>,
+        category: Option<Category>,
+    },
+    /// Desliga a criação com alvo nas `fixtures`.
+    TargetOff {
+        function: Id,
+        fixtures: Vec<Id>,
+    },
 }
 
 /// Resultado da importação de um `.qxf`: o que foi convertido e o que precisa de atenção.

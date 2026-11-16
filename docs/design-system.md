@@ -120,6 +120,9 @@ Diálogos e abas usam os primitivos da [Reka UI](https://reka-ui.com) (foco e te
 | Relógio | `Clock` | 8 × 4 |
 | Animation | `Sparkles` | 12 × 12 |
 | Texto | `Type` | 8 × 2 |
+| Seletor (VC-7) | `ListChecks` | 32 × 48 |
+
+- **Seletor (VC-7):** caixa com botões de LED (`RlButton` `sm`) para cada grupo de fixtures e seleção salva (ligado = todas as fixtures dele estão na seleção), mais Todos, Limpar e a contagem num `RlLcd`. A seleção é do aparelho (`useSelection`). O botão com "Alvo: seleção" acende na cor dele quando a criação cobre a seleção toda e em amarelo (`--color-flash`) quando cobre só parte; sem seleção, o toque faz o Seletor piscar em amarelo.
 
 - **Grade (VC-2):** 64 colunas no celular, 128 no tablet e 192 no desktop, para ajuste fino. A célula é quadrada e de tamanho fixo em cada formato (7, 4 e 6 px; só o zoom do console a muda), então a área não muda com a janela e rola se não couber; o elemento ocupa o retângulo dele com 3 px de folga e tem no mínimo 8 × 8 células (o Texto pode ter 4 de altura). Na moldura, as quatro primeiras linhas são do cabeçalho.
 - **Cores (`widgetColors`):** cada cor viva com a versão escura dela (25% do brilho, para fundo de texto na cor viva) e sete cinzas do branco ao preto. O campo de cor (`ConsoleColor`) mostra a cor escolhida e abre a paleta; com `none`, oferece "Sem cor" (fundo e borda do Texto).

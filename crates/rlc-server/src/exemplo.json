@@ -2787,12 +2787,42 @@
     "height": 1,
     "parent": "g4",
     "cells": [
-     { "x": 0, "y": 0, "fixture": "rpar1", "head": 0 },
-     { "x": 1, "y": 0, "fixture": "rpar2", "head": 0 },
-     { "x": 2, "y": 0, "fixture": "rpar3", "head": 0 },
-     { "x": 3, "y": 0, "fixture": "rpar4", "head": 0 },
-     { "x": 4, "y": 0, "fixture": "rpar5", "head": 0 },
-     { "x": 5, "y": 0, "fixture": "rpar6", "head": 0 }
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "rpar1",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "rpar2",
+      "head": 0
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "rpar3",
+      "head": 0
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "rpar4",
+      "head": 0
+     },
+     {
+      "x": 4,
+      "y": 0,
+      "fixture": "rpar5",
+      "head": 0
+     },
+     {
+      "x": 5,
+      "y": 0,
+      "fixture": "rpar6",
+      "head": 0
+     }
     ]
    },
    {
@@ -2802,12 +2832,42 @@
     "height": 1,
     "parent": "g4",
     "cells": [
-     { "x": 0, "y": 0, "fixture": "rpar7", "head": 0 },
-     { "x": 1, "y": 0, "fixture": "rpar8", "head": 0 },
-     { "x": 2, "y": 0, "fixture": "rpar9", "head": 0 },
-     { "x": 3, "y": 0, "fixture": "rpar10", "head": 0 },
-     { "x": 4, "y": 0, "fixture": "rpar11", "head": 0 },
-     { "x": 5, "y": 0, "fixture": "rpar12", "head": 0 }
+     {
+      "x": 0,
+      "y": 0,
+      "fixture": "rpar7",
+      "head": 0
+     },
+     {
+      "x": 1,
+      "y": 0,
+      "fixture": "rpar8",
+      "head": 0
+     },
+     {
+      "x": 2,
+      "y": 0,
+      "fixture": "rpar9",
+      "head": 0
+     },
+     {
+      "x": 3,
+      "y": 0,
+      "fixture": "rpar10",
+      "head": 0
+     },
+     {
+      "x": 4,
+      "y": 0,
+      "fixture": "rpar11",
+      "head": 0
+     },
+     {
+      "x": 5,
+      "y": 0,
+      "fixture": "rpar12",
+      "head": 0
+     }
     ]
    },
    {
@@ -4133,10 +4193,34 @@
     "priority": "normal",
     "type": "collection",
     "items": [
-     { "function": "c1", "start": 0, "duration": null, "layer": 0, "priority": null },
-     { "function": "s4", "start": 0, "duration": null, "layer": 1, "priority": null },
-     { "function": "e1", "start": 0, "duration": null, "layer": 2, "priority": null },
-     { "function": "s5", "start": 0, "duration": null, "layer": 3, "priority": null }
+     {
+      "function": "c1",
+      "start": 0,
+      "duration": null,
+      "layer": 0,
+      "priority": null
+     },
+     {
+      "function": "s4",
+      "start": 0,
+      "duration": null,
+      "layer": 1,
+      "priority": null
+     },
+     {
+      "function": "e1",
+      "start": 0,
+      "duration": null,
+      "layer": 2,
+      "priority": null
+     },
+     {
+      "function": "s5",
+      "start": 0,
+      "duration": null,
+      "layer": 3,
+      "priority": null
+     }
     ],
     "runOrder": "loop",
     "beats": true,
@@ -5841,8 +5925,16 @@
      {
       "group": "g7",
       "values": [
-       { "attribute": "dimmer", "index": 0, "value": 255 },
-       { "attribute": "blue", "index": 0, "value": 255 }
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 255
+       }
       ]
      }
     ],
@@ -5853,6 +5945,254 @@
     "fadeOutMs": 0,
     "curve": "linear",
     "attributeTimes": []
+   },
+   {
+    "id": "s17",
+    "name": "Vermelho",
+    "folder": "d10",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     },
+     {
+      "group": "g1",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s18",
+    "name": "Azul",
+    "folder": "d10",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     },
+     {
+      "group": "g1",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "blue",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s19",
+    "name": "Verde",
+    "folder": "d10",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     },
+     {
+      "group": "g1",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "s20",
+    "name": "Âmbar",
+    "folder": "d10",
+    "priority": "normal",
+    "type": "scene",
+    "values": [],
+    "groups": [
+     {
+      "group": "g4",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "amber",
+        "index": 0,
+        "value": 255
+       }
+      ]
+     },
+     {
+      "group": "g1",
+      "values": [
+       {
+        "attribute": "dimmer",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "red",
+        "index": 0,
+        "value": 255
+       },
+       {
+        "attribute": "green",
+        "index": 0,
+        "value": 90
+       }
+      ]
+     }
+    ],
+    "channelGroups": [],
+    "delayInMs": 0,
+    "fadeInMs": 1000,
+    "delayOutMs": 0,
+    "fadeOutMs": 1000,
+    "curve": "linear",
+    "attributeTimes": []
+   },
+   {
+    "id": "ph5",
+    "name": "Onda de dimmer",
+    "folder": "d11",
+    "priority": "high",
+    "type": "phaser",
+    "group": "g4",
+    "layers": [
+     {
+      "attribute": "dimmer",
+      "shape": "sine",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 0,
+      "relative": false
+     }
+    ],
+    "spread": 30,
+    "beats": true,
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 4000,
+     "fadeOutMs": 1000
+    }
+   },
+   {
+    "id": "r8",
+    "name": "Onda ciano",
+    "folder": "d12",
+    "priority": "high",
+    "type": "rgbMatrix",
+    "group": "g4",
+    "algorithm": {
+     "type": "script",
+     "script": "Onda",
+     "properties": [
+      {
+       "name": "length",
+       "value": "6"
+      }
+     ]
+    },
+    "control": "rgb",
+    "colors": [
+     "#00ffff"
+    ],
+    "runOrder": "loop",
+    "direction": "forward",
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 120,
+     "fadeOutMs": 1000
+    }
    }
   ],
   "folders": [
@@ -5908,6 +6248,24 @@
     "name": "Subgrupos",
     "kind": "scene",
     "parent": null
+   },
+   {
+    "id": "d10",
+    "name": "Seletor",
+    "kind": "scene",
+    "parent": null
+   },
+   {
+    "id": "d11",
+    "name": "Seletor",
+    "kind": "phaser",
+    "parent": null
+   },
+   {
+    "id": "d12",
+    "name": "Seletor",
+    "kind": "rgbMatrix",
+    "parent": null
    }
   ],
   "console": {
@@ -5923,6 +6281,10 @@
     {
      "id": "p3",
      "name": "Tempos"
+    },
+    {
+     "id": "p4",
+     "name": "Seleção"
     }
    ],
    "widgets": [
@@ -7062,6 +7424,273 @@
      "mode": "toggle",
      "highlight": "face",
      "icon": null
+    },
+    {
+     "id": "se1",
+     "page": "p4",
+     "frame": null,
+     "caption": "Seletor",
+     "color": "#ffffff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 0,
+       "w": 64,
+       "h": 64
+      },
+      "tablet": {
+       "x": 0,
+       "y": 0,
+       "w": 40,
+       "h": 72
+      },
+      "desktop": {
+       "x": 0,
+       "y": 0,
+       "w": 40,
+       "h": 72
+      }
+     },
+     "inputs": [],
+     "type": "selector",
+     "groups": [
+      "g4",
+      "g7",
+      "g8",
+      "g1"
+     ],
+     "selections": [
+      "sel1"
+     ],
+     "splits": true
+    },
+    {
+     "id": "ta1",
+     "page": "p4",
+     "frame": null,
+     "caption": "Vermelho",
+     "color": "#ff0000",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 64,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 40,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 40,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s17",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null,
+     "target": true,
+     "category": "color"
+    },
+    {
+     "id": "ta2",
+     "page": "p4",
+     "frame": null,
+     "caption": "Azul",
+     "color": "#0000ff",
+     "layouts": {
+      "phone": {
+       "x": 16,
+       "y": 64,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 56,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 56,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s18",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null,
+     "target": true,
+     "category": "color"
+    },
+    {
+     "id": "ta3",
+     "page": "p4",
+     "frame": null,
+     "caption": "Verde",
+     "color": "#00ff00",
+     "layouts": {
+      "phone": {
+       "x": 32,
+       "y": 64,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 72,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 72,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s19",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null,
+     "target": true,
+     "category": "color"
+    },
+    {
+     "id": "ta4",
+     "page": "p4",
+     "frame": null,
+     "caption": "Âmbar",
+     "color": "#ffbf00",
+     "layouts": {
+      "phone": {
+       "x": 48,
+       "y": 64,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 88,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 88,
+       "y": 0,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "s20",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null,
+     "target": true,
+     "category": "color"
+    },
+    {
+     "id": "ta5",
+     "page": "p4",
+     "frame": null,
+     "caption": "Onda de dimmer",
+     "color": "#ff00ff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 80,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 40,
+       "y": 24,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 40,
+       "y": 24,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "ph5",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null,
+     "target": true,
+     "category": "effect"
+    },
+    {
+     "id": "ta6",
+     "page": "p4",
+     "frame": null,
+     "caption": "Onda ciano",
+     "color": "#00ffff",
+     "layouts": {
+      "phone": {
+       "x": 0,
+       "y": 96,
+       "w": 16,
+       "h": 16
+      },
+      "tablet": {
+       "x": 40,
+       "y": 48,
+       "w": 16,
+       "h": 16
+      },
+      "desktop": {
+       "x": 40,
+       "y": 48,
+       "w": 16,
+       "h": 16
+      }
+     },
+     "inputs": [],
+     "type": "button",
+     "action": "function",
+     "function": "r8",
+     "fixtures": [],
+     "groups": [],
+     "mode": "toggle",
+     "highlight": "face",
+     "icon": null,
+     "target": true,
+     "category": "animation"
     }
    ]
   },
@@ -7599,6 +8228,23 @@
      }
     ],
     "source": "(function () {\n  var algo = new Object;\n  algo.apiVersion = 2;\n  algo.name = \"Faíscas\";\n  algo.author = \"R Light Control\";\n  algo.acceptColors = 1;\n\n  // Quantas células acendem a cada passo: Baixa, Média ou Alta\n  var density = \"Média\";\n  algo.properties = [\"name:density|type:list|display:Densidade|values:Baixa,Média,Alta|write:setDensity|read:getDensity\"];\n  algo.setDensity = function (value) {\n    density = value;\n  };\n  algo.getDensity = function () {\n    return density;\n  };\n\n  // Cada célula acende ou não, por uma conta de embaralhar que muda a cada passo (a mesma sequência\n  // sempre, sem sorteio)\n  algo.rgbMap = function (width, height, rgb, step) {\n    var limit = density === \"Baixa\" ? 12 : density === \"Alta\" ? 45 : 25;\n    var map = new Array(height);\n    for (var y = 0; y < height; y++) {\n      map[y] = new Array(width);\n      for (var x = 0; x < width; x++) {\n        // Dois passos de um gerador de números (minstd) misturam a posição e o passo\n        var hash = (x * 7919 + y * 104729 + step * 15485863 + 11) % 2147483647;\n        hash = (hash * 48271) % 2147483647;\n        hash = (hash * 48271) % 2147483647;\n        map[y][x] = hash % 100 < limit ? rgb : 0;\n      }\n    }\n    return map;\n  };\n\n  algo.rgbMapStepCount = function (width, height) {\n    return 24;\n  };\n\n  return algo;\n})()\n"
+   }
+  ],
+  "selections": [
+   {
+    "id": "sel1",
+    "name": "Pontas + PARs frente",
+    "members": [
+     {
+      "fixture": "rpar1"
+     },
+     {
+      "fixture": "rpar12"
+     },
+     {
+      "group": "g1"
+     }
+    ]
    }
   ]
  },

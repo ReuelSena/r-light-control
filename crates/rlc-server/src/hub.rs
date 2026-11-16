@@ -103,6 +103,7 @@ pub fn example_snapshot(lan_url: Option<String>) -> Snapshot {
             others: 255,
         },
         staged: StagedState::default(),
+        targeted: vec![],
     }
 }
 
@@ -395,7 +396,9 @@ impl Hub {
             | Op::StepChaser { .. }
             | Op::LoadStep { .. }
             | Op::SetFunctionRunning { .. }
-            | Op::SetFunctionPaused { .. } => {}
+            | Op::SetFunctionPaused { .. }
+            | Op::TargetOn { .. }
+            | Op::TargetOff { .. } => {}
             _ => return Err("Só as operações do console se preparam.".into()),
         }
         let s = &mut self.snapshot;
@@ -874,6 +877,7 @@ impl Hub {
             Topic::Paused,
             Topic::Console,
             Topic::WidgetValues,
+            Topic::Targeted,
         ];
         if any(&running) {
             self.engine
@@ -1087,6 +1091,7 @@ fn swap_staged(s: &mut Snapshot) {
     std::mem::swap(&mut s.paused, &mut staged.paused);
     std::mem::swap(&mut s.widget_values, &mut staged.widget_values);
     std::mem::swap(&mut s.loaded_steps, &mut staged.loaded_steps);
+    std::mem::swap(&mut s.targeted, &mut staged.targeted);
 }
 
 /// Universo que manda na interface (uma interface manda um universo só).
@@ -1391,6 +1396,122 @@ mod tests {
         hub.command(Op::NewProject).unwrap();
         assert_eq!(hub.snapshot.staged, StagedState::default());
         assert!(hub.snapshot.running.is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn targeted_runs_stay_out_of_the_undo_and_open_drops_them() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        let on = Op::TargetOn {
+            function: "s1".into(),
+            fixtures: vec!["par1".into()],
+            category: Some(Category::Color),
+        };
+        hub.command(on.clone()).unwrap();
+        assert_eq!(hub.snapshot.targeted.len(), 1);
+        assert!(hub.undo.is_empty() && !hub.snapshot.dirty);
+        hub.command(staged(on)).unwrap();
+        assert_eq!(hub.snapshot.staged.targeted.len(), 1);
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        assert!(hub.snapshot.targeted.is_empty());
+        assert_eq!(hub.snapshot.staged, StagedState::default());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    fn target(function: &str, fixtures: &[&str]) -> Op {
+        Op::TargetOn {
+            function: function.into(),
+            fixtures: fixtures.iter().map(|&f| f.into()).collect(),
+            category: Some(Category::Color),
+        }
+    }
+
+    fn targeted(s: &[TargetedRun]) -> Vec<(&str, Vec<&str>)> {
+        let runs = s.iter();
+        runs.map(|t| {
+            (
+                t.function.as_str(),
+                t.fixtures.iter().map(|f| f.as_str()).collect(),
+            )
+        })
+        .collect()
+    }
+
+    #[test]
+    fn a_staged_target_waits_for_the_commit_and_then_replaces_the_previous_color() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        hub.command(target("s1", &["par1", "par2"])).unwrap();
+        // Preparado: s2 em par1 tira o par1 da s1 só no preparado; a luz não muda
+        hub.command(staged(target("s2", &["par1"]))).unwrap();
+        let s = &hub.snapshot;
+        assert_eq!(targeted(&s.targeted), [("s1", vec!["par1", "par2"])]);
+        assert_eq!(targeted(&s.staged.targeted), [("s2", vec!["par1"])]);
+        // O sombra roda a execução preparada, e o ao vivo não
+        let staged_id = s.staged.targeted[0].id.clone();
+        let ids = |s: &Snapshot| {
+            running_programs(s)
+                .into_iter()
+                .map(|r| r.id)
+                .collect::<Vec<_>>()
+        };
+        assert!(!ids(s).contains(&staged_id));
+        let s = &mut hub.snapshot;
+        swap_staged(s);
+        let shadow = ids(s);
+        swap_staged(s);
+        assert!(shadow.contains(&staged_id));
+        // Executar soma com a regra de parar a anterior da categoria
+        hub.command(Op::CommitStaged).unwrap();
+        let s = &hub.snapshot;
+        assert_eq!(
+            targeted(&s.targeted),
+            [("s1", vec!["par2"]), ("s2", vec!["par1"])]
+        );
+        assert_eq!(s.staged, StagedState::default());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_seeded_staged_copies_the_targets_and_its_commit_replaces_them() {
+        let (mut hub, dir) = hub();
+        hub.command(Op::OpenProject {
+            name: "Show de exemplo".into(),
+        })
+        .unwrap();
+        hub.command(target("s1", &["par1", "par2"])).unwrap();
+        let live = hub.snapshot.targeted.clone();
+        hub.command(Op::SeedStaged).unwrap();
+        assert_eq!(hub.snapshot.staged.targeted, live);
+        // No preview: tira o par2 da s1
+        hub.command(staged(Op::TargetOff {
+            function: "s1".into(),
+            fixtures: vec!["par2".into()],
+        }))
+        .unwrap();
+        assert_eq!(hub.snapshot.targeted, live);
+        hub.command(Op::CommitStaged).unwrap();
+        // Substitui: a mesma execução (mesmo id), só com o par1
+        let s = &hub.snapshot;
+        assert_eq!(targeted(&s.targeted), [("s1", vec!["par1"])]);
+        assert_eq!(s.targeted[0].id, live[0].id);
+        // Descartar e Novo também zeram o alvo preparado
+        hub.command(staged(target("s2", &["par1"]))).unwrap();
+        hub.command(Op::ClearStaged).unwrap();
+        assert_eq!(hub.snapshot.staged, StagedState::default());
+        hub.command(staged(target("s2", &["par1"]))).unwrap();
+        hub.command(Op::NewProject).unwrap();
+        assert_eq!(hub.snapshot.staged, StagedState::default());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

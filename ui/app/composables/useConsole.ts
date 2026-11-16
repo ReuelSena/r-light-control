@@ -14,13 +14,17 @@ const bpmTaps: number[] = []
 
 export function useConsole() {
   const { state, send } = useEngine()
+  const selection = useSelection()
   // Modo Preparar (VC-6), por aparelho: as operações dos elementos vão como `staged` e os elementos
   // mostram o estado preparado (do servidor, o mesmo em todos os aparelhos)
   const prepare = useState('consolePrepare', () => false)
   const view = computed(() => (prepare.value ? state.value.staged : state.value))
   const op = (o: Op) => send(prepare.value ? { op: 'staged', inner: o } : o)
   /** Algo preparado (ou a cópia do ao vivo, que Executar substitui): o que o Executar leva para a luz. */
-  const hasStaged = computed(() => state.value.staged.full || !!state.value.staged.running.length || !!state.value.staged.widgetValues.length)
+  const hasStaged = computed(() => {
+    const s = state.value.staged
+    return s.full || !!s.running.length || !!s.widgetValues.length || !!s.targeted.length
+  })
   /** Liga ou desliga o modo; ao ligar com o preparado vazio, o preview já vem com o que roda na luz. */
   const setPrepare = (on: boolean) => {
     prepare.value = on
@@ -35,8 +39,25 @@ export function useConsole() {
     return fn?.type === 'chaser' || fn?.type === 'sequence' ? fn : undefined
   }
 
+  /** Botão de alvo (VC-7): a criação liga só nas fixtures da seleção do aparelho. */
+  const isTarget = (w: VcWidget) => w.type === 'button' && w.target && w.action === 'function'
+  /** Quanto da seleção a criação do botão cobre: tudo (`on`), parte ou nada (`off`). No Preparar, o preparado. */
+  function targetState(w: Widget<'button'>) {
+    const lit = new Set(view.value.targeted.filter((r) => r.function === w.function).flatMap((r) => r.fixtures))
+    const mine = selection.selected.value.filter((i) => lit.has(i))
+    return !mine.length ? 'off' : mine.length === selection.selected.value.length ? 'on' : 'part'
+  }
+  function pressTarget(w: Widget<'button'>) {
+    const fixtures = selection.selected.value
+    if (!w.function) return
+    if (!fixtures.length) return void selection.flash.value++
+    if (targetState(w) === 'on') op({ op: 'targetOff', function: w.function, fixtures })
+    else op({ op: 'targetOn', function: w.function, fixtures, category: w.category })
+  }
+
   /** O botão aceso: a criação rodando (ou pausada, no Pausar), o blackout ligado ou as fixtures apagadas. */
   function active(w: Widget<'button'>) {
+    if (isTarget(w)) return targetState(w) !== 'off'
     if (w.action === 'function' || w.action === 'exclusive') return running(w.function)
     if (w.action === 'pause') return paused(w.function)
     if (w.action === 'blackout') return state.value.master.blackout
@@ -45,6 +66,7 @@ export function useConsole() {
 
   /** Apertou (`down`) ou soltou uma parte do elemento. */
   function press(w: VcWidget, control: InputControl, down: boolean) {
+    if (w.type === 'button' && isTarget(w)) return down ? pressTarget(w) : undefined
     // Blackout e Stop All agem sempre na luz real
     const o: Op = { op: 'pressWidget', widget: w.id, control, down }
     const real = w.type === 'button' && (w.action === 'blackout' || w.action === 'stopAll')
@@ -103,8 +125,9 @@ export function useConsole() {
   function staged(w: VcWidget) {
     const s = state.value.staged
     const target = w.type === 'button' ? w.function : w.type === 'cueList' ? w.chaser : w.type === 'animation' ? w.matrix : null
-    return s.widgetValues.some((v) => v.widget === w.id) || (!!target && (s.running.includes(target) || s.paused.includes(target)))
+    const on = (id: string) => s.running.includes(id) || s.paused.includes(id) || s.targeted.some((r) => r.function === id)
+    return s.widgetValues.some((v) => v.widget === w.id) || (!!target && on(target))
   }
 
-  return { prepare, setPrepare, hasStaged, op, staged, value, setValue, running, paused, active, press, chaserOf, currentStep, step, loadedStep, load, tap, tapBpm, input }
+  return { isTarget, targetState, prepare, setPrepare, hasStaged, op, staged, value, setValue, running, paused, active, press, chaserOf, currentStep, step, loadedStep, load, tap, tapBpm, input }
 }

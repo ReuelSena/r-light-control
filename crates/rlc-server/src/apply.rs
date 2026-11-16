@@ -26,6 +26,7 @@ pub enum Topic {
     Console,
     Stage,
     Scripts,
+    Selections,
     ProjectPath,
     Dirty,
     Recovered,
@@ -47,6 +48,7 @@ pub enum Topic {
     Preview,
     Highlight,
     Staged,
+    Targeted,
 }
 
 impl Topic {
@@ -64,6 +66,7 @@ impl Topic {
             Topic::Console => "project.console",
             Topic::Stage => "project.stage",
             Topic::Scripts => "project.scripts",
+            Topic::Selections => "project.selections",
             Topic::ProjectPath => "projectPath",
             Topic::Dirty => "dirty",
             Topic::Recovered => "recovered",
@@ -85,6 +88,7 @@ impl Topic {
             Topic::Preview => "preview",
             Topic::Highlight => "highlight",
             Topic::Staged => "staged",
+            Topic::Targeted => "targeted",
         }
     }
 
@@ -118,6 +122,7 @@ impl Topic {
             Topic::Console => set(&mut p.console, value),
             Topic::Stage => set(&mut p.stage, value),
             Topic::Scripts => set(&mut p.scripts, value),
+            Topic::Selections => set(&mut p.selections, value),
             Topic::Library => set(&mut s.library, value),
             _ => Err(format!("{} não se desfaz.", self.path())),
         }
@@ -138,6 +143,7 @@ impl Topic {
             Topic::Console => json!(p.console),
             Topic::Stage => json!(p.stage),
             Topic::Scripts => json!(p.scripts),
+            Topic::Selections => json!(p.selections),
             Topic::ProjectPath => json!(s.project_path),
             Topic::Dirty => json!(s.dirty),
             Topic::Recovered => json!(s.recovered),
@@ -159,6 +165,7 @@ impl Topic {
             Topic::Preview => json!(s.preview),
             Topic::Highlight => json!(s.highlight),
             Topic::Staged => json!(s.staged),
+            Topic::Targeted => json!(s.targeted),
         }
     }
 }
@@ -192,6 +199,8 @@ pub fn is_live(op: &Op) -> bool {
             | Op::SeedStaged
             | Op::CommitStaged
             | Op::ClearStaged
+            | Op::TargetOn { .. }
+            | Op::TargetOff { .. }
     )
 }
 
@@ -217,6 +226,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             s.preview = None;
             s.highlight.fixtures.clear();
             s.staged = StagedState::default();
+            s.targeted.clear();
             vec![
                 T::Project,
                 T::ProjectPath,
@@ -228,6 +238,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 T::Preview,
                 T::Highlight,
                 T::Staged,
+                T::Targeted,
             ]
         }
         // Mexem em arquivos e no histórico: ficam no hub
@@ -346,7 +357,15 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             p.stage.fixtures.retain(|x| !gone(&x.fixture));
+            for sel in &mut p.selections {
+                sel.members
+                    .retain(|m| !matches!(m, Member::Fixture(id) if gone(id)));
+            }
             s.highlight.fixtures.retain(|id| !gone(id));
+            for t in &mut s.targeted {
+                t.fixtures.retain(|id| !gone(id));
+            }
+            s.targeted.retain(|t| !t.fixtures.is_empty());
             vec![
                 T::Fixtures,
                 T::FixtureGroups,
@@ -354,7 +373,9 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 T::Functions,
                 T::Console,
                 T::Stage,
+                T::Selections,
                 T::Highlight,
+                T::Targeted,
             ]
         }
         Op::AutoAddress {
@@ -459,10 +480,30 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     g.fixture_group = None;
                 }
             }
+            // A seleção salva fica com as fixtures que estavam nele
+            for sel in &mut p.selections {
+                if let Some(i) = sel
+                    .members
+                    .iter()
+                    .position(|m| *m == Member::Group(id.clone()))
+                {
+                    sel.members.remove(i);
+                    for m in &members {
+                        let m = Member::Fixture(m.clone());
+                        if !sel.members.contains(&m) {
+                            sel.members.push(m);
+                        }
+                    }
+                }
+            }
             for w in &mut p.console.widgets {
                 let (groups, fixtures) = match &mut w.kind {
                     VcWidgetKind::Button(b) => (&mut b.groups, &mut b.fixtures),
                     VcWidgetKind::XyPad(xy) => (&mut xy.groups, &mut xy.fixtures),
+                    VcWidgetKind::Selector(sel) => {
+                        sel.groups.retain(|g| *g != id);
+                        continue;
+                    }
                     _ => continue,
                 };
                 if groups.contains(&id) {
@@ -474,7 +515,13 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     }
                 }
             }
-            vec![T::FixtureGroups, T::ChannelGroups, T::Functions, T::Console]
+            vec![
+                T::FixtureGroups,
+                T::ChannelGroups,
+                T::Functions,
+                T::Console,
+                T::Selections,
+            ]
         }
         Op::MoveFixtureGroup { id, to, parent } => {
             let i = p
@@ -501,6 +548,36 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         Op::MoveChannelGroup { id, to } => {
             move_to(&mut p.channel_groups, &id, to, |g| &g.id)?;
             vec![T::ChannelGroups]
+        }
+        // Membros que existem, sem repetir
+        Op::SaveSelection { selection } => {
+            for (i, m) in selection.members.iter().enumerate() {
+                let found = match m {
+                    Member::Fixture(f) => p.fixtures.iter().any(|x| x.id == *f),
+                    Member::Group(g) => p.fixture_groups.iter().any(|x| x.id == *g),
+                };
+                if !found {
+                    return Err("Fixture ou grupo não encontrado.".into());
+                }
+                if selection.members[..i].contains(m) {
+                    return Err("Item repetido na seleção.".into());
+                }
+            }
+            upsert(&mut p.selections, selection, |x| &x.id)?;
+            vec![T::Selections]
+        }
+        Op::RemoveSelection { id } => {
+            p.selections.retain(|x| x.id != id);
+            for w in &mut p.console.widgets {
+                if let VcWidgetKind::Selector(sel) = &mut w.kind {
+                    sel.selections.retain(|x| *x != id);
+                }
+            }
+            vec![T::Selections, T::Console]
+        }
+        Op::MoveSelection { id, to } => {
+            move_to(&mut p.selections, &id, to, |x| &x.id)?;
+            vec![T::Selections]
         }
         Op::RemoveChannelGroup { id } => {
             p.channel_groups.retain(|g| g.id != id);
@@ -582,10 +659,17 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 }
             }
             s.running.retain(|r| *r != id);
+            s.targeted.retain(|t| t.function != id);
             if s.preview.as_ref() == Some(&id) {
                 s.preview = None;
             }
-            vec![T::Functions, T::Console, T::Running, T::Preview]
+            vec![
+                T::Functions,
+                T::Console,
+                T::Running,
+                T::Targeted,
+                T::Preview,
+            ]
         }
         // Pede a saída ao motor: fica no hub, que a converte num `SaveFunction`
         Op::CaptureOutput { .. } => return Err("Operação do servidor.".into()),
@@ -751,6 +835,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 paused: s.paused.clone(),
                 widget_values: s.widget_values.clone(),
                 loaded_steps: s.loaded_steps.clone(),
+                targeted: s.targeted.clone(),
                 full: true,
             };
             vec![T::Staged]
@@ -763,12 +848,14 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 s.paused = staged.paused;
                 s.widget_values = staged.widget_values;
                 s.loaded_steps = staged.loaded_steps;
+                s.targeted = staged.targeted;
                 return Ok((
                     vec![
                         T::Running,
                         T::Paused,
                         T::WidgetValues,
                         T::LoadedSteps,
+                        T::Targeted,
                         T::Staged,
                     ],
                     Value::Null,
@@ -792,11 +879,16 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 s.loaded_steps.retain(|x| x.chaser != l.chaser);
                 s.loaded_steps.push(l);
             }
+            // As execuções com alvo somam com a regra de sempre (tiram a anterior da categoria)
+            for t in staged.targeted {
+                target_on(&mut s.targeted, t);
+            }
             vec![
                 T::Running,
                 T::Paused,
                 T::WidgetValues,
                 T::LoadedSteps,
+                T::Targeted,
                 T::Staged,
             ]
         }
@@ -804,10 +896,39 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             s.staged = StagedState::default();
             vec![T::Staged]
         }
+        // Alvo (VC-7): a regra de parar a anterior fica em `target_on`
+        Op::TargetOn {
+            function,
+            mut fixtures,
+            category,
+        } => {
+            if !p.functions.iter().any(|f| f.id == function) {
+                return Err("Criação não encontrada.".into());
+            }
+            fixtures.retain(|id| p.fixtures.iter().any(|f| f.id == *id));
+            let run = TargetedRun {
+                id: new_id(),
+                function,
+                fixtures,
+                category,
+            };
+            target_on(&mut s.targeted, run);
+            vec![T::Targeted]
+        }
+        Op::TargetOff { function, fixtures } => {
+            for t in &mut s.targeted {
+                if t.function == function {
+                    t.fixtures.retain(|id| !fixtures.contains(id));
+                }
+            }
+            s.targeted.retain(|t| !t.fixtures.is_empty());
+            vec![T::Targeted]
+        }
         // Parar também baixa os sliders de playback. O pânico corta as cenas na hora (no hub); com
         // `all`, também zera a Mesa simples e desliga o padrão de teste, a prévia e o "Localizar".
         Op::StopAllFunctions | Op::Panic { .. } => {
             s.running.clear();
+            s.targeted.clear();
             // O pânico de dois toques também zera os sliders de nível e os XY Pads, como zera a Mesa
             // simples
             let lowered: Vec<&Id> = p
@@ -829,7 +950,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                 .map(|w| &w.id)
                 .collect();
             s.widget_values.retain(|v| !lowered.contains(&&v.widget));
-            let mut topics = vec![T::Running, T::WidgetValues];
+            let mut topics = vec![T::Running, T::WidgetValues, T::Targeted];
             if panic_all {
                 s.desk = Desk {
                     levels: vec![],
@@ -1105,7 +1226,7 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
             else {
                 return Err("RGB Matrix não encontrado.".into());
             };
-            let matrix = matrix_program(p, &id, m, Span::Ms(0), [Span::Ms(0); 2]);
+            let matrix = matrix_program(p, &id, m, Span::Ms(0), [Span::Ms(0); 2], None);
             let (Some(steps), Some(map)) = (matrix.steps(), matrix.map(step as usize)) else {
                 return Err("A prévia de um script vem do hub.".into());
             };
@@ -1228,6 +1349,28 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
         }
     }
     Ok((topics, Value::Null))
+}
+
+/// Liga uma execução com alvo (VC-7). Com categoria, as fixtures dela saem das outras execuções da
+/// categoria (as que ficam sem fixtures param). Ela leva só as fixtures que a criação ainda não tem
+/// nessa categoria: a máscara de uma execução nunca cresce, só encolhe.
+fn target_on(targeted: &mut Vec<TargetedRun>, mut run: TargetedRun) {
+    if run.category.is_some() {
+        for t in targeted.iter_mut() {
+            if t.category == run.category && t.function != run.function {
+                t.fixtures.retain(|id| !run.fixtures.contains(id));
+            }
+        }
+    }
+    for t in targeted.iter() {
+        if t.function == run.function && t.category == run.category {
+            run.fixtures.retain(|id| !t.fixtures.contains(id));
+        }
+    }
+    if !run.fixtures.is_empty() {
+        targeted.push(run);
+    }
+    targeted.retain(|t| !t.fixtures.is_empty());
 }
 
 /// Tira dos subgrupos as cabeças que saíram do pai (e, repetindo, dos filhos deles). Diz se algum mudou.
@@ -1474,6 +1617,7 @@ pub fn empty_project() -> Project {
         functions: vec![],
         folders: vec![],
         scripts: vec![],
+        selections: vec![],
         console: Console {
             pages: vec![VcPage {
                 id: new_id(),
@@ -1530,35 +1674,57 @@ pub fn universe_patch(p: &Project) -> Vec<UniversePatch> {
 /// valem agora, a intensidade, a prioridade e a pausa. Depois delas, os sliders de nível acesos, na
 /// prioridade Normal.
 pub fn running_programs(s: &Snapshot) -> Vec<Run> {
+    // A execução `run` da criação `id`; a de alvo (VC-7) leva a máscara das fixtures dela, e o resto
+    // (Flash, sliders, "Tempos", velocidade, intensidade, prioridade e pausa) é o da criação
+    let run = |id: &Id, run: &Id, mask: Option<&[Id]>| {
+        // O Flash e o slider de playback são o próprio fade: a criação entra e sai sem os gravados
+        let flash = flashed(s, id);
+        let cut = flash || playback_level(s, id).is_some();
+        let play = Play {
+            rate: 1.0,
+            cut,
+            mask,
+        };
+        let function = s.project.functions.iter().find(|f| f.id == *id)?;
+        Some(Run {
+            id: run.clone(),
+            program: program(s, id, [None; 3], &mut vec![], play)?,
+            intensity: if flash { 255 } else { intensity(s, id) },
+            priority: function.priority,
+            paused: s.paused.contains(id),
+        })
+    };
     let mut runs: Vec<Run> = s
         .running
         .iter()
-        .filter_map(|id| {
-            // O Flash e o slider de playback são o próprio fade: a criação entra e sai sem os gravados
-            let flash = flashed(s, id);
-            let cut = flash || playback_level(s, id).is_some();
-            let play = Play { rate: 1.0, cut };
-            let function = s.project.functions.iter().find(|f| f.id == *id)?;
-            Some(Run {
-                id: id.clone(),
-                program: program(s, id, [None; 3], &mut vec![], play)?,
-                intensity: if flash { 255 } else { intensity(s, id) },
-                priority: function.priority,
-                paused: s.paused.contains(id),
-            })
-        })
+        .filter_map(|id| run(id, id, None))
         .collect();
+    // As execuções alvo, depois das criações rodando
+    runs.extend(
+        s.targeted
+            .iter()
+            .filter_map(|t| run(&t.function, &t.id, Some(&t.fixtures))),
+    );
     runs.extend(level_sliders(s));
     runs.extend(xy_pads(s));
     runs
 }
 
 /// Como uma criação está sendo tocada: a velocidade (os sliders de velocidade, que multiplicam os
-/// tempos em segundos) e se ela entra e sai sem os fades gravados (o Flash e o slider de playback).
+/// tempos em segundos), se ela entra e sai sem os fades gravados (o Flash e o slider de playback) e,
+/// numa execução alvo (VC-7), as únicas fixtures que ela acende (desce para o que ela dispara).
 #[derive(Clone, Copy)]
-struct Play {
+struct Play<'a> {
     rate: f64,
     cut: bool,
+    mask: Option<&'a [Id]>,
+}
+
+impl Play<'_> {
+    /// A fixture está na máscara (sem máscara, todas estão).
+    fn lit(&self, fixture: &Id) -> bool {
+        self.mask.is_none_or(|m| m.contains(fixture))
+    }
 }
 
 /// O que uma criação acende. `dial` traz os tempos (fade in, fade out e duração) de um elemento
@@ -1571,6 +1737,13 @@ fn program(
     path: &mut Vec<Id>,
     play: Play,
 ) -> Option<Program> {
+    // Os valores de cena só das fixtures da máscara
+    let masked = |values: Vec<SceneValue>| -> Vec<SceneValue> {
+        values
+            .into_iter()
+            .filter(|v| play.lit(&v.fixture))
+            .collect()
+    };
     let p = &s.project;
     let function = p
         .functions
@@ -1594,7 +1767,12 @@ fn program(
     let program = match &function.kind {
         FunctionKind::Scene(scene) => {
             let (times, parts) = scene_times(scene, [dial[0], dial[1]], fade);
-            Some(scene_program(p, &scene_values(p, scene), times, &parts))
+            Some(scene_program(
+                p,
+                &masked(scene_values(p, scene)),
+                times,
+                &parts,
+            ))
         }
         // A velocidade muda os tempos da linha do tempo em segundos; nos em batidas, manda o BPM
         FunctionKind::Collection(c) => {
@@ -1648,7 +1826,7 @@ fn program(
                     program: if sequence {
                         let none = (Times::fades(Span::Ms(0), Span::Ms(0)), vec![]);
                         let (times, parts) = scene.clone().unwrap_or(none);
-                        scene_program(p, &step.values, times, &parts)
+                        scene_program(p, &masked(step.values.clone()), times, &parts)
                     } else {
                         // O passo de uma criação que não existe mais conta o tempo sem acender nada
                         program(s, &step.function, [None; 3], path, inner)
@@ -1707,7 +1885,8 @@ fn program(
             }))
         }
         // Só as fixtures com pan ou tilt andam no desenho, e um grupo entra com as que estão nele agora
-        // (cada fixture uma vez); a duração do elemento "Tempos" é a da volta
+        // (cada fixture uma vez); a duração do elemento "Tempos" é a da volta. Fora da máscara, a fixture
+        // fica no lugar dela sem canais: a ordem, a propagação e a defasagem contam pela lista inteira
         FunctionKind::Efx(efx) => {
             let fixtures = efx_expand(p, efx, None);
             let mut efx = Efx {
@@ -1721,7 +1900,7 @@ fn program(
                 };
                 let head = pan_tilt(p, id);
                 if head.iter().any(Option::is_some) {
-                    heads.push(head);
+                    heads.push(if play.lit(id) { head } else { [None, None] });
                     efx.fixtures.push(x);
                 }
             }
@@ -1743,6 +1922,7 @@ fn program(
                 fade(dial[0], m.timing.fade_in_ms),
                 fade(dial[1], m.timing.fade_out_ms),
             ],
+            play.mask,
         ))),
         // A duração do elemento "Tempos" é a do ciclo (em batidas, seguindo o master)
         FunctionKind::Phaser(ph) => {
@@ -1759,7 +1939,7 @@ fn program(
                     .iter()
                     .map(|layer| PhaserTrack {
                         layer: layer.clone(),
-                        targets: phaser_targets(p, ph.group.as_ref(), layer.attribute),
+                        targets: phaser_targets(p, ph.group.as_ref(), layer.attribute, play.mask),
                     })
                     .collect(),
                 spread: ph.spread,
@@ -1775,13 +1955,15 @@ fn program(
 
 /// O RGB Matrix para o motor: a grade do grupo nos endereços DMX, com o passo e os fades que valem.
 /// Os valores das propriedades de um script vão como texto; as que não foram mexidas ficam com o
-/// padrão do script.
+/// padrão do script. Com a máscara de uma execução alvo (VC-7), a grade e o desenho continuam os do
+/// grupo inteiro, e só as cabeças das fixtures dela acendem.
 pub fn matrix_program(
     p: &Project,
     id: &Id,
     m: &RgbMatrix,
     step: Span,
     fades: [Span; 2],
+    mask: Option<&[Id]>,
 ) -> MatrixProgram {
     let group = m
         .group
@@ -1837,7 +2019,7 @@ pub fn matrix_program(
         direction: m.direction,
         width: group.map_or(0, |g| g.width),
         height: group.map_or(0, |g| g.height),
-        cells: group.map_or(vec![], |g| matrix_cells(p, g, m.control)),
+        cells: group.map_or(vec![], |g| matrix_cells(p, g, m.control, mask)),
         step,
         fade_in: fades[0],
         fade_out: fades[1],
@@ -1861,9 +2043,13 @@ fn press(
         .iter()
         .find(|w| w.id == id)
         .ok_or("Elemento não encontrado.")?;
+    // O botão de alvo (VC-7) precisa da seleção do aparelho: chega como `targetOn` e `targetOff`
     let (VcWidgetKind::Button(b), InputControl::Main) = (&w.kind, control) else {
         return Ok(vec![]);
     };
+    if b.target && b.action == ButtonAction::Function {
+        return Ok(vec![]);
+    }
     let (b, frame) = (b.clone(), w.frame.clone());
     let momentary = b.mode != ButtonMode::Toggle;
     let held = s.widget_values.iter().any(|v| v.widget == id);
@@ -2429,7 +2615,7 @@ pub fn script_matrix(p: &Project, id: &Id) -> Option<MatrixProgram> {
         return None;
     };
     matches!(m.algorithm, RgbAlgorithm::Script { .. })
-        .then(|| matrix_program(p, id, m, Span::Ms(0), [Span::Ms(0); 2]))
+        .then(|| matrix_program(p, id, m, Span::Ms(0), [Span::Ms(0); 2], None))
 }
 
 /// "#rrggbb" em [r, g, b]; o que não é cor vale preto.
@@ -2481,8 +2667,14 @@ fn attribute_level(
 
 /// O canal de `attribute` em cada cabeça do grupo, na ordem da grade (linha por linha): o da cabeça
 /// ou, sem ele, o da fixture. Um canal entra uma vez só (a fixture de várias cabeças que só tem o
-/// atributo na fixture inteira).
-fn phaser_targets(p: &Project, group: Option<&Id>, attribute: Attribute) -> Vec<SceneLevel> {
+/// atributo na fixture inteira). Fora da máscara de uma execução alvo (VC-7), o canal vira o 0, que o
+/// motor pula: a fixture guarda o lugar dela na onda.
+fn phaser_targets(
+    p: &Project,
+    group: Option<&Id>,
+    attribute: Attribute,
+    mask: Option<&[Id]>,
+) -> Vec<SceneLevel> {
     let mut cells: Vec<&GroupCell> = p
         .fixture_groups
         .iter()
@@ -2490,7 +2682,7 @@ fn phaser_targets(p: &Project, group: Option<&Id>, attribute: Attribute) -> Vec<
         .flat_map(|g| &g.cells)
         .collect();
     cells.sort_by_key(|c| (c.y, c.x));
-    let mut targets: Vec<SceneLevel> = vec![];
+    let mut targets: Vec<(&Id, SceneLevel)> = vec![];
     for cell in cells {
         let Some(fixture) = p.fixtures.iter().find(|f| f.id == cell.fixture) else {
             continue;
@@ -2502,12 +2694,24 @@ fn phaser_targets(p: &Project, group: Option<&Id>, attribute: Attribute) -> Vec<
         if let Some(l) = level(&head).or_else(|| level(&all))
             && !targets
                 .iter()
-                .any(|t| t.universe == l.universe && t.channel == l.channel)
+                .any(|(_, t)| t.universe == l.universe && t.channel == l.channel)
         {
-            targets.push(l);
+            targets.push((&fixture.id, l));
         }
     }
     targets
+        .into_iter()
+        .map(
+            |(fixture, l)| match mask.is_none_or(|m| m.contains(fixture)) {
+                true => l,
+                false => SceneLevel {
+                    channel: 0,
+                    fine: None,
+                    ..l
+                },
+            },
+        )
+        .collect()
 }
 
 /// O Phaser salvo: um grupo que existe, de 1 a 8 camadas em atributos contínuos (um por tipo), com o
@@ -2555,13 +2759,22 @@ fn check_phaser(p: &Project, ph: &Phaser) -> Result<(), String> {
 /// As cabeças de um grupo de fixtures com os canais que recebem a cor, nos endereços DMX, como o
 /// `updateMapChannels` do QLC+. No RGB, os três canais de cor da cabeça (sem eles, ciano, magenta e
 /// amarelo; sem nenhum dos dois, a cabeça não acende); nos outros, o canal do atributo (o da cabeça
-/// ou, sem ele, o da fixture). Com o canal fino, o fade é em 16 bits.
-fn matrix_cells(p: &Project, group: &FixtureGroup, control: RgbControl) -> Vec<MatrixCell> {
+/// ou, sem ele, o da fixture). Com o canal fino, o fade é em 16 bits. Só as cabeças das fixtures da
+/// máscara entram, cada uma no lugar dela na grade.
+fn matrix_cells(
+    p: &Project,
+    group: &FixtureGroup,
+    control: RgbControl,
+    mask: Option<&[Id]>,
+) -> Vec<MatrixCell> {
     let mut cells = vec![];
     for cell in &group.cells {
         let Some(fixture) = p.fixtures.iter().find(|f| f.id == cell.fixture) else {
             continue;
         };
+        if mask.is_some_and(|m| !m.contains(&fixture.id)) {
+            continue;
+        }
         let (channels, head) = head_channels(p, fixture, cell.head);
         let all: Vec<usize> = (0..channels.len()).collect();
         let level = |attribute: Attribute, positions: &[usize]| {
@@ -4108,7 +4321,7 @@ mod tests {
             .iter()
             .find(|g| g.id == "g4")
             .unwrap();
-        let grey = matrix_cells(&s.project, g4, RgbControl::Dimmer);
+        let grey = matrix_cells(&s.project, g4, RgbControl::Dimmer, None);
         assert!(matches!(&grey[0].output, CellOutput::Grey(l) if l.channel == address));
         // Sem o canal do atributo (a barra não tem UV), a cabeça não acende
         let g2 = s
@@ -4117,7 +4330,7 @@ mod tests {
             .iter()
             .find(|g| g.id == "g2")
             .unwrap();
-        assert!(matrix_cells(&s.project, g2, RgbControl::Uv).is_empty());
+        assert!(matrix_cells(&s.project, g2, RgbControl::Uv, None).is_empty());
     }
 
     #[test]
@@ -5678,5 +5891,392 @@ mod tests {
         apply(&mut s, update("s1", vec![])).unwrap();
         assert_eq!(own(&scene(&s, "s1")), [("par1", 0, 50), ("par1", 1, 99)]);
         assert_eq!(s.desk.levels.len(), 1);
+    }
+
+    fn target_on(function: &str, fixtures: &[&str], category: Option<Category>) -> Op {
+        Op::TargetOn {
+            function: function.into(),
+            fixtures: fixtures.iter().map(|&f| f.into()).collect(),
+            category,
+        }
+    }
+
+    /// Execuções alvo como (criação, fixtures), na ordem.
+    fn targeted(s: &Snapshot) -> Vec<(&str, Vec<&str>)> {
+        let runs = s.targeted.iter();
+        runs.map(|t| {
+            (
+                t.function.as_str(),
+                t.fixtures.iter().map(Id::as_str).collect(),
+            )
+        })
+        .collect()
+    }
+
+    #[test]
+    fn target_on_with_a_category_takes_the_fixtures_from_the_previous() {
+        let mut s = example();
+        let color = Some(Category::Color);
+        let (topics, _) = apply(&mut s, target_on("s1", &["par1", "par2"], color)).unwrap();
+        assert_eq!(topics, [Topic::Targeted]);
+        apply(&mut s, target_on("s2", &["par2", "par3"], color)).unwrap();
+        assert_eq!(
+            targeted(&s),
+            [("s1", vec!["par1"]), ("s2", vec!["par2", "par3"])]
+        );
+        // A que fica sem fixtures para; a mesma criação não se repete nas fixtures que já tem
+        apply(&mut s, target_on("s1", &["par1", "par2", "par3"], color)).unwrap();
+        assert_eq!(
+            targeted(&s),
+            [("s1", vec!["par1"]), ("s1", vec!["par2", "par3"])]
+        );
+        // Outra categoria não mexe na cor; fixture que não existe fica de fora
+        apply(
+            &mut s,
+            target_on("s3", &["par1", "xx"], Some(Category::Effect)),
+        )
+        .unwrap();
+        assert_eq!(s.targeted.len(), 3);
+        assert_eq!(targeted(&s)[2], ("s3", vec!["par1"]));
+        assert!(apply(&mut s, target_on("nada", &["par1"], color)).is_err());
+        assert!(is_live(&target_on("s1", &[], None)));
+    }
+
+    #[test]
+    fn target_on_without_a_category_adds_and_target_off_removes() {
+        let mut s = example();
+        apply(
+            &mut s,
+            target_on("s1", &["par1", "par2"], Some(Category::Color)),
+        )
+        .unwrap();
+        apply(&mut s, target_on("s2", &["par1"], None)).unwrap();
+        apply(&mut s, target_on("s1", &["par1"], None)).unwrap();
+        assert_eq!(
+            targeted(&s),
+            [
+                ("s1", vec!["par1", "par2"]),
+                ("s2", vec!["par1"]),
+                ("s1", vec!["par1"])
+            ]
+        );
+        // O desligar tira as fixtures de todas as execuções da criação
+        let off = Op::TargetOff {
+            function: "s1".into(),
+            fixtures: vec!["par1".into()],
+        };
+        apply(&mut s, off).unwrap();
+        assert_eq!(targeted(&s), [("s1", vec!["par2"]), ("s2", vec!["par1"])]);
+    }
+
+    #[test]
+    fn stop_all_panic_new_and_removals_clear_the_targeted() {
+        let mut s = example();
+        let on = |s: &mut Snapshot| {
+            apply(s, target_on("s1", &["par1", "par2"], Some(Category::Color))).unwrap();
+            apply(s, target_on("s2", &["par3"], None)).unwrap();
+        };
+        for op in [
+            Op::StopAllFunctions,
+            Op::Panic { all: false },
+            Op::NewProject,
+        ] {
+            on(&mut s);
+            let (topics, _) = apply(&mut s, op).unwrap();
+            assert!(s.targeted.is_empty() && topics.contains(&Topic::Targeted));
+            s = example();
+        }
+        on(&mut s);
+        let remove = Op::RemoveFixtures {
+            ids: vec!["par1".into(), "par3".into()],
+        };
+        apply(&mut s, remove).unwrap();
+        assert_eq!(targeted(&s), [("s1", vec!["par2"])]);
+        apply(&mut s, Op::RemoveFunction { id: "s1".into() }).unwrap();
+        assert!(s.targeted.is_empty());
+    }
+
+    /// O que a execução alvo da criação acende nas `fixtures`, e o que a criação acende rodando inteira.
+    fn masked(s: &mut Snapshot, function: &str, fixtures: &[&str]) -> (Program, Program) {
+        apply(s, target_on(function, fixtures, None)).unwrap();
+        run(s, function);
+        let id = s.targeted.last().unwrap().id.clone();
+        let program = |id: &str| {
+            let runs = running_programs(s).into_iter();
+            runs.filter(|r| r.id == id)
+                .map(|r| r.program)
+                .next()
+                .unwrap()
+        };
+        (program(&id), program(function))
+    }
+
+    /// Os endereços (universo, canal) das fixtures.
+    fn owned(s: &Snapshot, fixtures: &[&str]) -> Vec<(Id, u16)> {
+        let p = &s.project;
+        let fixtures = p.fixtures.iter().filter(|f| fixtures.contains(&&*f.id));
+        fixtures
+            .flat_map(|f| {
+                let n = mode_channels(p, f).count() as u16;
+                (0..n).filter_map(|i| channel_address(p, &f.id, i))
+            })
+            .map(|a| (a.universe, a.channel))
+            .collect()
+    }
+
+    /// Os canais de cena (e das ondas do Phaser) de um programa, também dos passos e dos itens.
+    fn lit(program: &Program) -> Vec<(Id, u16)> {
+        match program {
+            Program::Scene(sc) => sc
+                .levels
+                .iter()
+                .map(|l| (l.universe.clone(), l.channel))
+                .collect(),
+            Program::Collection(ps) => ps.iter().flat_map(lit).collect(),
+            Program::Chaser(c) => c.steps.iter().flat_map(|s| lit(&s.program)).collect(),
+            Program::Timeline(t) => t.items.iter().flat_map(|i| lit(&i.program)).collect(),
+            Program::Phaser(ph) => ph
+                .tracks
+                .iter()
+                .flat_map(|t| &t.targets)
+                .filter(|l| l.channel > 0)
+                .map(|l| (l.universe.clone(), l.channel))
+                .collect(),
+            Program::Efx(_) | Program::RgbMatrix(_) => vec![],
+        }
+    }
+
+    #[test]
+    fn a_targeted_scene_lights_only_its_fixtures() {
+        // "Frente âmbar" é do grupo dos 6 PARs, aqui com exceções no dimmer do PAR 1 e do PAR 2: a
+        // execução alvo acende só os valores (do grupo e das exceções) do PAR 2 e do PAR 4
+        let mut s = example();
+        let Some(FunctionKind::Scene(scene)) = s
+            .project
+            .functions
+            .iter_mut()
+            .find(|f| f.id == "s1")
+            .map(|f| &mut f.kind)
+        else {
+            panic!("s1 não é cena");
+        };
+        for (fixture, value) in [("par1", 10), ("par2", 20)] {
+            scene.values.push(SceneValue {
+                fixture: fixture.into(),
+                channel: 0,
+                value,
+            });
+        }
+        let (targeted, all) = masked(&mut s, "s1", &["par2", "par4"]);
+        let (Program::Scene(targeted), Program::Scene(all)) = (targeted, all) else {
+            panic!("s1 não é uma cena só");
+        };
+        let mine = owned(&s, &["par2", "par4"]);
+        let expected: Vec<SceneLevel> = all
+            .levels
+            .into_iter()
+            .filter(|l| mine.contains(&(l.universe.clone(), l.channel)))
+            .collect();
+        assert_eq!(expected.len(), 6);
+        assert_eq!(targeted.levels, expected);
+        // O dimmer do PAR 2 (endereço 8) é o da exceção
+        let dimmer = targeted.levels.iter().find(|l| l.channel == 8).unwrap();
+        assert_eq!(dimmer.value, 20);
+    }
+
+    #[test]
+    fn a_targeted_efx_moves_only_its_fixtures_in_their_place() {
+        // "Círculo nos MHs": o MH 2 continua o segundo da lista, e os outros ficam sem canais
+        let mut s = example();
+        let (targeted, all) = masked(&mut s, "e1", &["mh2"]);
+        let (Program::Efx(targeted), Program::Efx(all)) = (targeted, all) else {
+            panic!("e1 não é EFX");
+        };
+        assert_eq!(targeted.efx.fixtures, all.efx.fixtures);
+        assert_eq!(targeted.heads[1], all.heads[1]);
+        let blank = [0, 2, 3].map(|i| targeted.heads[i].clone());
+        assert_eq!(blank, [[None, None], [None, None], [None, None]]);
+    }
+
+    #[test]
+    fn a_targeted_phaser_and_matrix_keep_the_whole_group_and_light_only_their_fixtures() {
+        // Onda de dimmer nos 12 ParLeds: o 3º e o 5º acendem, cada um no lugar dele na onda
+        let mut s = example();
+        let (targeted, all) = masked(&mut s, "ph1", &["rpar3", "rpar5"]);
+        let (Program::Phaser(targeted), Program::Phaser(all)) = (targeted, all) else {
+            panic!("ph1 não é Phaser");
+        };
+        let (t, a) = (&targeted.tracks[0].targets, &all.tracks[0].targets);
+        assert_eq!(t.len(), 12);
+        let on: Vec<usize> = (0..12).filter(|&i| t[i].channel > 0).collect();
+        assert_eq!(on, [2, 4]);
+        assert_eq!((&t[2], &t[4]), (&a[2], &a[4]));
+        // Cor fixa nos ParLeds: a grade continua 12 × 1, só com as cabeças das duas
+        let (targeted, all) = masked(&mut s, "r2", &["rpar3", "rpar5"]);
+        let (Program::RgbMatrix(targeted), Program::RgbMatrix(all)) = (targeted, all) else {
+            panic!("r2 não é RGB Matrix");
+        };
+        assert_eq!((targeted.width, targeted.height), (all.width, all.height));
+        let cells: Vec<u16> = targeted.cells.iter().map(|c| c.x).collect();
+        assert_eq!(cells, [2, 4]);
+        assert!(targeted.cells.iter().all(|c| all.cells.contains(c)));
+    }
+
+    #[test]
+    fn the_mask_goes_down_to_what_chasers_and_collections_light() {
+        let mut s = example();
+        // "Troca de cores": os passos (cenas dos PARs) acendem só o PAR 1
+        let (targeted, all) = masked(&mut s, "c1", &["par1"]);
+        let mine = owned(&s, &["par1"]);
+        let expected: Vec<_> = lit(&all).into_iter().filter(|a| mine.contains(a)).collect();
+        assert!(!expected.is_empty());
+        assert_eq!(lit(&targeted), expected);
+        // "Laço em camadas": a base dos ParLeds e as ondas só no ParLed 1
+        let (targeted, all) = masked(&mut s, "k2", &["rpar1"]);
+        let mine = owned(&s, &["rpar1"]);
+        let expected: Vec<_> = lit(&all).into_iter().filter(|a| mine.contains(a)).collect();
+        assert!(expected.len() > 1);
+        assert_eq!(lit(&targeted), expected);
+    }
+
+    #[test]
+    fn a_color_that_loses_fixtures_keeps_its_run_and_the_new_one_comes_after() {
+        // Risco 1: a cor anterior encolhe na mesma execução (o motor passa o que saiu a um fader
+        // parado, com o fade out dela), e a nova entra depois, por cima
+        let mut s = example();
+        let color = Some(Category::Color);
+        apply(&mut s, target_on("s1", &["par1", "par2"], color)).unwrap();
+        let first = s.targeted[0].id.clone();
+        apply(&mut s, target_on("s2", &["par2"], color)).unwrap();
+        let runs: Vec<Id> = running_programs(&s).into_iter().map(|r| r.id).collect();
+        assert_eq!(runs, [first, s.targeted[1].id.clone()]);
+        let Program::Scene(left) = &running_programs(&s)[0].program else {
+            panic!("s1 não é uma cena só");
+        };
+        let mine = owned(&s, &["par1"]);
+        assert!(
+            left.levels
+                .iter()
+                .all(|l| mine.contains(&(l.universe.clone(), l.channel)))
+        );
+    }
+
+    #[test]
+    fn a_targeted_run_follows_the_function_controls() {
+        // A pausa e a prioridade da criação valem para a execução alvo
+        let mut s = example();
+        apply(&mut s, target_on("s1", &["par1"], None)).unwrap();
+        s.paused.push("s1".into());
+        s.project
+            .functions
+            .iter_mut()
+            .find(|f| f.id == "s1")
+            .unwrap()
+            .priority = Priority::High;
+        let run = running_programs(&s).into_iter().next().unwrap();
+        assert_eq!(run.id, s.targeted[0].id);
+        assert_eq!((run.priority, run.paused), (Priority::High, true));
+    }
+
+    #[test]
+    fn selections_are_checked_and_follow_removals() {
+        let mut s = example();
+        let selection = |members: Vec<Member>| Op::SaveSelection {
+            selection: SelectionGroup {
+                id: "sel1".into(),
+                name: "Frente".into(),
+                members,
+            },
+        };
+        let (topics, _) = apply(
+            &mut s,
+            selection(vec![
+                Member::Group("g3".into()),
+                Member::Fixture("par1".into()),
+            ]),
+        )
+        .unwrap();
+        assert_eq!(topics, [Topic::Selections]);
+        // Membro que não existe ou repetido é recusado
+        assert!(apply(&mut s, selection(vec![Member::Fixture("xx".into())])).is_err());
+        let twice = vec![
+            Member::Fixture("par1".into()),
+            Member::Fixture("par1".into()),
+        ];
+        assert!(apply(&mut s, selection(twice)).is_err());
+        // Remover o grupo deixa na seleção as fixtures que estavam nele; remover a fixture a tira
+        let members: Vec<Member> = group_fixtures(&s.project, &"g3".into())
+            .iter()
+            .map(|f| Member::Fixture(f.id.clone()))
+            .collect();
+        apply(&mut s, Op::RemoveFixtureGroup { id: "g3".into() }).unwrap();
+        let mut expected = vec![Member::Fixture("par1".into())];
+        expected.extend(members);
+        assert_eq!(s.project.selections[0].members, expected);
+        let remove = Op::RemoveFixtures {
+            ids: vec!["par1".into()],
+        };
+        apply(&mut s, remove).unwrap();
+        assert!(
+            !s.project.selections[0]
+                .members
+                .contains(&Member::Fixture("par1".into()))
+        );
+        // Mover e remover (a seleção sai também dos Seletores)
+        let mut selector = s.project.console.widgets[0].clone();
+        selector.id = "sel-w".into();
+        selector.kind = VcWidgetKind::Selector(VcSelector {
+            groups: vec![],
+            selections: vec!["sel1".into()],
+            splits: true,
+            all: true,
+            clear: true,
+            keys: vec![],
+        });
+        s.project.console.widgets.push(selector);
+        let mv = Op::MoveSelection {
+            id: "sel1".into(),
+            to: 3,
+        };
+        apply(&mut s, mv).unwrap();
+        assert!(
+            apply(
+                &mut s,
+                Op::MoveSelection {
+                    id: "x".into(),
+                    to: 0
+                }
+            )
+            .is_err()
+        );
+        apply(&mut s, Op::RemoveSelection { id: "sel1".into() }).unwrap();
+        assert!(s.project.selections.is_empty());
+        let w = s.project.console.widgets.last().unwrap();
+        assert!(matches!(&w.kind, VcWidgetKind::Selector(sel) if sel.selections.is_empty()));
+    }
+
+    #[test]
+    fn a_target_button_pressed_without_a_selection_does_nothing() {
+        let mut s = example();
+        let id = s
+            .project
+            .console
+            .widgets
+            .iter()
+            .find(|w| matches!(&w.kind, VcWidgetKind::Button(b) if b.action == ButtonAction::Function && b.function.is_some()))
+            .unwrap()
+            .id
+            .clone();
+        let w = s.project.console.widgets.iter_mut().find(|w| w.id == id);
+        if let VcWidgetKind::Button(b) = &mut w.unwrap().kind {
+            b.target = true;
+        }
+        let press = Op::PressWidget {
+            widget: id,
+            control: InputControl::Main,
+            down: true,
+        };
+        let (topics, _) = apply(&mut s, press).unwrap();
+        assert!(topics.is_empty() && s.running.is_empty());
     }
 }

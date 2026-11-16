@@ -1,20 +1,28 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, Grid3x3, Plus } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, Grid3x3, ListChecks, Plus } from 'lucide-vue-next'
 import type { FixtureGroup } from '~/types/generated/FixtureGroup'
 
-// Grupos de fixtures (grade 2D de cabeças, para o RGB Matrix e o EFX; em árvore, com subgrupos) e grupos de
-// canais (canais de quaisquer fixtures, para faders do console e da mesa simples e para cenas).
+// Grupos de fixtures (grade 2D de cabeças, para o RGB Matrix e o EFX; em árvore, com subgrupos), grupos de
+// canais (canais de quaisquer fixtures, para faders do console e da mesa simples e para cenas) e seleções
+// salvas (fixtures e grupos misturados, para o Seletor do console).
 const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
 const selectedId = ref(project.value.fixtureGroups[0]?.id)
 const fixtureGroup = computed(() => project.value.fixtureGroups.find((g) => g.id === selectedId.value))
+const selection = computed(() => project.value.selections.find((s) => s.id === selectedId.value))
 const channelGroup = computed(() => project.value.channelGroups.find((g) => g.id === selectedId.value))
 const name = () => t('groups.newName', { n: project.value.fixtureGroups.length + project.value.channelGroups.length + 1 })
 
 async function createFixtureGroup() {
   const id = uuidv7()
   await send({ op: 'saveFixtureGroup', group: { id, name: name(), width: 4, height: 2, cells: [], parent: null } })
+  selectedId.value = id
+}
+
+async function createSelection() {
+  const id = uuidv7()
+  await send({ op: 'saveSelection', selection: { id, name: t('groups.selectionName', { n: project.value.selections.length + 1 }), members: [] } })
   selectedId.value = id
 }
 
@@ -170,9 +178,31 @@ function cancel() {
           <small class="text-xs text-fg-muted">{{ item.detail }}</small>
         </template>
       </RlList>
+
+      <div class="mt-2 flex items-center justify-between gap-2">
+        <h2 class="heading flex items-center gap-2">
+          {{ t('groups.selections') }}
+          <RlInfo :text="t('groups.selectionInfo')" />
+        </h2>
+        <RlButton size="sm" :aria-label="t('groups.newSelection')" @press="createSelection"><Plus :size="16" /></RlButton>
+      </div>
+      <RlList
+        v-model="selectedId"
+        reorderable
+        class="shrink-0"
+        :items="project.selections.map((s) => ({ id: s.id, label: s.name, detail: t('groups.memberCount', s.members.length) }))"
+        @reorder="(id, to) => send({ op: 'moveSelection', id, to })"
+      >
+        <template #item="{ item }">
+          <ListChecks :size="18" class="shrink-0 text-fg-muted" />
+          <span class="flex-1 truncate">{{ item.label }}</span>
+          <small class="text-xs text-fg-muted">{{ item.detail }}</small>
+        </template>
+      </RlList>
     </section>
 
     <FixturesGroupGrid v-if="fixtureGroup" :group="fixtureGroup" @selected="selectedId = $event" />
+    <FixturesSelection v-else-if="selection" :selection="selection" @duplicated="selectedId = $event" />
     <FixturesChannelGroup v-else-if="channelGroup" :group="channelGroup" @duplicated="selectedId = $event" />
     <section v-else class="panel justify-center text-center text-fg-muted">{{ t('groups.selectHint') }}</section>
   </div>

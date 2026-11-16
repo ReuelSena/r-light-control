@@ -22,7 +22,9 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 
 ## Pendências (2026-11-13)
 
-**Pedido novo (2026-11-15, G4): subgrupos de fixtures e árvore de grupos.** Mini-plano em [docs/fases/subgrupos.md](docs/fases/subgrupos.md), aprovado e **entregue em 2026-11-15**, aguardando a validação ([checklist](docs/fases/subgrupos.md#validação-com-você)). Projeto na versão 21. O exemplo (G8) está no `exemplo.json`; o "Show de exemplo" salvo do usuário ainda não o recebeu (o app estava aberto).
+**Pedido novo (2026-11-15, G4): subgrupos de fixtures e árvore de grupos.** Mini-plano em [docs/fases/subgrupos.md](docs/fases/subgrupos.md), aprovado e **entregue em 2026-11-15**, aguardando a validação ([checklist](docs/fases/subgrupos.md#validação-com-você)). Projeto na versão 21. O exemplo (G8) está no `exemplo.json`; o "Show de exemplo" salvo do usuário recebeu só os subgrupos "Esquerda" e "Direita" dos ParLeds (junto com o exemplo do VC-7), sem a cena "Só os ParLeds da esquerda".
+
+**Entregue (2026-11-15):** o VC-7 (Seletor e Alvo), aguardando a validação ([checklist](docs/fases/fase-seletor.md#validação-com-você)). Projeto na versão 22. O exemplo (G8) é a pasta "Seletor" e a página "Seleção" do console, no `exemplo.json` e no "Show de exemplo" salvo (cópia de antes em `Show de exemplo.rlc.bak-seletor`).
 
 **F15b entregue (2026-11-13):** a [F15b](docs/fases/fase-15b.md) (3D realista) aguarda a validação junto com as demais ([checklist](docs/fases/fase-15b.md#validação-com-você)).
 
@@ -474,7 +476,7 @@ Validação (detalhada em [docs/fases/fase-12b.md](docs/fases/fase-12b.md#valida
 ### F12c — Seleção · ⬜ (nova, 2026-10-21)
 
 - **P2, a ordem de seleção e o leque:** a ordem em que as fixtures foram escolhidas passa a contar, e o leque distribui um valor (pan, intensidade, cor) entre dois extremos ao longo dessa ordem.
-- **P3, a divisão da seleção:** "as duas metades", "asas" (de cada ponta para o centro), "uma por vez" (próxima e anterior), embaralhar de forma repetível e deslocar. Também espalhar tempo ou fase pela seleção (cada fixture começa um pouco depois da anterior).
+- **P3, a divisão da seleção (as divisões passaram para o VC-7, 2026-11-15; aqui sobra espalhar tempo e fase):** "as duas metades", "asas" (de cada ponta para o centro), "uma por vez" (próxima e anterior), embaralhar de forma repetível e deslocar. Também espalhar tempo ou fase pela seleção (cada fixture começa um pouco depois da anterior).
 - **P9, o ID numérico:** cada fixture ganha um número, e se escolhem fixtures por faixa ("1 até 12").
 - **Onde mexe:** o editor de cena (a seleção) e o contrato (o número da fixture, com migração).
 - Catálogo: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P2, P3 e P9).
@@ -607,6 +609,7 @@ Validação:
 - **VC-3 (2026-10-16): fades ajustados ao vivo.** No console, um controle (fader ou knob) define na hora os tempos de fade das criações disparadas, para o operador ajustar conforme o momento do show pede. Os fades gravados nas cenas ficam como padrão. No QLC+, o mais próximo é o widget Speed Dial. No protótipo, é o elemento "Tempos", com a lista das criações que controla (E11). Protótipo na F2 (rodada 3). O fade in e o fade out das cenas foram ligados na F6 (2026-10-18, pedido do usuário); a duração entrou na F7, com os chasers. Na validação da F7 (2026-10-19), o elemento passou a seguir o BPM master ("Seguir o BPM"), com os tempos em batidas e o TAP do master (E11).
 
 - **VC-6 (2026-11-15): modo Preparar.** Com o modo ligado (Ctrl + Enter), o que se toca no console vai para uma saída sombra, vista na 3D View (dividida ou só preview); Enter (ou o botão Executar) o leva à luz real de uma vez, para preparar a próxima música. A seleção preparada fica no servidor e sobrevive a desligar o modo. Entregue em 2026-11-15 sem validar (exceção ao G1); mini-plano e checklist em [docs/fases/fase-preparar.md](docs/fases/fase-preparar.md).
+- **VC-7 (2026-11-15): Seletor e Alvo.** Elemento Seletor no console (grupos e subgrupos de fixtures, vários de uma vez) e botões com "Alvo: seleção" (cor, efeito e animação só nas fixtures escolhidas; a cor nova para a anterior). Subgrupos salvos no projeto e as divisões do P3. Entregue em 2026-11-15 sem validar (exceção ao G1), também com o modo Preparar; mini-plano e checklist em [docs/fases/fase-seletor.md](docs/fases/fase-seletor.md).
 - **VC-5 (2026-11-06): coleção com linha do tempo.** Itens da coleção com início, duração e camadas, e modo laço, uma vez ou vai e volta; depois, editor visual como o dos editores de vídeo. Vira a fase F11b, depois das Paletas, com mini-plano a aprovar (G1).
 - **VC-4 (2026-10-20): atalhos do teclado na edição.** Com elementos escolhidos: Delete remove, Ctrl + D duplica, Ctrl + C e Ctrl + V copiam e colam, e as setas deslocam (2 células; com Shift, 4; com Ctrl, 1). Ver E12. Pedidos da mesma data, fora do console (E12): grupos de fixtures e de canais reordenáveis por arrasto e duplicáveis; pastas dentro de pastas no Studio.
 

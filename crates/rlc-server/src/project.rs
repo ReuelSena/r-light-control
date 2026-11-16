@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 21;
+const SCHEMA_VERSION: u32 = 22;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -352,6 +352,8 @@ fn migrate(project: &mut Value, version: u32) {
         stage.remove("looks");
     }
     // 20 → 21: subgrupos de fixtures (`FixtureGroup.parent`); os grupos antigos ficam na raiz
+    // 21 → 22 (VC-7): as seleções do Seletor (`selections`, vazio nos antigos) e o alvo e a categoria
+    // do botão (desligado e sem categoria); valem pelos padrões, sem mudar o arquivo
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -821,6 +823,34 @@ mod tests {
         std::fs::write(&file, v20.to_string()).unwrap();
         let opened = read(&file).unwrap().0;
         assert!(opened.fixture_groups.iter().all(|g| g.parent.is_none()));
+        assert_eq!(opened, project);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn versions_before_22_open_without_selections_nor_target_buttons() {
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // O exemplo sem o que veio na 22 (as seleções, o Seletor e os botões de alvo)
+        let mut project = old_example();
+        project.selections.clear();
+        project.console.widgets.retain(|w| match &w.kind {
+            rlc_core::VcWidgetKind::Selector(_) => false,
+            rlc_core::VcWidgetKind::Button(b) => !b.target,
+            _ => true,
+        });
+        let mut old = serde_json::to_value(&project).unwrap();
+        old.as_object_mut().unwrap().remove("selections");
+        for w in old["console"]["widgets"].as_array_mut().unwrap() {
+            let w = w.as_object_mut().unwrap();
+            w.remove("target");
+            w.remove("category");
+        }
+        let v21 = json!({ "format": FORMAT, "schemaVersion": 21, "project": old });
+        let file = dir.join("antigo.rlc");
+        std::fs::write(&file, v21.to_string()).unwrap();
+        let opened = read(&file).unwrap().0;
+        assert!(opened.selections.is_empty());
         assert_eq!(opened, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }

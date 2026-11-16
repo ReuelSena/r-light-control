@@ -312,10 +312,10 @@ function build() {
         group.add(pixel)
       }
     } else if (kind === 'strobe') {
-      look.lens = new MeshBasicMaterial({ color: '#000' })
-      look.glass = new Mesh(new BoxGeometry(0.36, 0.01, 0.14), look.lens)
-      look.glass.position.y = -0.105
-      shell.add(box(0.4, 0.2, 0.15), look.glass)
+      // O strobo também tem feixe (um banho largo); a lente é retangular
+      addBeam(shell, -0.105, 0.14)
+      look.glass!.geometry = new BoxGeometry(0.36, 0.01, 0.14)
+      shell.add(box(0.4, 0.2, 0.15))
     } else {
       group.add(box(0.45, 0.3, 0.25, 0.15))
     }

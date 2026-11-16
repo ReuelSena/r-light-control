@@ -58,7 +58,7 @@ let holdTimer: ReturnType<typeof setTimeout> | undefined
 let held = false
 let pending: string | undefined // toque num elemento ainda não escolhido: escolhe ao soltar
 
-const inside = (r: Rect, f: Rect) => r.x >= f.x && r.x + r.w <= f.x + f.w && r.y >= f.y + frameHeader && r.y + r.h <= f.y + f.h
+const inside = (r: Rect, f: Rect, head: number) => r.x >= f.x && r.x + r.w <= f.x + f.w && r.y >= f.y + head && r.y + r.h <= f.y + f.h
 
 // Ctrl + clique e toque longo somam ou tiram; só elementos do mesmo nível (mesma moldura) andam juntos
 function toggle(w: VcWidget) {
@@ -133,13 +133,14 @@ function planFor(ids: string[], cx: number, cy: number, resize: boolean) {
     // Sozinho, um elemento entra na moldura onde é solto, ou sai dela
     if (!resize && moving.length === 1 && w.type !== 'frame') {
       const abs = { ...absolute(w)!, x: absolute(w)!.x + cx, y: absolute(w)!.y + cy }
-      const host = placed.value.find((f) => f.type === 'frame' && inside(abs, rectOf(f)!))
+      const host = placed.value.find((f) => f.type === 'frame' && inside(abs, rectOf(f)!, headerOf(f)))
       frame = host?.id ?? null
       next = host ? { ...abs, x: abs.x - rectOf(host)!.x, y: abs.y - rectOf(host)!.y } : abs
     }
-    const box = frame ? rectOf(byId.value.get(frame)!)! : undefined
+    const host = frame ? byId.value.get(frame)! : undefined
+    const box = host && rectOf(host)!
     const children = placed.value.filter((c) => c.frame === w.id).map((c) => rectOf(c)!)
-    const fits = box ? inside({ ...next, x: box.x + next.x, y: box.y + next.y }, box) : next.x >= 0 && next.y >= 0 && next.x + next.w <= cols.value
+    const fits = box ? inside({ ...next, x: box.x + next.x, y: box.y + next.y }, box, headerOf(host)) : next.x >= 0 && next.y >= 0 && next.x + next.w <= cols.value
     const free = !placed.value.some((s) => s.frame === frame && s.id !== w.id && !ids.includes(s.id) && overlaps(rectOf(s)!, next))
     // Uma moldura não pode encolher por cima dos filhos
     const holds = children.every((c) => c.x + c.w <= next.w && c.y + c.h <= next.h)
@@ -192,7 +193,7 @@ function itemStyle(w: VcWidget) {
       @contextmenu="editing && $event.preventDefault()"
     >
       <div v-if="w.type === 'frame'" class="frame">
-        <header class="caption">
+        <header v-if="w.title" class="caption">
           <span class="truncate">{{ w.caption }}</span>
           <span v-if="w.solo" class="solo">SOLO</span>
         </header>

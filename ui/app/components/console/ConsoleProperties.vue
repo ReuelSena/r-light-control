@@ -100,6 +100,7 @@ const keyRows = computed(() => {
     ...w.selections.flatMap((id) => project.value.selections.filter((s) => s.id === id).map((s) => ({ id, name: s.name }))),
     ...(w.all ? [{ id: 'all', name: t('vc.selectAll') }] : []),
     ...(w.clear ? [{ id: 'clear', name: t('vc.selectNone') }] : []),
+    ...(w.splits ? ['first', 'second', 'odd', 'even', 'wings', 'one', 'previous', 'next', 'all'].map((m) => ({ id: `split:${m}`, name: t(`vc.split.${m}`) })) : []),
   ]
 })
 
@@ -133,6 +134,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey, true))
       {{ t('vc.caption') }}
       <input class="field" :value="widget.caption" @input="save({ caption: ($event.target as HTMLInputElement).value })">
     </label>
+    <RlSwitch v-if="!['button', 'macro', 'label'].includes(widget.type)" :model-value="widget.title" @update:model-value="(title: boolean) => save({ title })">{{ t('vc.showTitle') }}</RlSwitch>
     <ConsoleColor v-if="widget.type !== 'frame'" :label="t('vc.colorLabel')" :model-value="widget.color" @update:model-value="(color) => save({ color })" />
 
     <!-- Botão -->

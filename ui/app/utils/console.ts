@@ -23,6 +23,8 @@ export const formatCell: Record<ConsoleFormat, number> = { phone: 7, tablet: 4, 
 
 /** Linhas do cabeçalho de uma moldura, onde os elementos de dentro não entram. */
 export const frameHeader = 4
+/** Altura reservada ao título de uma moldura: sem título, a moldura toda recebe elementos. */
+export const headerOf = (frame?: VcWidget) => (frame?.title === false ? 0 : frameHeader)
 
 /** Ícone, tamanho inicial (em células) e entradas externas de cada tipo; `keys`: aceita tecla do teclado. */
 export const widgetKinds: Record<WidgetType, { icon: Component; size: [number, number]; inputs: InputControl[]; keys: boolean }> = {
@@ -87,7 +89,7 @@ export function copyLayout(widgets: VcWidget[], from: ConsoleFormat, to: Console
     const inner: Rect[] = []
     for (const child of placed.filter((x) => x.frame === w.id)) {
       const rect = child.layouts[from]!
-      child.layouts[to] = freeSpot(inner, rect.w, rect.h, Math.min(width, cols), frameHeader)
+      child.layouts[to] = freeSpot(inner, rect.w, rect.h, Math.min(width, cols), headerOf(w))
       inner.push(child.layouts[to]!)
     }
     // A moldura cresce se os filhos não couberem

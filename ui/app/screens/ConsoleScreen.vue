@@ -3,6 +3,7 @@ import {
   AlignEndHorizontal, AlignEndVertical, AlignStartHorizontal, AlignStartVertical, ClipboardList, Copy, Eraser, EyeOff, Keyboard,
   LayoutTemplate, Monitor, Pencil, Play, Plus, Settings2, Smartphone, Tablet, TextCursorInput, Trash2,
 } from 'lucide-vue-next'
+import type { Split } from '~/utils/selection'
 import type { Rect } from '~/types/generated/Rect'
 import type { VcWidget } from '~/types/generated/VcWidget'
 
@@ -58,9 +59,10 @@ const say = (text: string) => {
 
 // Lugar livre na página ou dentro de uma moldura (abaixo do cabeçalho); `reserved`: o que já foi separado
 function spot(frame: string | null, w: number, h: number, reserved: Rect[] = []): Rect {
-  const box = frame ? rectIn(widgets.value.find((f) => f.id === frame)!) : undefined
+  const host = frame ? widgets.value.find((f) => f.id === frame) : undefined
+  const box = host && rectIn(host)
   const taken = widgets.value.filter((x) => x.frame === frame && rectIn(x)).map((x) => rectIn(x)!)
-  return freeSpot([...taken, ...reserved], w, h, box?.w ?? cols.value, box ? frameHeader : 0)
+  return freeSpot([...taken, ...reserved], w, h, box?.w ?? cols.value, host ? headerOf(host) : 0)
 }
 
 // ---------- Paleta ----------
@@ -81,7 +83,7 @@ function blank(type: WidgetType): VcWidget {
   }
   const [w, h] = widgetKinds[type].size
   const layouts = { phone: null, tablet: null, desktop: null, [format.value]: spot(null, w, h) }
-  return { id: uuidv7(), page: page.value, frame: null, caption: t(`vc.kind.${type}`), color: '#ff8000', layouts, inputs: [], ...kinds[type] } as VcWidget
+  return { id: uuidv7(), page: page.value, frame: null, caption: t(`vc.kind.${type}`), title: true, color: '#ff8000', layouts, inputs: [], ...kinds[type] } as VcWidget
 }
 
 function add(type: WidgetType) {
@@ -175,7 +177,7 @@ function place(w: VcWidget) {
   const box = placedWidget.layouts[format.value]!
   const placedChildren = children.map((c) => {
     const r = layoutFormats.map((f) => c.layouts[f]).find(Boolean) ?? { w: 16, h: 16 }
-    const rect = freeSpot(inner, r.w, r.h, box.w, frameHeader)
+    const rect = freeSpot(inner, r.w, r.h, box.w, headerOf(w))
     inner.push(rect)
     return { ...c, layouts: { ...c.layouts, [format.value]: rect } }
   })
@@ -272,6 +274,11 @@ function onKey(e: KeyboardEvent, down: boolean) {
         if (w.all) picker.all()
       } else if (item === 'clear') {
         if (w.clear) picker.clear()
+      } else if (item === 'split:previous') picker.walk(-1)
+      else if (item === 'split:next') picker.walk(1)
+      else if (item === 'split:all') picker.restore()
+      else if (item.startsWith('split:')) {
+        if (w.splits) picker.split(item.slice(6) as Split)
       } else if (w.groups.includes(item) || w.selections.includes(item)) picker.toggle(item)
     }
   }

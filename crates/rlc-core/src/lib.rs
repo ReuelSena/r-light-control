@@ -947,6 +947,9 @@ pub struct VcWidget {
     /// Moldura onde está; a posição passa a contar a partir do canto da moldura.
     pub frame: Option<Id>,
     pub caption: String,
+    /// Mostra o título no topo (molduras e elementos com caixa); ligado nos arquivos de antes.
+    #[serde(default = "splits_on")]
+    pub title: bool,
     /// Cor do destaque (#rrggbb).
     pub color: String,
     pub layouts: VcLayouts,
@@ -1817,6 +1820,7 @@ mod tests {
             page: "p1".into(),
             frame: None,
             caption: "Palco".into(),
+            title: true,
             color: "#ff8000".into(),
             layouts: VcLayouts {
                 phone: None,

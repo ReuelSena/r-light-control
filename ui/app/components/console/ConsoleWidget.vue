@@ -22,11 +22,11 @@ const buttonColor = computed(() => (props.widget.type === 'button' && vc.isTarge
 // Seletor (VC-7): grupos de fixtures e seleções salvas; tocar soma ou tira da seleção do aparelho
 const sel = useSelection()
 const prefs = usePrefs()
-// Grupo pai (com subgrupos): LED de outra cor, para não confundir com os filhos
+// Subgrupo (tem grupo pai): cor diferente da dos grupos principais, que usam a cor do elemento
 const selectorItems = computed(() => {
   const w = props.widget
   if (w.type !== 'selector') return []
-  const groups = w.groups.flatMap((id) => project.value.fixtureGroups.filter((g) => g.id === id).map((g) => ({ id, name: g.name, parent: project.value.fixtureGroups.some((c) => c.parent === id) })))
+  const groups = w.groups.flatMap((id) => project.value.fixtureGroups.filter((g) => g.id === id).map((g) => ({ id, name: g.name, parent: !!g.parent })))
   const saved = w.selections.flatMap((id) => project.value.selections.filter((s) => s.id === id).map((s) => ({ id, name: s.name, parent: false })))
   return [...groups, ...saved]
 })
@@ -192,7 +192,7 @@ function setColor(i: number, color: string) {
   </div>
 
   <div v-else class="box" :class="{ blink }">
-    <header class="caption">
+    <header v-if="widget.title" class="caption">
       <i :style="{ background: widget.color }" />
       <span class="truncate">{{ widget.caption }}</span>
     </header>
@@ -218,7 +218,6 @@ function setColor(i: number, color: string) {
           v-for="item in selectorItems"
           :key="item.id"
           size="sm"
-          highlight="led"
           :color="item.parent ? 'var(--color-lcd)' : widget.color"
           :model-value="sel.isOn(item.id)"
           @press="sel.toggle(item.id)"
@@ -238,10 +237,18 @@ function setColor(i: number, color: string) {
       </div>
       <!-- Divisões (P3): pedaços da seleção na ordem das fixtures; "Tudo" volta à seleção inteira -->
       <div v-if="widget.splits" class="flex flex-wrap gap-1">
-        <RlButton v-for="m in splitModes" :key="m" size="sm" highlight="led" :model-value="sel.mode.value === m" @press="sel.split(m)">{{ t(`vc.split.${m}`) }}</RlButton>
-        <RlButton size="sm" :aria-label="t('vc.split.previous')" @press="sel.walk(-1)"><ChevronLeft :size="16" /></RlButton>
-        <RlButton size="sm" :aria-label="t('vc.split.next')" @press="sel.walk(1)"><ChevronRight :size="16" /></RlButton>
-        <RlButton size="sm" :model-value="false" @press="sel.restore()">{{ t('vc.split.all') }}</RlButton>
+        <RlButton v-for="m in splitModes" :key="m" size="sm" :model-value="sel.mode.value === m" @press="sel.split(m)">
+          {{ t(`vc.split.${m}`) }}<span v-if="keyOf(`split:${m}`)" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf(`split:${m}`)!) }}</span>
+        </RlButton>
+        <RlButton size="sm" :aria-label="t('vc.split.previous')" @press="sel.walk(-1)">
+          <ChevronLeft :size="16" /><span v-if="keyOf('split:previous')" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf('split:previous')!) }}</span>
+        </RlButton>
+        <RlButton size="sm" :aria-label="t('vc.split.next')" @press="sel.walk(1)">
+          <ChevronRight :size="16" /><span v-if="keyOf('split:next')" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf('split:next')!) }}</span>
+        </RlButton>
+        <RlButton size="sm" :model-value="false" @press="sel.restore()">
+          {{ t('vc.split.all') }}<span v-if="keyOf('split:all')" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf('split:all')!) }}</span>
+        </RlButton>
       </div>
       <RlLcd class="text-center text-xs">{{ t('vc.selected', { n: sel.selected.value.length }) }}</RlLcd>
     </template>

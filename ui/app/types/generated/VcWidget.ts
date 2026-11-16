@@ -23,6 +23,10 @@ export type VcWidget = { id: string, page: string,
  */
 frame: string | null, caption: string, 
 /**
+ * Mostra o título no topo (molduras e elementos com caixa); ligado nos arquivos de antes.
+ */
+title: boolean, 
+/**
  * Cor do destaque (#rrggbb).
  */
 color: string, layouts: VcLayouts, 

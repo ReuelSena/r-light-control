@@ -20,40 +20,61 @@ As regras e decisões estão em [DECISOES.md](DECISOES.md).
 5. Ajustar → validar de novo.
 6. Marcar a fase aqui e registrar as decisões novas no `DECISOES.md`. Commit se o usuário pedir.
 
-## Pendências (2026-11-13)
+## Pendências (atualizado em 2026-11-17)
 
-**Pedido novo (2026-11-15, G4): subgrupos de fixtures e árvore de grupos.** Mini-plano em [docs/fases/subgrupos.md](docs/fases/subgrupos.md), aprovado e **entregue em 2026-11-15**, aguardando a validação ([checklist](docs/fases/subgrupos.md#validação-com-você)). Projeto na versão 21. O exemplo (G8) está no `exemplo.json`; o "Show de exemplo" salvo do usuário recebeu só os subgrupos "Esquerda" e "Direita" dos ParLeds (junto com o exemplo do VC-7), sem a cena "Só os ParLeds da esquerda".
+### Situação das fases
 
-**Entregue (2026-11-15):** o VC-7 (Seletor e Alvo), aguardando a validação ([checklist](docs/fases/fase-seletor.md#validação-com-você)). Projeto na versão 22. O exemplo (G8) é a pasta "Seletor" e a página "Seleção" do console, no `exemplo.json` e no "Show de exemplo" salvo (cópia de antes em `Show de exemplo.rlc.bak-seletor`).
+Validadas pelo usuário: F0–F8, ajustes rápidos, F10 e F10b. A F6, a F7 e a F8 ficaram com itens na [validação final](docs/validacao-final.md).
 
-**F15b entregue (2026-11-13):** a [F15b](docs/fases/fase-15b.md) (3D realista) aguarda a validação junto com as demais ([checklist](docs/fases/fase-15b.md#validação-com-você)).
+**Entregues e ainda sem validação** (o usuário pediu para seguir adiante, exceção ao G1). Cada uma tem o checklist no arquivo dela:
 
-**Entregue (2026-11-13):** a [F11b](docs/fases/fase-11b.md) (coleção com linha do tempo, aguardando a validação, [checklist](docs/fases/fase-11b.md#validação-com-você)) e a [F12b](docs/fases/fase-12b.md) (Gravação: gravar a saída, Update e filtro por tipo; as paletas foram tentadas e removidas no mesmo dia), aguardando a validação do usuário junto com a F9, a F9b, a F10c, a F10d e a F11. Próxima na ordem: F12c (Seleção) ou o que o usuário pedir.
+| Fase | Entregue | Projeto | Checklist |
+|---|---|---|---|
+| F9 RGB Matrix | 2026-10-27 | v11 | [fase-09](docs/fases/fase-09.md#validação-com-você) |
+| F9b Phaser | 2026-10-27 | v12 | [fase-09b](docs/fases/fase-09b.md#validação-com-você) |
+| F10c Tempos, cue list e prioridade | 2026-10-21 | v9 | [fase-10c](docs/fases/fase-10c.md) |
+| F10d EFX avançado | 2026-10-22 | v10 | [fase-10d](docs/fases/fase-10d.md#validação-com-você) |
+| F11 Console operacional (só o console) | 2026-11-06 | v13 | [fase-11](docs/fases/fase-11.md#validação-com-você) |
+| F12b Gravação (P5 e P7) | 2026-11-13 | v16 | [fase-12b](docs/fases/fase-12b.md#validação-com-você) |
+| F11b Coleção com linha do tempo | 2026-11-13 | v17 | [fase-11b](docs/fases/fase-11b.md#validação-com-você) |
+| F15b 3D realista | 2026-11-13 / 14 | v20 | [fase-15b](docs/fases/fase-15b.md#validação-com-você) |
+| Subgrupos de fixtures | 2026-11-15 | v21 | [subgrupos](docs/fases/subgrupos.md#validação-com-você) |
+| VC-6 Modo Preparar | 2026-11-15 | — | [fase-preparar](docs/fases/fase-preparar.md#validação-com-você-preencher-na-entrega) (checklist ainda a preencher) |
+| VC-7 Seletor e Alvo | 2026-11-15 | v22 | [fase-seletor](docs/fases/fase-seletor.md#validação-com-você) |
 
-**Onde paramos (2026-11-13):** a F12b (Gravação) foi entregue sem a validação da F9, da F9b, da F10c, da F10d e da F11, a pedido do usuário (exceção ao G1). Falta ele validar tudo numa rodada só, com o rig montado: o checklist de cada fase está no arquivo dela. Depois, a F11b e as fases seguintes da ordem.
+### Próximo passo (regra nova, a confirmar)
 
-**Antes (2026-11-06):** o usuário tem um evento hoje e vai validar o software inteiro com o rig montado. A pedido dele, a [F11](docs/fases/fase-11.md) entrou só com o console (XY Pad, Animation e macros), e a segurança dela ficou para depois. Depois do console, as Paletas (F12b). A validação de hoje cobre a F9, a F9b, a F10c, a F10d e o console da F11.
+- **Parar de empilhar fases sem validar.** São 11 itens em espera. A próxima fase só começa depois de uma rodada de validação, com o rig montado, na ordem da tabela (as mais antigas primeiro). Fechar o checklist do VC-6 antes.
+- **Prioridade (decidida pelo usuário em 2026-11-17):** 1. editor de fixtures (F13); 2. visualização 2D (F14); 3. MIDI (F12); 4. segurança da F11 (papéis, PIN → token, Origin). Cada uma só começa depois da rodada de validação das entregas em espera.
+- **Atenção:** a segurança fica por último. Até lá, o servidor aceita qualquer aparelho da rede local; não usar em evento com público na mesma rede.
 
-**Antes (2026-10-27):** a [F10d](docs/fases/fase-10d.md) (EFX avançado) foi entregue e commitada em 2026-10-27, e falta o usuário validá-la junto com a F10c, numa rodada só ([checklist](docs/fases/fase-10d.md#validação-com-você), pedido dele). A [F9](docs/fases/fase-09.md) (RGB Matrix) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação e o arquivo salvo) ganhou os exemplos dela, com cópia dos arquivos antes. A [F9b](docs/fases/fase-09b.md) (Phaser) foi aprovada e entregue no mesmo dia (2026-10-27), e vai na mesma rodada de validação; o "Show de exemplo" do usuário (a recuperação, pelo app aberto, e o arquivo salvo) ganhou a pasta "Phaser", com cópia dos arquivos antes. Detalhes que não estão no código:
-- Em 2026-10-22, o app abre o "Show de exemplo" pela recuperação: o arquivo salvo ainda é da versão 8, e o trabalho da F10c e os exemplos da F10d estão na recuperação (os da F10d também foram postos no arquivo salvo). Antes de qualquer teste que abra outro projeto, guardar uma cópia da recuperação e restaurá-la no fim (abrir um projeto descarta a recuperação).
-- Os "botões acesos, sem LED" pedidos na F10c valeram para o Studio (Rodar, Pausar, Parar todas e a lista) e para a barra de cima. Os botões de dentro das telas (Prévia, Localizar, Editar do console etc.) continuam em LED: o usuário ainda não decidiu se quer trocá-los.
-- A área do console tem a célula de tamanho fixo por formato (mudança do usuário, 2026-10-21, em [DECISOES.md](DECISOES.md), E11).
+### Na validação final (antes do release)
 
-O usuário validou a F7 e a F8 em 2026-10-20. O que falta:
+Detalhes em [docs/validacao-final.md](docs/validacao-final.md):
+- com os moving beams: 3 itens da F6, 1 da F7, 7 da F8, 3 da F10b, 1 da F10c e 4 da F10d, e os de pan e tilt da F9b e da F12c;
+- adiados por escolha do usuário, sem precisar dos Beams: o tick com 4 universos (F6), a sequência e a coleção (F7);
+- na F16: o instalador num PC limpo (adiado da F3).
 
-**Na [validação final](docs/validacao-final.md)**, antes do release:
-- com os moving beams: 3 itens da F6, 1 da F7, 7 da F8 (o EFX), 3 da F10b (o EFX em grupo), 1 da F10c (a posição lenta com a cor rápida) e 4 da F10d (os exemplos do EFX avançado);
-- adiados por escolha dele, sem precisar dos Beams: o tick com 4 universos (F6), a sequência e a coleção (F7).
+### Ordem de execução
 
-**Na F16:** o instalador num PC limpo (adiado da F3).
+Aprovada em 2026-10-21 e atualizada em 2026-11-17. ✔ = entregue (aguardando validação, quando indicado na tabela):
 
-**Pesquisa da grandMA (pedido do usuário, 2026-10-20):** para profissionalizar o app, o catálogo de recursos está em [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md). Em 2026-10-21 o usuário escolheu os itens e aprovou a ordem, com a prioridade na operação ao vivo.
+Ajustes rápidos ✔ → F10 ✔ → F10b ✔ → F10c ✔ → F10d ✔ → F9 ✔ → F9b ✔ → F11 (console ✔) → F12b ✔ → F11b ✔ → **F13 ⬜ → F14 ⬜ → F12 (MIDI) ⬜ → F11 (segurança) ⬜** → F12c ⬜ → F13b ⬜ → F15b ✔ → F15 ⬜ → F16 ⬜. Os quatro em negrito são a prioridade do usuário (2026-11-17); a F12c, a F13b e a F15 vêm depois.
 
-**Ordem de execução (aprovada em 2026-10-21; a F10d entrou no mesmo dia, pedido do usuário; a F11b, pedido de 2026-11-06, entra depois da F12b):** Ajustes rápidos → F10 → F10b → F10c → F10d → F9 → F9b → F11 → F12 → F12b → F11b → F12c → F13 → F13b → F14 → F15b → F15 → F16. Todos os itens escolhidos estão em alguma fase, sem fila à parte (o usuário pediu a fila de baixa prioridade dentro das fases, em 2026-10-21). As fases novas levam uma letra e os números das antigas não mudam. A F10 passa à frente da F9, mas a F9 continua antes da F11 (o elemento "Animation" controla um RGB Matrix). Os [ajustes rápidos](docs/fases/ajustes-rapidos.md), a [F10](docs/fases/fase-10.md) e a [F10b](docs/fases/fase-10b.md) foram validados em 2026-10-21. A [F10c](docs/fases/fase-10c.md) foi entregue no mesmo dia; em 2026-10-22 o usuário seguiu para a [F10d](docs/fases/fase-10d.md), entregue no mesmo dia. A [F9](docs/fases/fase-09.md) foi aprovada e entregue em 2026-10-27, antes da validação da F10c e da F10d (G1: o usuário pediu para seguir).
+- Fora da numeração, a pedido do usuário: subgrupos, VC-6 e VC-7 (todos ✔).
+- Todos os itens escolhidos na pesquisa da grandMA ([docs/pesquisa-grandma.md](docs/pesquisa-grandma.md)) estão em alguma fase, sem fila à parte. Fases novas levam uma letra e os números das antigas não mudam.
 
-**Em aberto, sem decisão:** trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
+### Em aberto, sem decisão
 
-**O que ficou de fora da F7 e da F8** está no [Backlog](#backlog-v2), para entrar só se o usuário pedir.
+- Trocar o texto "Tempos em batidas do BPM" do editor de chaser por "Seguir o BPM", para as duas telas falarem igual ao elemento "Tempos" (sugestão da F7).
+- Os botões de dentro das telas (Prévia, Localizar, Editar do console etc.) continuam em LED; os da F10c (Studio e barra de cima) são "acesos, sem LED". O usuário ainda não decidiu se quer trocá-los.
+- O que sobra para a F15 depois da F15b (modelos e feixe já feitos; falta definir se há mais algo, como presets de câmera e níveis de qualidade).
+- O que ficou de fora da F7 e da F8 está no [Backlog](#backlog-v2), só se o usuário pedir.
+
+### Cuidados com o projeto do usuário
+
+- O "Show de exemplo" salvo é aberto pela recuperação (conferir). Antes de qualquer teste que abra outro projeto, guardar uma cópia da recuperação e restaurá-la no fim: abrir um projeto descarta a recuperação.
+- O "Show de exemplo" salvo não recebeu os exemplos da F15b nem a cena "Só os ParLeds da esquerda" dos subgrupos (G8).
 
 ## Arquitetura alvo
 
@@ -476,14 +497,14 @@ Validação (detalhada em [docs/fases/fase-12b.md](docs/fases/fase-12b.md#valida
 ### F12c — Seleção · ⬜ (nova, 2026-10-21)
 
 - **P2, a ordem de seleção e o leque:** a ordem em que as fixtures foram escolhidas passa a contar, e o leque distribui um valor (pan, intensidade, cor) entre dois extremos ao longo dessa ordem.
-- **P3, a divisão da seleção (as divisões passaram para o VC-7, 2026-11-15; aqui sobra espalhar tempo e fase):** "as duas metades", "asas" (de cada ponta para o centro), "uma por vez" (próxima e anterior), embaralhar de forma repetível e deslocar. Também espalhar tempo ou fase pela seleção (cada fixture começa um pouco depois da anterior).
+- **P3, espalhar tempo e fase pela seleção:** cada fixture começa um pouco depois da anterior. As divisões da seleção (metades, asas, uma por vez, embaralhar e deslocar) já entraram no VC-7 (2026-11-15).
 - **P9, o ID numérico:** cada fixture ganha um número, e se escolhem fixtures por faixa ("1 até 12").
 - **Onde mexe:** o editor de cena (a seleção) e o contrato (o número da fixture, com migração).
 - Catálogo: [docs/pesquisa-grandma.md](docs/pesquisa-grandma.md) (P2, P3 e P9).
 
 Validação:
 - [ ] Um leque de intensidade e de cor nos ParLeds.
-- [ ] As "asas" e o "uma por vez" percorrem a seleção.
+- [ ] O tempo e a fase se espalham pela seleção (cada fixture um pouco depois da anterior).
 - [ ] Escolher "1 até 12" pelo número.
 - [ ] O leque de pan: na [validação final](docs/validacao-final.md), com os Beams.
 
@@ -541,7 +562,7 @@ Validação (detalhada em [docs/fases/fase-15b.md](docs/fases/fase-15b.md#valida
 - [ ] Bloom e desempenho nos três níveis de qualidade.
 - [ ] Os quatro modelos, com pan e tilt certos.
 
-### F15 — Visualização 3D · ⬜
+### F15 — Visualização 3D · ⬜ (o feixe, os modelos e a mancha já vieram na F15b; a definir o que sobra: presets de câmera e níveis de qualidade)
 
 - **Render:** TresJS com loop imperativo.
 - **Modelos:** glTF convertidos dos .dae do QLC+ (nós base/arm/head).
@@ -627,6 +648,10 @@ Validação:
 | Desempenho no celular | Frames binários, decimação, níveis de qualidade, spike 3D na F1 |
 | Curva de Rust | Crates pequenos, código direto (G7), testes legíveis, uma demo por fase |
 | Crescimento de escopo do VC | Widgets por schema. Cada pedido vira mini-plano e decisão |
+| Validação acumulada (11 entregas sem validar, 2026-11-17) | Rodada de validação antes da próxima fase; checklists na tabela das Pendências |
+| Servidor sem autenticação na rede local | Segurança da F11 (PIN, papéis, Origin) é a 4ª prioridade; até lá, não usar com público na mesma rede |
+| Scripts JS de terceiros (RGB Matrix) | QuickJS com limite de 250 ms e 32 MB, uma thread por sessão (F9) |
+| Muitas migrações do projeto (v22) | Testes de Rust abrem o exemplo; arquivos de teste podem ser convertidos pela tela |
 
 ## Verificação
 

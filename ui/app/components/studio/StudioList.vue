@@ -7,15 +7,21 @@ import type { Function } from '~/types/generated/Function'
 // segurar e arrastar) até uma pasta do mesmo tipo; solta no título do tipo, ela sai da pasta.
 const props = defineProps<{ query: string }>()
 const selectedId = defineModel<string>()
+// Pasta escolhida (id): é onde a próxima criação nasce. Tocar numa pasta a escolhe; tocar no título de um
+// tipo tira a escolha; tocar numa criação escolhe a pasta dela
+const chosenFolder = defineModel<string | null>('folder', { default: null })
 const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
-const collapsed = ref(new Set<string>())
+const opened = ref(new Set<string>()) // tipos e pastas abertos; tudo começa fechado
 const folderDialog = ref<{ id?: string; kind: FunctionType; name: string; parent: string | null }>()
 const confirmRemove = ref(false)
 
-const isOpen = (key: string) => !!props.query || !collapsed.value.has(key)
-const toggle = (key: string) => (collapsed.value.has(key) ? collapsed.value.delete(key) : collapsed.value.add(key))
+const isOpen = (key: string) => !!props.query || opened.value.has(key)
+function toggle(row: Row) {
+  chosenFolder.value = row.kind === 'folder' ? row.folder : null
+  if (!opened.value.delete(row.key)) opened.value.add(row.key)
+}
 const running = (id: string) => state.value.running.includes(id)
 // A pasta `id` é a `ancestor` ou está dentro dela
 const within = (id: string, ancestor: string): boolean => {
@@ -126,7 +132,10 @@ function up() {
   drag.value = undefined
   if (!d) return
   if (!d.active) {
-    if (!d.moved && d.row.fn) selectedId.value = d.row.fn.id
+    if (!d.moved && d.row.fn) {
+      selectedId.value = d.row.fn.id
+      chosenFolder.value = d.row.fn.folder
+    }
     return
   }
   if (d.target === undefined) return
@@ -153,7 +162,7 @@ function cancel() {
 function saveFolder() {
   const { id, kind, name, parent } = folderDialog.value!
   send({ op: 'saveFolder', folder: { id: id ?? uuidv7(), kind, name: name.trim() || t('studio.newFolder'), parent } })
-  if (parent) collapsed.value.delete(parent)
+  if (parent) opened.value.add(parent)
   folderDialog.value = undefined
 }
 
@@ -178,7 +187,7 @@ watch(folderDialog, () => (confirmRemove.value = false))
         :data-parent="row.parent"
         :style="{ '--depth': row.depth }"
         :class="[row.kind, {
-          active: row.fn && row.fn.id === selectedId,
+          active: row.fn ? row.fn.id === selectedId : row.kind === 'folder' && row.folder === chosenFolder,
           dragging: drag?.active && row.key === drag.row.key,
           target: drag?.active && row.kind !== 'item' && drag.target === row.folder && drag.row.type === row.type && (!drag.zone || drag.zone === 'into'),
           before: drag?.active && row.kind === 'folder' && drag.target === row.folder && drag.zone === 'before',
@@ -206,7 +215,7 @@ watch(folderDialog, () => (confirmRemove.value = false))
           </span>
         </template>
         <template v-else>
-          <button type="button" class="toggle" @click="toggle(row.key)">
+          <button type="button" class="toggle" @click="toggle(row)">
             <component :is="isOpen(row.key) ? ChevronDown : ChevronRight" :size="16" class="shrink-0 text-fg-dim" />
             <component :is="row.kind === 'type' ? functionIcons[row.type] : Folder" :size="18" class="shrink-0" />
             <span class="truncate">{{ row.label }}</span>

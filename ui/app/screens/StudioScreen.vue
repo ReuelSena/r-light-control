@@ -9,6 +9,7 @@ const { t } = useI18n()
 const { state, send } = useEngine()
 const project = computed(() => state.value.project)
 const selectedId = ref<string>()
+const folderId = ref<string | null>(null) // pasta escolhida na lista: onde a criação nova nasce
 const query = ref('')
 const creating = ref(false)
 const capturing = ref(false)
@@ -40,7 +41,9 @@ onBeforeUnmount(stopPreview)
 // Conteúdo inicial de cada tipo
 function blank(type: FunctionType): Function {
   const name = t('studio.newName', { type: t(`functionType.${type}`), n: project.value.functions.filter((f) => f.type === type).length + 1 })
-  const base = { id: uuidv7(), name, folder: null, priority: 'normal' } as const
+  // Só vale a pasta escolhida se ela for do tipo da criação (e ainda existir)
+  const folder = project.value.folders.find((d) => d.id === folderId.value && d.kind === type)?.id ?? null
+  const base = { id: uuidv7(), name, folder, priority: 'normal' } as const
   const timing = { fadeInMs: 0, holdMs: 1000, fadeOutMs: 0 }
   const playback = { runOrder: 'loop', direction: 'forward', timing } as const
   const chaser: Chaser = {
@@ -128,7 +131,7 @@ function remove() {
           {{ t('studio.new') }}
         </RlButton>
       </div>
-      <StudioList v-model="selectedId" class="flex-1" :query="query" />
+      <StudioList v-model="selectedId" v-model:folder="folderId" class="flex-1" :query="query" />
     </section>
 
     <section v-if="selected" class="panel @container min-h-0 overflow-auto">

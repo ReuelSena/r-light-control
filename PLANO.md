@@ -510,13 +510,15 @@ Validação:
 
 ## Etapa E — Ferramentas e visualização
 
-### F13 — Editor de fixtures · ⬜
+### F13 — Editor de fixtures · 🟡 (mini-plano escrito em 2026-11-17, aguardando a aprovação)
 
-- Informações gerais, canais (grupo/preset e capabilities com validação de faixas), modos, cabeças e dados físicos.
+Mini-plano e decisões: [docs/fases/fase-13.md](docs/fases/fase-13.md). Prioridade nº 1 do usuário. O editor existe como protótipo (F2) e salva; a F13 o torna real: validação no servidor, cabeças, valor padrão e cor da faixa, duplicar canal, modo e definição, e proteção das definições em uso pelo projeto.
 - **Ref:** `qmlui/fixtureeditor/{channeledit,modeedit,physicaledit}.cpp`
 
-Validação:
+Validação (detalhada em [docs/fases/fase-13.md](docs/fases/fase-13.md#validação-com-você)):
 - [ ] Criar do zero um par RGBW de 7 canais, patchar e controlar.
+- [ ] Criar uma barra de LED com 3 cabeças RGB.
+- [ ] Salvar com defeito é recusado; editar uma definição em uso não quebra o projeto.
 
 ### F13b — Intercâmbio: GDTF, MVR e importação parcial · ⬜ (nova, 2026-10-21)
 

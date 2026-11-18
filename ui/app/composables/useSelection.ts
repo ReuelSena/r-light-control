@@ -43,8 +43,9 @@ export function useSelection() {
     picks.value = keys
     mode.value = null
   }
-  /** Tocar soma o item; se já está, tira. */
-  const toggle = (key: string) => set(isOn(key) ? picks.value.filter((k) => k !== key) : [...picks.value, key])
+  /** Tocar soma o item; se já está, tira. No modo solo, o item escolhido é o único (e tocar nele o tira). */
+  const toggle = (key: string, solo = false) =>
+    set(isOn(key) ? picks.value.filter((k) => k !== key) : solo ? [key] : [...picks.value, key])
   const all = () => set([ALL])
   const clear = () => set([])
 

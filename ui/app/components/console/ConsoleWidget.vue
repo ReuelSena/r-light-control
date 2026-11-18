@@ -31,6 +31,17 @@ const selectorItems = computed(() => {
   return [...groups, ...saved]
 })
 // A tecla de um item (ou de `all` e `clear`) para a etiqueta, com as dicas de atalho ligadas
+// Tamanho escolhido dos botões do Seletor, em células da grade (--cell, que segue o zoom do console); o
+// texto cresce com a altura. Sem tamanho, o automático de antes
+const buttonStyle = computed(() => {
+  const w = props.widget
+  if (w.type !== 'selector') return undefined
+  return {
+    width: w.buttonWidth ? `calc(var(--cell) * ${w.buttonWidth})` : undefined,
+    height: w.buttonHeight ? `calc(var(--cell) * ${w.buttonHeight})` : undefined,
+    fontSize: w.buttonHeight ? `max(10px, calc(var(--cell) * ${w.buttonHeight} * 0.3))` : undefined,
+  }
+})
 const keyOf = (item: string) => (props.widget.type === 'selector' && prefs.value.keyHints ? props.widget.keys.find((k) => k.item === item)?.key : undefined)
 const splitModes = ['first', 'second', 'odd', 'even', 'wings', 'one'] as const
 const blink = ref(false)
@@ -219,8 +230,9 @@ function setColor(i: number, color: string) {
           :key="item.id"
           size="sm"
           :color="item.parent ? 'var(--color-lcd)' : widget.color"
+          :style="buttonStyle"
           :model-value="sel.isOn(item.id)"
-          @press="sel.toggle(item.id)"
+          @press="sel.toggle(item.id, widget.solo)"
         >
           {{ item.name }}
           <span v-if="keyOf(item.id)" class="ml-1 font-lcd text-[10px] text-lcd">{{ keyLabel(keyOf(item.id)!) }}</span>

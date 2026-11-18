@@ -762,6 +762,9 @@
     "parentGroup": "grupo com subgrupos",
     "selected": "{n} selecionadas",
     "noSelectorItems": "Escolha os grupos nas propriedades.",
+    "solo": "Solo",
+    "buttonWidth": "Largura dos botões",
+    "buttonHeight": "Altura dos botões",
     "split": {
       "title": "Dividir",
       "bar": "Barra de divisões",
@@ -856,6 +859,8 @@
       "speedDial": "Ajusta ao vivo os tempos das criações da lista, no lugar dos tempos gravados nelas. \"Gravados\" volta aos tempos de cada criação.\nSeguindo o BPM, os tempos ficam em batidas do BPM master, e o Tap é o mesmo do master: um tap muda o BPM, e os tempos e os chasers da lista acompanham.\nEm segundos, o Tap marca a duração (hold do chaser, ciclo do EFX, passo do RGB Matrix).",
       "cueList": "Go: começa o chaser, vai para o passo seguinte (ou para o carregado) e continua o pausado. Voltar: o passo anterior. Pausar: congela os fades e o hold; o Go ou o Pausar continuam de onde parou.\nToque num passo: vai para ele. Toque longo: carrega o passo para o próximo Go, sem disparar.",
       "target": "O botão liga a criação só nas fixtures escolhidas no Seletor deste aparelho (sem seleção, nada acontece e o Seletor pisca). Tocar de novo, com a criação ligada em toda a seleção, a desliga nelas.\nCom categoria, ligar uma cor tira as mesmas fixtures da cor anterior (a anterior sai com o fade out). Soma: não tira nada.\nO LED fica cheio quando a criação cobre a seleção toda e amarelo quando cobre só parte.",
+      "buttonSize": "Tamanho dos botões dos grupos, em células da grade (a mesma medida do tamanho do elemento; segue o zoom do console). Em 0, o tamanho automático. O texto cresce com a altura.",
+      "solo": "Com o Solo ligado, tocar num grupo escolhe só ele (os outros saem da seleção); tocar no grupo escolhido o tira. Vale também para as teclas dos grupos.",
       "split": "Mostra, no Seletor, os botões que dividem a seleção na ordem das fixtures: metades, ímpares e pares (pela posição), asas (de cada ponta para o centro, par a par) e uma por vez. Anterior e Próxima percorrem as asas ou as fixtures, dando a volta; Tudo volta à seleção inteira.",
       "selector": "Escolhe as fixtures que os botões de \"Alvo: seleção\" afetam. Tocar num grupo soma o grupo à seleção; tocar de novo o tira. Escolher dois subgrupos não liga o grupo pai (o LED do grupo pai é ciano). A seleção é deste aparelho.",
       "selectorKeys": "Uma tecla por grupo, subgrupo e seleção salva (tocar de novo tira); também para Todos e Limpar. Desligar o botão Todos ou Limpar tira o botão e a tecla dele.",

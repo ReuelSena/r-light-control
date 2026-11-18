@@ -1078,6 +1078,14 @@ pub struct VcButton {
 pub struct VcSelector {
     pub groups: Vec<Id>,
     pub selections: Vec<Id>,
+    /// Modo solo: tocar num item escolhe só ele (os outros saem); tocar no escolhido o tira.
+    #[serde(default)]
+    pub solo: bool,
+    /// Tamanho dos botões dos itens, em células da grade (0 = automático, o tamanho de antes).
+    #[serde(default)]
+    pub button_width: u8,
+    #[serde(default)]
+    pub button_height: u8,
     /// Barra "Dividir" (metades, asas, pares e ímpares, uma por vez); ligada nos arquivos de antes.
     #[serde(default = "splits_on")]
     pub splits: bool,

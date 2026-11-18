@@ -336,6 +336,20 @@ onBeforeUnmount(() => {
           </RlButton>
         </div>
       </div>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="field-label">
+          <span class="flex items-center gap-1">{{ t('vc.buttonWidth') }} <RlInfo :text="t('vc.info.buttonSize')" /></span>
+          <input class="field" type="number" min="0" max="64" :value="widget.buttonWidth" @change="save({ buttonWidth: Math.min(64, Math.max(0, Math.round(Number(($event.target as HTMLInputElement).value) || 0))) })">
+        </label>
+        <label class="field-label">
+          {{ t('vc.buttonHeight') }}
+          <input class="field" type="number" min="0" max="64" :value="widget.buttonHeight" @change="save({ buttonHeight: Math.min(64, Math.max(0, Math.round(Number(($event.target as HTMLInputElement).value) || 0))) })">
+        </label>
+      </div>
+      <span class="flex items-center gap-1">
+        <RlSwitch :model-value="widget.solo" @update:model-value="(solo) => save({ solo })">{{ t('vc.solo') }}</RlSwitch>
+        <RlInfo :text="t('vc.info.solo')" />
+      </span>
       <div class="field-label">
         <span class="flex items-center gap-1">{{ t('vc.split.title') }} <RlInfo :text="t('vc.info.split')" /></span>
         <RlButton size="sm" highlight="led" :model-value="widget.splits" @press="save({ splits: !widget.splits })">{{ t('vc.split.bar') }}</RlButton>

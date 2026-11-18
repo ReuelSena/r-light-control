@@ -6,6 +6,14 @@ import type { SelectorKey } from "./SelectorKey";
  */
 export type VcSelector = { groups: Array<string>, selections: Array<string>, 
 /**
+ * Modo solo: tocar num item escolhe só ele (os outros saem); tocar no escolhido o tira.
+ */
+solo: boolean, 
+/**
+ * Tamanho dos botões dos itens, em células da grade (0 = automático, o tamanho de antes).
+ */
+buttonWidth: number, buttonHeight: number, 
+/**
  * Barra "Dividir" (metades, asas, pares e ímpares, uma por vez); ligada nos arquivos de antes.
  */
 splits: boolean, 

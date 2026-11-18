@@ -6469,6 +6469,9 @@ mod tests {
         selector.kind = VcWidgetKind::Selector(VcSelector {
             groups: vec![],
             selections: vec!["sel1".into()],
+            solo: false,
+            button_width: 0,
+            button_height: 0,
             splits: true,
             all: true,
             clear: true,

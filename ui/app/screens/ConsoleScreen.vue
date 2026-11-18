@@ -79,7 +79,7 @@ function blank(type: WidgetType): VcWidget {
     animation: { type, matrix: firstOf('rgbMatrix') },
     label: { type, background: null, border: null },
     macro: { type, steps: [], icon: null },
-    selector: { type, groups: [], selections: [], splits: true, all: true, clear: true, keys: [] },
+    selector: { type, groups: [], selections: [], solo: false, buttonWidth: 0, buttonHeight: 0, splits: true, all: true, clear: true, keys: [] },
   }
   const [w, h] = widgetKinds[type].size
   const layouts = { phone: null, tablet: null, desktop: null, [format.value]: spot(null, w, h) }
@@ -303,7 +303,7 @@ function onKey(e: KeyboardEvent, down: boolean) {
       else if (item === 'split:all') picker.restore()
       else if (item.startsWith('split:')) {
         if (w.splits) picker.split(item.slice(6) as Split)
-      } else if (w.groups.includes(item) || w.selections.includes(item)) picker.toggle(item)
+      } else if (w.groups.includes(item) || w.selections.includes(item)) picker.toggle(item, w.solo)
     }
   }
   if (sequenced) typed.length = 0
@@ -423,7 +423,7 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Na edição, o painel fica sempre no lugar: escolher ou soltar um elemento não mexe no layout -->
-    <aside v-if="editing" class="panel w-80 shrink-0 overflow-y-auto @max-5xl:hidden">
+    <aside v-if="editing" class="panel w-md shrink-0 overflow-y-auto @max-5xl:hidden">
       <ConsoleProperties v-if="selected.length === 1" :widget="selected[0]!" />
       <template v-else>
         <h2 class="heading">{{ t('vc.properties') }}</h2>

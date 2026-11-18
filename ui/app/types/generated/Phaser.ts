@@ -3,28 +3,15 @@ import type { PhaserLayer } from "./PhaserLayer";
 import type { Timing } from "./Timing";
 
 /**
- * Efeito em loop sobre os atributos de um grupo de fixtures (P4, o "phaser" da grandMA): cada camada
- * leva um atributo por uma onda, e as fixtures do grupo andam a onda defasadas umas das outras.
+ * Efeito em loop (P4, o "phaser" da grandMA): cada camada leva uma onda a um grupo de fixtures (um
+ * atributo) ou a um grupo de canais, e as fixtures ou os canais do grupo andam a onda defasados uns
+ * dos outros. Cada camada tem o próprio grupo e a própria defasagem.
  */
 export type Phaser = { 
 /**
- * Grupo de fixtures; as fixtures com o atributo de cada camada andam a onda, na ordem da grade.
- */
-group: string | null, 
-/**
- * Grupo de canais, no lugar do grupo de fixtures (um ou outro): cada camada leva os canais do
- * grupo que são do atributo dela, na ordem do grupo.
- */
-channelGroup: string | null, 
-/**
- * De 1 a 8 camadas, no máximo uma por atributo e tipo (absoluta ou relativa).
+ * De 1 a 16 camadas, no máximo uma por fonte, atributo e tipo (absoluta ou relativa).
  */
 layers: Array<PhaserLayer>, 
-/**
- * Graus de atraso de uma fixture para a próxima, de -360 a 360 (0 = juntas; negativo = a onda
- * anda para o outro lado).
- */
-spread: number, 
 /**
  * O ciclo em batidas do BPM master: `hold_ms` vale em milésimos de batida.
  */

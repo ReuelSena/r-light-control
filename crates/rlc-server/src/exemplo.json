@@ -5258,10 +5258,12 @@
     "folder": "d5",
     "priority": "normal",
     "type": "phaser",
-    "group": "g4",
     "layers": [
      {
+      "group": "g4",
+      "channelGroup": null,
       "attribute": "dimmer",
+      "spread": 30,
       "shape": "sine",
       "width": 25,
       "low": 0,
@@ -5270,7 +5272,6 @@
       "relative": false
      }
     ],
-    "spread": 30,
     "beats": true,
     "timing": {
      "fadeInMs": 1000,
@@ -5280,16 +5281,41 @@
    },
    {
     "id": "ph6",
-    "name": "Onda de dimmer no grupo de canais (Dimmer PARs)",
+    "name": "Onda de dimmer por grupo (fixtures e canais)",
     "folder": "d5",
     "priority": "normal",
     "type": "phaser",
-    "group": null,
-    "channelGroup": "cg1",
     "layers": [
      {
+      "group": "g4",
+      "channelGroup": null,
       "attribute": "dimmer",
+      "spread": 30,
+      "shape": "sine",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 0,
+      "relative": false
+     },
+     {
+      "group": null,
+      "channelGroup": "cg7",
+      "attribute": "dimmer",
+      "spread": 90,
       "shape": "triangle",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 0,
+      "relative": false
+     },
+     {
+      "group": null,
+      "channelGroup": "cg1",
+      "attribute": "dimmer",
+      "spread": 60,
+      "shape": "sawUp",
       "width": 25,
       "low": 0,
       "high": 255,
@@ -5297,7 +5323,6 @@
       "relative": false
      }
     ],
-    "spread": 60,
     "beats": true,
     "timing": {
      "fadeInMs": 1000,
@@ -5311,10 +5336,12 @@
     "folder": "d5",
     "priority": "normal",
     "type": "phaser",
-    "group": "g4",
     "layers": [
      {
+      "group": "g4",
+      "channelGroup": null,
       "attribute": "dimmer",
+      "spread": 30,
       "shape": "pulse",
       "width": 20,
       "low": 0,
@@ -5323,7 +5350,6 @@
       "relative": false
      }
     ],
-    "spread": 30,
     "beats": true,
     "timing": {
      "fadeInMs": 1000,
@@ -5337,10 +5363,12 @@
     "folder": "d5",
     "priority": "normal",
     "type": "phaser",
-    "group": "g4",
     "layers": [
      {
+      "group": "g4",
+      "channelGroup": null,
       "attribute": "red",
+      "spread": 15,
       "shape": "sine",
       "width": 25,
       "low": 0,
@@ -5349,7 +5377,10 @@
       "relative": false
      },
      {
+      "group": "g4",
+      "channelGroup": null,
       "attribute": "green",
+      "spread": 15,
       "shape": "sine",
       "width": 25,
       "low": 0,
@@ -5358,7 +5389,10 @@
       "relative": false
      },
      {
+      "group": "g4",
+      "channelGroup": null,
       "attribute": "blue",
+      "spread": 15,
       "shape": "sine",
       "width": 25,
       "low": 0,
@@ -5367,7 +5401,6 @@
       "relative": false
      }
     ],
-    "spread": 15,
     "beats": true,
     "timing": {
      "fadeInMs": 1000,
@@ -5381,10 +5414,12 @@
     "folder": "d5",
     "priority": "normal",
     "type": "phaser",
-    "group": "g3",
     "layers": [
      {
+      "group": "g3",
+      "channelGroup": null,
       "attribute": "pan",
+      "spread": 0,
       "shape": "sine",
       "width": 25,
       "low": 107,
@@ -5393,7 +5428,10 @@
       "relative": true
      },
      {
+      "group": "g3",
+      "channelGroup": null,
       "attribute": "tilt",
+      "spread": 0,
       "shape": "sine",
       "width": 25,
       "low": 107,
@@ -5402,7 +5440,6 @@
       "relative": true
      }
     ],
-    "spread": 0,
     "beats": false,
     "timing": {
      "fadeInMs": 1000,
@@ -6172,10 +6209,12 @@
     "folder": "d11",
     "priority": "high",
     "type": "phaser",
-    "group": "g4",
     "layers": [
      {
+      "group": "g4",
+      "channelGroup": null,
       "attribute": "dimmer",
+      "spread": 30,
       "shape": "sine",
       "width": 25,
       "low": 0,
@@ -6184,7 +6223,6 @@
       "relative": false
      }
     ],
-    "spread": 30,
     "beats": true,
     "timing": {
      "fadeInMs": 1000,

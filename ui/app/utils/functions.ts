@@ -243,20 +243,18 @@ export const phaserAttributes: Attribute[] = [
 ]
 export const waveShapes = ['sine', 'triangle', 'sawUp', 'sawDown', 'pulse'] as const
 
-/** Quantas fixtures (cabeças) do grupo andam a onda de um atributo: a da cabeça ou, sem o atributo nela,
- * a da fixture inteira, uma vez só, na ordem da grade (`phaser_targets` em apply.rs). */
-export function phaserCount(project: Project, ph: Phaser, attribute: Attribute) {
-  // Grupo de canais: os canais do atributo (sem os finos), cada canal uma vez
-  if (ph.channelGroup) {
-    const channels = project.channelGroups.find((g) => g.id === ph.channelGroup)?.channels ?? []
-    const seen = new Set(channels.filter((c) => {
+/** Quantos canais (fixtures ou cabeças) andam a onda de uma camada (`phaser_targets` em apply.rs). No grupo de
+ * canais, todos os canais dele (sem os finos), cada um uma vez; no grupo de fixtures, a cabeça (ou, sem o
+ * atributo nela, a fixture inteira) que tem o atributo da camada, na ordem da grade. */
+export function phaserCount(project: Project, layer: PhaserLayer) {
+  if (layer.channelGroup) {
+    const channels = project.channelGroups.find((g) => g.id === layer.channelGroup)?.channels ?? []
+    return new Set(channels.filter((c) => {
       const fixture = project.fixtures.find((f) => f.id === c.fixture)
-      const channel = fixture && modeChannels(project, fixture)[c.channel]
-      return channel && channel.attribute === attribute && !channel.fine
-    }).map((c) => `${c.fixture}:${c.channel}`))
-    return seen.size
+      return fixture && modeChannels(project, fixture)[c.channel]?.fine === false
+    }).map((c) => `${c.fixture}:${c.channel}`)).size
   }
-  const group = ph.group
+  const { group, attribute } = layer
   const cells = [...(project.fixtureGroups.find((g) => g.id === group)?.cells ?? [])].sort((a, b) => a.y - b.y || a.x - b.x)
   const seen = new Set<string>()
   for (const cell of cells) {
@@ -274,10 +272,10 @@ export function phaserCount(project: Project, ph: Phaser, attribute: Attribute) 
 }
 
 /** O valor da camada (0 a 255, do piso ao teto) da fixture `i` depois de `turns` ciclos, como o `wave` do
- * motor (crates/rlc-engine/src/phaser.rs): a fixture anda a onda atrasada em i × defasagem, e a camada, na
- * fase dela. */
-export function phaserValue(layer: PhaserLayer, spread: number, i: number, turns: number) {
-  const delay = (layer.phase + i * spread) / 360
+ * motor (crates/rlc-engine/src/phaser.rs): a fixture anda a onda atrasada em i × defasagem da camada,
+ * e a camada, na fase dela. */
+export function phaserValue(layer: PhaserLayer, i: number, turns: number) {
+  const delay = (layer.phase + i * layer.spread) / 360
   const u = (((turns - delay) % 1) + 1) % 1
   const level = {
     sine: 0.5 - 0.5 * Math.cos(u * TAU),

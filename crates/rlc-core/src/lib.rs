@@ -748,33 +748,36 @@ pub struct RgbMatrix {
     pub timing: Timing,
 }
 
-/// Efeito em loop sobre os atributos de um grupo de fixtures (P4, o "phaser" da grandMA): cada camada
-/// leva um atributo por uma onda, e as fixtures do grupo andam a onda defasadas umas das outras.
+/// Efeito em loop (P4, o "phaser" da grandMA): cada camada leva uma onda a um grupo de fixtures (um
+/// atributo) ou a um grupo de canais, e as fixtures ou os canais do grupo andam a onda defasados uns
+/// dos outros. Cada camada tem o próprio grupo e a própria defasagem.
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Phaser {
-    /// Grupo de fixtures; as fixtures com o atributo de cada camada andam a onda, na ordem da grade.
-    pub group: Option<Id>,
-    /// Grupo de canais, no lugar do grupo de fixtures (um ou outro): cada camada leva os canais do
-    /// grupo que são do atributo dela, na ordem do grupo.
-    pub channel_group: Option<Id>,
-    /// De 1 a 8 camadas, no máximo uma por atributo e tipo (absoluta ou relativa).
+    /// De 1 a 16 camadas, no máximo uma por fonte, atributo e tipo (absoluta ou relativa).
     pub layers: Vec<PhaserLayer>,
-    /// Graus de atraso de uma fixture para a próxima, de -360 a 360 (0 = juntas; negativo = a onda
-    /// anda para o outro lado).
-    pub spread: i16,
     /// O ciclo em batidas do BPM master: `hold_ms` vale em milésimos de batida.
     pub beats: bool,
     /// `hold_ms` é a duração de um ciclo.
     pub timing: Timing,
 }
 
-/// Uma onda sobre um atributo.
+/// Uma onda sobre um grupo. A fonte é um grupo de fixtures (leva o `attribute`, na ordem da grade) ou
+/// um grupo de canais (leva todos os canais dele, na ordem do grupo, e ignora o `attribute`); sem
+/// nenhum dos dois, a camada não acende nada.
 #[derive(Serialize, Deserialize, TS, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PhaserLayer {
-    /// Só os contínuos: dimmer, as cores, pan, tilt, zoom, foco, íris e rotação do gobo.
+    /// Grupo de fixtures (um ou outro).
+    pub group: Option<Id>,
+    /// Grupo de canais (um ou outro).
+    pub channel_group: Option<Id>,
+    /// Só os contínuos: dimmer, as cores, pan, tilt, zoom, foco, íris e rotação do gobo. Só vale com
+    /// um grupo de fixtures.
     pub attribute: Attribute,
+    /// Graus de atraso de uma fixture (ou canal) para a próxima, de -360 a 360 (0 = juntas; negativo =
+    /// a onda anda para o outro lado).
+    pub spread: i16,
     pub shape: WaveShape,
     /// Só no pulso: a parte do ciclo em que ele fica no alto, de 1 a 99%.
     pub width: u8,

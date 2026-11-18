@@ -1,5 +1,5 @@
-//! Phaser no motor (P4): cada camada leva um atributo das fixtures do grupo por uma onda, e cada
-//! fixture anda a onda atrasada em relação à anterior. As camadas absolutas ficam num fader só e as
+//! Phaser no motor (P4): cada camada leva uma onda a um grupo, e cada fixture (ou canal) do grupo anda
+//! a onda atrasada em relação à anterior, pela defasagem da camada. As camadas absolutas ficam num fader só e as
 //! relativas em outro, como as cenas e o EFX: a criação entra a partir do que está embaixo e, ao parar,
 //! volta no fade out até lá. As relativas somam a onda ao que está embaixo, com o zero em 127.
 
@@ -14,16 +14,13 @@ use crate::{Ctx, Imposed, SceneLevel, Span, TICK, Times, is_valid};
 #[derive(Clone)]
 pub struct PhaserProgram {
     pub tracks: Vec<PhaserTrack>,
-    /// Graus de atraso de uma fixture para a próxima.
-    pub spread: i16,
     /// Duração de um ciclo.
     pub cycle: Span,
     pub fade_in: Span,
     pub fade_out: Span,
 }
 
-/// Uma camada e o canal do atributo dela em cada fixture do grupo, na ordem da grade (o valor não
-/// conta). A posição na lista é a da fixture na onda; um canal fora do universo (o 0) não acende, mas
+/// Uma camada e os canais dela, um por fixture ou canal do grupo, na ordem do grupo (o valor não conta). A posição na lista é a da fixture na onda; um canal fora do universo (o 0) não acende, mas
 /// guarda o lugar da fixture (a que está fora da máscara de uma execução alvo).
 #[derive(Clone, PartialEq, Debug)]
 pub struct PhaserTrack {
@@ -97,15 +94,15 @@ impl PhaserRunner {
     }
 
     fn place(&mut self, ctx: &mut Ctx) {
-        let PhaserProgram { tracks, spread, .. } = &self.phaser;
+        let tracks = &self.phaser.tracks;
         for part in self.parts.iter().flatten() {
             let Some(fader) = ctx.faders.iter_mut().find(|f| f.serial == part.serial) else {
                 continue;
             };
             for (f, &(k, i)) in fader.channels.iter_mut().zip(&part.slots) {
                 let layer = &tracks[k].layer;
-                // A fixture i anda a onda atrasada em i × defasagem, e a camada, na fase dela
-                let delay = (f64::from(layer.phase) + i as f64 * f64::from(*spread)) / 360.0;
+                // A fixture i anda a onda atrasada em i × defasagem da camada, e a camada, na fase dela
+                let delay = (f64::from(layer.phase) + i as f64 * f64::from(layer.spread)) / 360.0;
                 let value = wave(layer, (self.turns - delay).rem_euclid(1.0));
                 f.level.value = dmx(value, f.level.fine.is_some());
             }
@@ -203,7 +200,10 @@ mod tests {
     /// Uma camada de 0 a 200 que começa no piso.
     fn layer(shape: WaveShape) -> PhaserLayer {
         PhaserLayer {
+            group: None,
+            channel_group: None,
             attribute: Attribute::Dimmer,
+            spread: 0,
             shape,
             width: 25,
             low: 0,
@@ -220,7 +220,6 @@ mod tests {
                 layer: layer(shape),
                 targets: (1..=n).map(|c| level(c, None)).collect(),
             }],
-            spread: 0,
             cycle: Span::Ms(4000),
             fade_in: Span::Ms(0),
             fade_out: Span::Ms(0),
@@ -279,13 +278,13 @@ mod tests {
     fn the_fixtures_follow_one_another_by_the_spread() {
         // 4 fixtures: com 90° cada uma anda 50 quadros atrás da anterior
         let mut p = phaser(WaveShape::SawUp, 4);
-        p.spread = 90;
+        p.tracks[0].layer.spread = 90;
         near(&at(&p, 100, 4), &[100, 50, 0, 150]);
         // Sem defasagem, juntas
-        p.spread = 0;
+        p.tracks[0].layer.spread = 0;
         near(&at(&p, 100, 4), &[100; 4]);
         // Negativa, a onda anda para o outro lado
-        p.spread = -90;
+        p.tracks[0].layer.spread = -90;
         near(&at(&p, 100, 4), &[100, 150, 0, 50]);
     }
 
@@ -293,7 +292,7 @@ mod tests {
     fn the_layer_phase_delays_the_whole_layer() {
         let mut p = phaser(WaveShape::SawUp, 2);
         p.tracks[0].layer.phase = 180;
-        p.spread = 90;
+        p.tracks[0].layer.spread = 90;
         near(&at(&p, 0, 2), &[100, 50]);
     }
 

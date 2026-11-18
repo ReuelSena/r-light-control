@@ -69,8 +69,8 @@ function blank(type: FunctionType): Function {
       return { ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, algorithm: { type: 'plain' }, control: 'rgb', colors: ['#ff0000'], ...playback }
     case 'phaser':
       return {
-        ...base, type, group: project.value.fixtureGroups[0]?.id ?? null, channelGroup: null, spread: 0, beats: false, timing: { ...timing, holdMs: 2000 },
-        layers: [{ attribute: 'dimmer', shape: 'sine', width: 25, low: 0, high: 255, phase: 0, relative: false }],
+        ...base, type, beats: false, timing: { ...timing, holdMs: 2000 },
+        layers: [{ group: project.value.fixtureGroups[0]?.id ?? null, channelGroup: null, attribute: 'dimmer', spread: 0, shape: 'sine', width: 25, low: 0, high: 255, phase: 0, relative: false }],
       }
   }
 }

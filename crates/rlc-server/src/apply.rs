@@ -471,7 +471,15 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                         }
                     }
                     FunctionKind::RgbMatrix(m) if m.group.as_ref() == Some(&id) => m.group = None,
-                    FunctionKind::Phaser(ph) if ph.group.as_ref() == Some(&id) => ph.group = None,
+                    FunctionKind::Phaser(ph) => {
+                        for layer in ph
+                            .layers
+                            .iter_mut()
+                            .filter(|l| l.group.as_ref() == Some(&id))
+                        {
+                            layer.group = None;
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -586,12 +594,16 @@ pub fn apply(s: &mut Snapshot, op: Op) -> Applied {
                     slider.channel_groups.retain(|g| *g != id);
                 }
             }
-            // O Phaser que usava o grupo fica sem ele (como ao remover o grupo de fixtures)
+            // A camada de Phaser que usava o grupo fica sem ele (como ao remover o grupo de fixtures)
             for f in &mut p.functions {
-                if let FunctionKind::Phaser(ph) = &mut f.kind
-                    && ph.channel_group.as_ref() == Some(&id)
-                {
-                    ph.channel_group = None;
+                if let FunctionKind::Phaser(ph) = &mut f.kind {
+                    for layer in ph
+                        .layers
+                        .iter_mut()
+                        .filter(|l| l.channel_group.as_ref() == Some(&id))
+                    {
+                        layer.channel_group = None;
+                    }
                 }
             }
             vec![T::ChannelGroups, T::Console]
@@ -1948,10 +1960,9 @@ fn program(
                     .iter()
                     .map(|layer| PhaserTrack {
                         layer: layer.clone(),
-                        targets: phaser_targets(p, ph, layer.attribute, play.mask),
+                        targets: phaser_targets(p, layer, play.mask),
                     })
                     .collect(),
-                spread: ph.spread,
                 cycle: ms(dial[2].unwrap_or(unit(ph.timing.hold_ms))),
                 fade_in: fade(dial[0], ph.timing.fade_in_ms),
                 fade_out: fade(dial[1], ph.timing.fade_out_ms),
@@ -2697,17 +2708,12 @@ fn attribute_level(
     })
 }
 
-/// O canal de `attribute` do Phaser: no grupo de canais, os do atributo (com o fino que vem depois do
-/// grosso), na ordem do grupo; no grupo de fixtures, o de cada cabeça, na ordem da grade (linha por
-/// linha): o da cabeça ou, sem ele, o da fixture. Um canal entra uma vez só (a fixture de várias
+/// Os canais de uma camada do Phaser: no grupo de canais, todos eles (sem os finos, que entram com o
+/// grosso do mesmo atributo que vem antes), na ordem do grupo; no grupo de fixtures, o canal do
+/// atributo de cada cabeça, na ordem da grade (linha por linha): o da cabeça ou, sem ele, o da fixture. Um canal entra uma vez só (a fixture de várias
 /// cabeças que só tem o atributo na fixture inteira). Fora da máscara de uma execução alvo (VC-7), o
 /// canal vira o 0, que o motor pula: a fixture guarda o lugar dela na onda.
-fn phaser_targets<'a>(
-    p: &'a Project,
-    ph: &Phaser,
-    attribute: Attribute,
-    mask: Option<&[Id]>,
-) -> Vec<SceneLevel> {
+fn phaser_targets<'a>(p: &'a Project, layer: &PhaserLayer, mask: Option<&[Id]>) -> Vec<SceneLevel> {
     let mut targets: Vec<(&'a Id, SceneLevel)> = vec![];
     let mut add = |fixture: &'a Id, l: SceneLevel| {
         if !targets
@@ -2717,7 +2723,7 @@ fn phaser_targets<'a>(
             targets.push((fixture, l));
         }
     };
-    if let Some(group) = ph
+    if let Some(group) = layer
         .channel_group
         .as_ref()
         .and_then(|id| p.channel_groups.iter().find(|g| g.id == *id))
@@ -2728,12 +2734,9 @@ fn phaser_targets<'a>(
             };
             let channels: Vec<&Channel> = mode_channels(p, fixture).collect();
             let i = usize::from(c.channel);
-            if !channels
-                .get(i)
-                .is_some_and(|x| x.attribute == attribute && !x.fine)
-            {
+            let Some(attribute) = channels.get(i).filter(|x| !x.fine).map(|x| x.attribute) else {
                 continue;
-            }
+            };
             let fine = (i + 1..channels.len())
                 .find(|&j| channels[j].fine && channels[j].attribute == attribute);
             if let Some(coarse) = channel_address(p, &fixture.id, c.channel) {
@@ -2751,7 +2754,7 @@ fn phaser_targets<'a>(
     let mut cells: Vec<&GroupCell> = p
         .fixture_groups
         .iter()
-        .filter(|g| Some(&g.id) == ph.group.as_ref())
+        .filter(|g| Some(&g.id) == layer.group.as_ref())
         .flat_map(|g| &g.cells)
         .collect();
     cells.sort_by_key(|c| (c.y, c.x));
@@ -2761,8 +2764,9 @@ fn phaser_targets<'a>(
         };
         let (channels, head) = head_channels(p, fixture, cell.head);
         let all: Vec<usize> = (0..channels.len()).collect();
-        let level =
-            |positions: &[usize]| attribute_level(p, &fixture.id, &channels, positions, attribute);
+        let level = |positions: &[usize]| {
+            attribute_level(p, &fixture.id, &channels, positions, layer.attribute)
+        };
         if let Some(l) = level(&head).or_else(|| level(&all)) {
             add(&fixture.id, l);
         }
@@ -2782,34 +2786,35 @@ fn phaser_targets<'a>(
         .collect()
 }
 
-/// O Phaser salvo: um grupo que existe, de 1 a 8 camadas em atributos contínuos (um por tipo), com o
-/// piso abaixo do teto, a largura do pulso, a fase e a defasagem nos limites.
+/// O Phaser salvo: de 1 a 16 camadas, cada uma com um grupo que existe (de fixtures ou de canais, não
+/// os dois), atributos contínuos (um por fonte e tipo), o piso abaixo do teto, a largura do pulso, a
+/// fase e a defasagem nos limites. Uma camada sem grupo é válida (não acende nada).
 fn check_phaser(p: &Project, ph: &Phaser) -> Result<(), String> {
     use Attribute::*;
-    if ph
-        .group
-        .as_ref()
-        .is_some_and(|g| !p.fixture_groups.iter().any(|x| x.id == *g))
-    {
-        return Err("Grupo de fixtures não encontrado.".into());
-    }
-    if let Some(g) = &ph.channel_group {
-        if ph.group.is_some() {
-            return Err(
-                "O Phaser leva um grupo de fixtures ou um grupo de canais, não os dois.".into(),
-            );
-        }
-        if !p.channel_groups.iter().any(|x| x.id == *g) {
-            return Err("Grupo de canais não encontrado.".into());
-        }
-    }
-    if !(1..=8).contains(&ph.layers.len()) {
-        return Err("O Phaser tem de 1 a 8 camadas.".into());
-    }
-    if !(-360..=360).contains(&ph.spread) {
-        return Err("A defasagem do Phaser vai de -360° a 360°.".into());
+    if !(1..=16).contains(&ph.layers.len()) {
+        return Err("O Phaser tem de 1 a 16 camadas.".into());
     }
     for (i, l) in ph.layers.iter().enumerate() {
+        if l.group.is_some() && l.channel_group.is_some() {
+            return Err(
+                "A camada leva um grupo de fixtures ou um grupo de canais, não os dois.".into(),
+            );
+        }
+        if l.group
+            .as_ref()
+            .is_some_and(|g| !p.fixture_groups.iter().any(|x| x.id == *g))
+        {
+            return Err("Grupo de fixtures não encontrado.".into());
+        }
+        if l.channel_group
+            .as_ref()
+            .is_some_and(|g| !p.channel_groups.iter().any(|x| x.id == *g))
+        {
+            return Err("Grupo de canais não encontrado.".into());
+        }
+        if !(-360..=360).contains(&l.spread) {
+            return Err("A defasagem da camada vai de -360° a 360°.".into());
+        }
         if !is_intensity(l.attribute)
             && !matches!(l.attribute, Pan | Tilt | Zoom | Focus | Iris | GoboRotation)
         {
@@ -2824,11 +2829,18 @@ fn check_phaser(p: &Project, ph: &Phaser) -> Result<(), String> {
         if l.low > l.high {
             return Err("O piso da onda não pode passar do teto.".into());
         }
-        if ph.layers[..i]
-            .iter()
-            .any(|o| o.attribute == l.attribute && o.relative == l.relative)
-        {
-            return Err("Atributo repetido no Phaser.".into());
+        // Duas camadas no mesmo canal brigariam: uma por grupo de canais, ou por grupo de fixtures e
+        // atributo, em cada tipo (absoluta ou relativa)
+        let same = |o: &PhaserLayer| {
+            o.relative == l.relative
+                && if l.channel_group.is_some() {
+                    o.channel_group == l.channel_group
+                } else {
+                    l.group.is_some() && o.group == l.group && o.attribute == l.attribute
+                }
+        };
+        if ph.layers[..i].iter().any(same) {
+            return Err("Camada repetida no Phaser: o mesmo grupo e atributo.".into());
         }
     }
     Ok(())
@@ -4270,7 +4282,10 @@ mod tests {
         assert_eq!(parleds.len(), 12);
         // Onda de dimmer: o dimmer (o primeiro canal) de cada ParLed, com o ciclo em 4 batidas
         let wave = phaser_program(&s, "ph1");
-        assert_eq!((wave.spread, wave.cycle), (30, Span::Beats(4000)));
+        assert_eq!(
+            (wave.tracks[0].layer.spread, wave.cycle),
+            (30, Span::Beats(4000))
+        );
         assert_eq!(channels(&wave.tracks[0]), parleds);
         // Arco-íris: vermelho, verde e azul são o segundo, o terceiro e o quarto canal
         let rainbow = phaser_program(&s, "ph3");
@@ -4293,12 +4308,12 @@ mod tests {
         // O grupo "Moving heads" não tem cores: a camada de vermelho não acha nenhuma fixture
         let mut s = example();
         let ph = phaser_mut(&mut s, "ph1");
-        ph.group = Some("g3".into());
+        ph.layers[0].group = Some("g3".into());
         ph.layers[0].attribute = Attribute::Red;
         run(&mut s, "ph1");
         assert!(phaser_program(&s, "ph1").tracks[0].targets.is_empty());
         // Sem grupo, o Phaser não acende nada
-        phaser_mut(&mut s, "ph1").group = None;
+        phaser_mut(&mut s, "ph1").layers[0].group = None;
         assert!(phaser_program(&s, "ph1").tracks[0].targets.is_empty());
     }
 
@@ -4355,28 +4370,43 @@ mod tests {
             attributes: vec![],
             channels,
         });
+        // A camada 0 leva o grupo de canais (todos os canais, com cada atributo no seu); a camada 1, o
+        // vermelho do grupo de fixtures dos ParLeds, com outra defasagem
         let ph = phaser_mut(&mut s, "ph1");
-        ph.group = None;
-        ph.channel_group = Some("cgp".into());
+        ph.layers[0].group = None;
+        ph.layers[0].channel_group = Some("cgp".into());
         ph.layers.push(PhaserLayer {
-            attribute: Attribute::Pan,
+            group: Some("g4".into()),
+            channel_group: None,
+            attribute: Attribute::Red,
+            spread: 45,
             ..ph.layers[0].clone()
         });
         run(&mut s, "ph1");
         let program = phaser_program(&s, "ph1");
-        let dimmer: Vec<u16> = program.tracks[0]
+        let targets = &program.tracks[0].targets;
+        let mut expected: Vec<u16> = parleds.iter().rev().map(|f| address(&s, f)).collect();
+        expected.insert(1, address(&s, &parleds[0]) + 1);
+        let beam_address = address(&s, &beam);
+        expected.push(beam_address);
+        assert_eq!(
+            targets.iter().map(|t| t.channel).collect::<Vec<_>>(),
+            expected
+        );
+        assert_eq!(targets.last().unwrap().fine, Some(beam_address + 1));
+        assert_eq!(program.tracks[0].layer.spread, 30);
+        assert_eq!(program.tracks[1].layer.spread, 45);
+        let red: Vec<u16> = program.tracks[1]
             .targets
             .iter()
             .map(|t| t.channel)
             .collect();
-        let expected: Vec<u16> = parleds.iter().rev().map(|f| address(&s, f)).collect();
-        assert_eq!(dimmer, expected);
-        let pan = &program.tracks[1].targets;
-        let beam_address = address(&s, &beam);
-        assert_eq!(pan.len(), 1);
         assert_eq!(
-            (pan[0].channel, pan[0].fine),
-            (beam_address, Some(beam_address + 1))
+            red,
+            parleds
+                .iter()
+                .map(|f| address(&s, f) + 1)
+                .collect::<Vec<_>>()
         );
         // Um grupo de fixtures e um de canais juntos, ou um grupo que não existe, são recusados
         let mut f = s
@@ -4389,7 +4419,7 @@ mod tests {
         let FunctionKind::Phaser(ph) = &mut f.kind else {
             panic!()
         };
-        ph.group = Some("g4".into());
+        ph.layers[0].group = Some("g4".into());
         assert!(
             apply(
                 &mut s,
@@ -4402,12 +4432,12 @@ mod tests {
         let FunctionKind::Phaser(ph) = &mut f.kind else {
             panic!()
         };
-        ph.group = None;
-        ph.channel_group = Some("nao-existe".into());
+        ph.layers[0].group = None;
+        ph.layers[0].channel_group = Some("nao-existe".into());
         assert!(apply(&mut s, Op::SaveFunction { function: f }).is_err());
-        // Remover o grupo de canais deixa o Phaser sem ele
+        // Remover o grupo de canais deixa a camada sem ele
         apply(&mut s, Op::RemoveChannelGroup { id: "cgp".into() }).unwrap();
-        assert_eq!(phaser_mut(&mut s, "ph1").channel_group, None);
+        assert_eq!(phaser_mut(&mut s, "ph1").layers[0].channel_group, None);
     }
 
     #[test]
@@ -4428,12 +4458,15 @@ mod tests {
             apply(s, Op::SaveFunction { function: f }).map(|_| ())
         };
         assert!(save(&mut s, |_| {}).is_ok());
-        let cases: [(&str, Edit); 9] = [
-            ("grupo", |ph| ph.group = Some("nao-existe".into())),
+        let cases: [(&str, Edit); 10] = [
+            ("grupo", |ph| ph.layers[0].group = Some("nao-existe".into())),
+            ("os dois grupos", |ph| {
+                ph.layers[0].channel_group = Some("cg1".into())
+            }),
             ("sem camadas", |ph| ph.layers.clear()),
             ("camadas demais", |ph| {
                 let layer = ph.layers[0].clone();
-                ph.layers = vec![layer; 9];
+                ph.layers = vec![layer; 17];
             }),
             ("atributo que não é contínuo", |ph| {
                 ph.layers[0].attribute = Attribute::Gobo
@@ -4446,7 +4479,7 @@ mod tests {
             ("piso acima do teto", |ph| {
                 (ph.layers[0].low, ph.layers[0].high) = (200, 100)
             }),
-            ("defasagem", |ph| ph.spread = 361),
+            ("defasagem", |ph| ph.layers[0].spread = 361),
         ];
         for (what, edit) in cases {
             assert!(save(&mut s, edit).is_err(), "{what}");
@@ -4465,8 +4498,11 @@ mod tests {
         let mut s = example();
         let op = Op::RemoveFixtureGroup { id: "g4".into() };
         apply(&mut s, op).unwrap();
-        assert!(phaser_mut(&mut s, "ph1").group.is_none());
-        assert_eq!(phaser_mut(&mut s, "ph4").group.as_deref(), Some("g3"));
+        assert!(phaser_mut(&mut s, "ph1").layers[0].group.is_none());
+        assert_eq!(
+            phaser_mut(&mut s, "ph4").layers[0].group.as_deref(),
+            Some("g3")
+        );
     }
 
     #[test]

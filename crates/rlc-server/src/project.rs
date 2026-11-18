@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 23;
+const SCHEMA_VERSION: u32 = 24;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -354,7 +354,35 @@ fn migrate(project: &mut Value, version: u32) {
     // 20 → 21: subgrupos de fixtures (`FixtureGroup.parent`); os grupos antigos ficam na raiz
     // 21 → 22 (VC-7): as seleções do Seletor (`selections`, vazio nos antigos) e o alvo e a categoria
     // do botão (desligado e sem categoria); valem pelos padrões, sem mudar o arquivo
-    // 22 → 23: o Phaser pode levar um grupo de canais (`channelGroup`, vazio nos antigos)
+    // 22 → 24 (a versão 23 guardava o grupo de canais no Phaser): o grupo (de fixtures ou de canais) e a
+    // defasagem passaram do Phaser para cada camada dele; as camadas de antes ficam com os do Phaser
+    if version < 24 {
+        let functions = project.get_mut("functions").and_then(Value::as_array_mut);
+        for f in functions
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_object_mut)
+            .filter(|f| f.get("type").and_then(Value::as_str) == Some("phaser"))
+        {
+            // Sem a defasagem no Phaser, ele já está no formato novo
+            if !f.contains_key("spread") {
+                continue;
+            }
+            let group = f.remove("group").unwrap_or(Value::Null);
+            let channel_group = f.remove("channelGroup").unwrap_or(Value::Null);
+            let spread = f.remove("spread").unwrap_or(0.into());
+            let layers = f.get_mut("layers").and_then(Value::as_array_mut);
+            for l in layers
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_object_mut)
+            {
+                l.insert("group".into(), group.clone());
+                l.insert("channelGroup".into(), channel_group.clone());
+                l.insert("spread".into(), spread.clone());
+            }
+        }
+    }
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.
@@ -690,6 +718,47 @@ mod tests {
                 assert_eq!(m.run_order, RunOrder::Loop);
             }
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn version_23_phasers_pass_the_group_and_the_spread_to_each_layer() {
+        use rlc_core::FunctionKind;
+        let dir = std::env::temp_dir().join(format!("rlc-projetos-{}", crate::apply::new_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // O que o Phaser da versão 23 sabia: um grupo e uma defasagem para todas as camadas
+        let mut project = old_example();
+        let mut phasers = 0;
+        for f in &mut project.functions {
+            if let FunctionKind::Phaser(ph) = &mut f.kind {
+                let first = ph.layers[0].clone();
+                for l in &mut ph.layers {
+                    (l.group, l.channel_group, l.spread) = (
+                        first.group.clone(),
+                        first.channel_group.clone(),
+                        first.spread,
+                    );
+                }
+                phasers += 1;
+            }
+        }
+        assert!(phasers > 0);
+        let mut old = serde_json::to_value(&project).unwrap();
+        for f in old["functions"].as_array_mut().unwrap() {
+            if f["type"] == "phaser" {
+                let first = f["layers"][0].clone();
+                for key in ["group", "channelGroup", "spread"] {
+                    f[key] = first[key].clone();
+                    for l in f["layers"].as_array_mut().unwrap() {
+                        l.as_object_mut().unwrap().remove(key);
+                    }
+                }
+            }
+        }
+        let file = dir.join("antigo.rlc");
+        let v23 = json!({ "format": FORMAT, "schemaVersion": 23, "project": old });
+        std::fs::write(&file, v23.to_string()).unwrap();
+        assert_eq!(read(&file).unwrap().0, project);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

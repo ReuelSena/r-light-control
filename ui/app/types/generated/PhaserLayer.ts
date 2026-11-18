@@ -3,13 +3,29 @@ import type { Attribute } from "./Attribute";
 import type { WaveShape } from "./WaveShape";
 
 /**
- * Uma onda sobre um atributo.
+ * Uma onda sobre um grupo. A fonte é um grupo de fixtures (leva o `attribute`, na ordem da grade) ou
+ * um grupo de canais (leva todos os canais dele, na ordem do grupo, e ignora o `attribute`); sem
+ * nenhum dos dois, a camada não acende nada.
  */
 export type PhaserLayer = { 
 /**
- * Só os contínuos: dimmer, as cores, pan, tilt, zoom, foco, íris e rotação do gobo.
+ * Grupo de fixtures (um ou outro).
  */
-attribute: Attribute, shape: WaveShape, 
+group: string | null, 
+/**
+ * Grupo de canais (um ou outro).
+ */
+channelGroup: string | null, 
+/**
+ * Só os contínuos: dimmer, as cores, pan, tilt, zoom, foco, íris e rotação do gobo. Só vale com
+ * um grupo de fixtures.
+ */
+attribute: Attribute, 
+/**
+ * Graus de atraso de uma fixture (ou canal) para a próxima, de -360 a 360 (0 = juntas; negativo =
+ * a onda anda para o outro lado).
+ */
+spread: number, shape: WaveShape, 
 /**
  * Só no pulso: a parte do ciclo em que ele fica no alto, de 1 a 99%.
  */

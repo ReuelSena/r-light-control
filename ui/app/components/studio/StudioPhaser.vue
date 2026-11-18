@@ -49,13 +49,26 @@ const shapeLabel = (shape: (typeof waveShapes)[number]) => t(`waveShape.${shape}
     <StudioPhaserPreview :fn="fn" />
 
     <div class="grid gap-3 @xl:max-w-xl @xl:grid-cols-2">
-      <label class="field-label">
-        {{ t('matrix.group') }}
-        <select class="field" :value="fn.group ?? ''" @change="save({ group: ($event.target as HTMLSelectElement).value || null })">
-          <option value="">{{ t('io.none') }}</option>
-          <option v-for="{ group: g, depth } in groupTree(project)" :key="g.id" :value="g.id">{{ '— '.repeat(depth) }}{{ g.name }} ({{ g.width }}×{{ g.height }})</option>
-        </select>
-      </label>
+      <div class="flex flex-col gap-1">
+        <RlSegmented
+          :model-value="fn.channelGroup ? 'channels' : 'fixtures'"
+          :options="[{ value: 'fixtures', label: t('phaser.sourceFixtures') }, { value: 'channels', label: t('phaser.sourceChannels') }]"
+          @update:model-value="(source) => save(source === 'channels' ? { group: null, channelGroup: project.channelGroups[0]?.id ?? null } : { channelGroup: null })"
+        />
+        <label v-if="fn.channelGroup" class="field-label">
+          {{ t('phaser.channelGroup') }}
+          <select class="field" :value="fn.channelGroup" @change="save({ channelGroup: ($event.target as HTMLSelectElement).value || null })">
+            <option v-for="g in project.channelGroups" :key="g.id" :value="g.id">{{ g.name }} ({{ g.channels.length }})</option>
+          </select>
+        </label>
+        <label v-else class="field-label">
+          {{ t('matrix.group') }}
+          <select class="field" :value="fn.group ?? ''" @change="save({ group: ($event.target as HTMLSelectElement).value || null })">
+            <option value="">{{ t('io.none') }}</option>
+            <option v-for="{ group: g, depth } in groupTree(project)" :key="g.id" :value="g.id">{{ '— '.repeat(depth) }}{{ g.name }} ({{ g.width }}×{{ g.height }})</option>
+          </select>
+        </label>
+      </div>
       <label class="field-label">
         <span class="flex items-center gap-1">{{ t('phaser.spread') }} <RlInfo :text="t('phaser.spreadInfo')" /></span>
         <input class="field" type="number" min="-360" max="360" step="5" :value="fn.spread" @change="save({ spread: Math.min(360, Math.max(-360, Math.round(number($event)))) })">

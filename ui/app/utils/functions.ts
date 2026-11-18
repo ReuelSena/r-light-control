@@ -245,7 +245,18 @@ export const waveShapes = ['sine', 'triangle', 'sawUp', 'sawDown', 'pulse'] as c
 
 /** Quantas fixtures (cabeças) do grupo andam a onda de um atributo: a da cabeça ou, sem o atributo nela,
  * a da fixture inteira, uma vez só, na ordem da grade (`phaser_targets` em apply.rs). */
-export function phaserCount(project: Project, group: string | null, attribute: Attribute) {
+export function phaserCount(project: Project, ph: Phaser, attribute: Attribute) {
+  // Grupo de canais: os canais do atributo (sem os finos), cada canal uma vez
+  if (ph.channelGroup) {
+    const channels = project.channelGroups.find((g) => g.id === ph.channelGroup)?.channels ?? []
+    const seen = new Set(channels.filter((c) => {
+      const fixture = project.fixtures.find((f) => f.id === c.fixture)
+      const channel = fixture && modeChannels(project, fixture)[c.channel]
+      return channel && channel.attribute === attribute && !channel.fine
+    }).map((c) => `${c.fixture}:${c.channel}`))
+    return seen.size
+  }
+  const group = ph.group
   const cells = [...(project.fixtureGroups.find((g) => g.id === group)?.cells ?? [])].sort((a, b) => a.y - b.y || a.x - b.x)
   const seen = new Set<string>()
   for (const cell of cells) {

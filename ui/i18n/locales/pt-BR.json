@@ -578,9 +578,9 @@
   },
   "phaser": {
     "spread": "Defasagem (°)",
-    "spreadInfo": "Quanto cada fixture do grupo anda atrás da anterior no ciclo, na ordem da grade (linha por linha). Em 0°, todas andam juntas; com 12 fixtures e 30°, a onda dá uma volta pelo grupo. Negativa, a onda anda para o outro lado. Conta só as fixtures que têm o atributo da camada.",
+    "spreadInfo": "Quanto cada fixture do grupo anda atrás da anterior no ciclo, na ordem da grade (linha por linha). Em 0°, todas andam juntas; com 12 fixtures e 30°, a onda dá uma volta pelo grupo. Negativa, a onda anda para o outro lado. Conta só as fixtures que têm o atributo da camada. Num grupo de canais, a ordem é a do grupo, canal a canal.",
     "layers": "Camadas",
-    "layersInfo": "Cada camada leva um atributo das fixtures do grupo por uma onda, do piso ao teto. Até 8 camadas, no máximo uma por atributo (uma absoluta e uma relativa podem dividir o mesmo).\nO círculo do pan e do tilt são duas camadas de seno defasadas em 90°; o arco-íris, vermelho, verde e azul defasados em 120°.\nDimmer e cores misturam como as cenas (o maior valor vence); a prioridade da criação vale como nas outras.",
+    "layersInfo": "Cada camada leva um atributo das fixtures do grupo (ou, num grupo de canais, só os canais do grupo que são desse atributo) por uma onda, do piso ao teto. Até 8 camadas, no máximo uma por atributo (uma absoluta e uma relativa podem dividir o mesmo).\nO círculo do pan e do tilt são duas camadas de seno defasadas em 90°; o arco-íris, vermelho, verde e azul defasados em 120°.\nDimmer e cores misturam como as cenas (o maior valor vence); a prioridade da criação vale como nas outras.",
     "addLayer": "Adicionar camada",
     "attribute": "Atributo",
     "relative": "Relativa",
@@ -593,8 +593,11 @@
     "phase": "Fase (°)",
     "cycle": "Duração do ciclo",
     "beats": "Ciclo em batidas do BPM",
-    "noGroup": "Escolha um grupo de fixtures para o Phaser acender.",
-    "noFixtures": "Nenhuma fixture do grupo tem este atributo."
+    "sourceFixtures": "Grupo de fixtures",
+    "sourceChannels": "Grupo de canais",
+    "channelGroup": "Grupo de canais",
+    "noGroup": "Escolha um grupo de fixtures ou de canais para o Phaser acender.",
+    "noFixtures": "Nenhuma fixture ou canal do grupo tem este atributo."
   },
   "waveShape": {
     "sine": "Seno",

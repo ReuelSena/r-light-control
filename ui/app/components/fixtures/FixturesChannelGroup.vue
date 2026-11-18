@@ -91,7 +91,7 @@ function remove() {
       {{ t('groups.follow') }}
       <RlInfo :text="t('groups.followInfo')" />
     </h3>
-    <div class="flex gap-1.5 overflow-x-auto pb-1 *:shrink-0">
+    <div class="flex shrink-0 gap-1.5 overflow-x-auto pb-1 *:shrink-0">
       <RlButton size="sm" highlight="led" :model-value="!following" @press="following && follow(null)">{{ t('groups.pickedChannels') }}</RlButton>
       <RlButton
         v-for="{ group: g, depth } in groupTree(project)"

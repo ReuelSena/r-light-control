@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use crate::write_atomic;
 
 const FORMAT: &str = "r-light-control/project";
-const SCHEMA_VERSION: u32 = 22;
+const SCHEMA_VERSION: u32 = 23;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -354,6 +354,7 @@ fn migrate(project: &mut Value, version: u32) {
     // 20 → 21: subgrupos de fixtures (`FixtureGroup.parent`); os grupos antigos ficam na raiz
     // 21 → 22 (VC-7): as seleções do Seletor (`selections`, vazio nos antigos) e o alvo e a categoria
     // do botão (desligado e sem categoria); valem pelos padrões, sem mudar o arquivo
+    // 22 → 23: o Phaser pode levar um grupo de canais (`channelGroup`, vazio nos antigos)
 }
 
 /// Salva o projeto. A versão anterior do arquivo fica em `.rlc.bak`.

@@ -11,7 +11,7 @@ const { state } = useEngine()
 const project = computed(() => state.value.project)
 const now = useClock(33)
 
-const rows = computed(() => props.fn.layers.map((layer) => ({ layer, n: phaserCount(project.value, props.fn.group, layer.attribute) })))
+const rows = computed(() => props.fn.layers.map((layer) => ({ layer, n: phaserCount(project.value, props.fn, layer.attribute) })))
 const turns = computed(() => now.value / phaserCycleMs(props.fn, state.value.master.bpm))
 
 // A barra da fixture `i`: do chão ao valor; no relativo, do zero (127, a linha do meio) ao deslocamento
@@ -25,7 +25,7 @@ function bar(layer: (typeof props.fn.layers)[number], i: number) {
 
 <template>
   <div class="sunken flex flex-col gap-2 rounded-md p-2">
-    <p v-if="!fn.group" class="text-sm text-fg-muted">{{ t('phaser.noGroup') }}</p>
+    <p v-if="!fn.group && !fn.channelGroup" class="text-sm text-fg-muted">{{ t('phaser.noGroup') }}</p>
     <div v-for="(row, k) in rows" :key="k" class="grid grid-cols-[7.5rem_1fr] items-center gap-2">
       <span class="flex items-center gap-1 truncate text-xs text-fg-muted">
         <component :is="attributeLook[row.layer.attribute].icon" :size="14" class="shrink-0" :style="{ color: attributeLook[row.layer.attribute].color }" />

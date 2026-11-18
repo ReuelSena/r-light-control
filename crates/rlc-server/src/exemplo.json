@@ -5279,6 +5279,33 @@
     }
    },
    {
+    "id": "ph6",
+    "name": "Onda de dimmer no grupo de canais (Dimmer PARs)",
+    "folder": "d5",
+    "priority": "normal",
+    "type": "phaser",
+    "group": null,
+    "channelGroup": "cg1",
+    "layers": [
+     {
+      "attribute": "dimmer",
+      "shape": "triangle",
+      "width": 25,
+      "low": 0,
+      "high": 255,
+      "phase": 0,
+      "relative": false
+     }
+    ],
+    "spread": 60,
+    "beats": true,
+    "timing": {
+     "fadeInMs": 1000,
+     "holdMs": 4000,
+     "fadeOutMs": 1000
+    }
+   },
+   {
     "id": "ph2",
     "name": "Pulso nos ParLeds",
     "folder": "d5",

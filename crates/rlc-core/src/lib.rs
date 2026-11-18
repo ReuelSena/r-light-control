@@ -755,6 +755,9 @@ pub struct RgbMatrix {
 pub struct Phaser {
     /// Grupo de fixtures; as fixtures com o atributo de cada camada andam a onda, na ordem da grade.
     pub group: Option<Id>,
+    /// Grupo de canais, no lugar do grupo de fixtures (um ou outro): cada camada leva os canais do
+    /// grupo que são do atributo dela, na ordem do grupo.
+    pub channel_group: Option<Id>,
     /// De 1 a 8 camadas, no máximo uma por atributo e tipo (absoluta ou relativa).
     pub layers: Vec<PhaserLayer>,
     /// Graus de atraso de uma fixture para a próxima, de -360 a 360 (0 = juntas; negativo = a onda

@@ -12,6 +12,11 @@ export type Phaser = {
  */
 group: string | null, 
 /**
+ * Grupo de canais, no lugar do grupo de fixtures (um ou outro): cada camada leva os canais do
+ * grupo que são do atributo dela, na ordem do grupo.
+ */
+channelGroup: string | null, 
+/**
  * De 1 a 8 camadas, no máximo uma por atributo e tipo (absoluta ou relativa).
  */
 layers: Array<PhaserLayer>, 

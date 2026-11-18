@@ -1677,9 +1677,10 @@ pub fn running_programs(s: &Snapshot) -> Vec<Run> {
     // A execução `run` da criação `id`; a de alvo (VC-7) leva a máscara das fixtures dela, e o resto
     // (Flash, sliders, "Tempos", velocidade, intensidade, prioridade e pausa) é o da criação
     let run = |id: &Id, run: &Id, mask: Option<&[Id]>| {
-        // O Flash e o slider de playback são o próprio fade: a criação entra e sai sem os gravados
+        // O Flash e o slider de playback são o próprio fade: a criação entra e sai sem os gravados.
+        // Com o playback cheio (o botão o leva a 255) valem os fades gravados
         let flash = flashed(s, id);
-        let cut = flash || playback_level(s, id).is_some();
+        let cut = flash || playback_level(s, id).is_some_and(|v| v < 255);
         let play = Play {
             rate: 1.0,
             cut,
@@ -2075,6 +2076,7 @@ fn press(
             if (momentary && !down && held) || (!momentary && running) {
                 s.running.retain(|r| *r != f);
                 hold(s, false);
+                set_playbacks(s, &f, false);
             } else if down && !running {
                 if b.action == ButtonAction::Exclusive {
                     // "Só esta": as outras param (com o fade out), e os playbacks baixam
@@ -2091,8 +2093,9 @@ fn press(
                 } else {
                     solo(s, frame.as_ref(), &f);
                 }
-                s.running.push(f);
+                s.running.push(f.clone());
                 hold(s, momentary);
+                set_playbacks(s, &f, true);
             } else {
                 return Ok(vec![]);
             }
@@ -2110,6 +2113,27 @@ fn press(
         // O Voltar e o Pausar chegam já traduzidos (`console_op`)
         ButtonAction::StopAll | ButtonAction::Previous | ButtonAction::Pause => vec![],
     })
+}
+
+/// O botão que liga ou desliga uma criação leva junto os faders de playback dela: cheio ao ligar,
+/// no zero ao desligar.
+fn set_playbacks(s: &mut Snapshot, f: &Id, on: bool) {
+    let ids: Vec<Id> = s
+        .project
+        .console
+        .widgets
+        .iter()
+        .filter(|w| playback(w) == Some(f))
+        .map(|w| w.id.clone())
+        .collect();
+    s.widget_values.retain(|v| !ids.contains(&v.widget));
+    if on {
+        s.widget_values
+            .extend(ids.into_iter().map(|widget| WidgetValue {
+                widget,
+                value: vec![255],
+            }));
+    }
 }
 
 /// Numa moldura solo, ligar a criação de um botão para as dos outros botões da moldura.
@@ -3856,6 +3880,25 @@ mod tests {
         slider(&mut sl3).mode = SliderMode::Level;
         save_widget(&mut s, sl3);
         assert!(s.running.is_empty() && s.widget_values.is_empty());
+    }
+
+    #[test]
+    fn button_raises_and_lowers_the_playback_fader_of_its_function() {
+        let mut s = example();
+        // Um botão para a s4, a cena que o "sl3" toca
+        let mut b = widget(&s, "b1");
+        b.id = "bp".into();
+        b.frame = None;
+        button(&mut b).function = Some("s4".into());
+        save_widget(&mut s, b);
+        hit(&mut s, "bp", true);
+        assert_eq!(s.running, ["s4"]);
+        assert_eq!(widget_level(&s, "sl3"), Some(255));
+        // Com o fader cheio, o botão respeita os fades gravados
+        assert_ne!(scene_run(&s, "s4").0, Span::Ms(0));
+        hit(&mut s, "bp", true);
+        assert!(s.running.is_empty());
+        assert_eq!(widget_level(&s, "sl3"), None);
     }
 
     #[test]

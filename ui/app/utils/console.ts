@@ -100,7 +100,8 @@ export function copyLayout(widgets: VcWidget[], from: ConsoleFormat, to: Console
 
 /** A tecla guardada como aparece nas etiquetas: setas e espaço viram símbolos. */
 const keyNames: Record<string, string> = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: '␣' }
-export const keyLabel = (key: string) => key.split(' ').map((step) => step.split('+').map((k) => keyNames[k] ?? k).join('+')).join(' ')
+export const keySteps = (key: string) => key.split(/(?<!Num) /) // "Num 1" é uma tecla só
+export const keyLabel = (key: string) => keySteps(key).map((step) => step.split('+').map((k) => keyNames[k] ?? k).join('+')).join(' ')
 
 /** Uma tecla guardada pode ser uma sequência: os passos separados por espaço ("Ctrl+1 1"), cada um a até este tempo do anterior. */
 export const KEY_SEQUENCE_MS = 800

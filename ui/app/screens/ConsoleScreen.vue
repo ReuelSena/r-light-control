@@ -269,7 +269,7 @@ function onKey(e: KeyboardEvent, down: boolean) {
   let sequenced = false
   // Uma tecla de um passo vale na hora; uma sequência, quando o fim dela acaba de ser digitado
   const hit = (key: string) => {
-    const steps = key.split(' ')
+    const steps = keySteps(key)
     if (steps.length === 1) return key === combo
     const ok = down && steps.every((s, i) => typed.at(i - steps.length)?.combo === s)
     sequenced ||= ok
@@ -277,7 +277,7 @@ function onKey(e: KeyboardEvent, down: boolean) {
   }
   for (const w of widgets.value) {
     for (const input of w.inputs) {
-      const steps = input.key?.split(' ') ?? []
+      const steps = input.key ? keySteps(input.key) : []
       const id = `${w.id}:${input.control}`
       // A sequência aperta ao completar e solta com a última tecla (o flash dura o que ela durar)
       if (steps.length > 1 && !down) {
